@@ -68,9 +68,10 @@ int rfc1524_expand_command (BODY *a, char *filename, char *_type,
   if (option (OPTMAILCAPSANITIZE))
     mutt_sanitize_filename (type, 0);
 
-  while (command[x] && x<clen && y<sizeof(buf)) 
+  while (x < clen && command[x] && y < sizeof (buf) - 1)
   {
-    if (command[x] == '\\') {
+    if (command[x] == '\\')
+    {
       x++;
       buf[y++] = command[x++];
     }
@@ -85,7 +86,7 @@ int rfc1524_expand_command (BODY *a, char *filename, char *_type,
 	int z = 0;
 
 	x++;
-	while (command[x] && command[x] != '}' && z<sizeof(param))
+	while (command[x] && command[x] != '}' && z < sizeof (param) - 1)
 	  param[z++] = command[x++];
 	param[z] = '\0';
 	
@@ -203,7 +204,7 @@ static int rfc1524_mailcap_parse (BODY *a,
 
   if ((fp = fopen (filename, "r")) != NULL)
   {
-    while (!found && (buf = mutt_read_line (buf, &buflen, fp, &line)) != NULL)
+    while (!found && (buf = mutt_read_line (buf, &buflen, fp, &line, M_CONT)) != NULL)
     {
       /* ignore comments */
       if (*buf == '#')
@@ -346,7 +347,7 @@ static int rfc1524_mailcap_parse (BODY *a,
 	}
       }
     } /* while (!found && (buf = mutt_read_line ())) */
-    fclose (fp);
+    safe_fclose (&fp);
   } /* if ((fp = fopen ())) */
   FREE (&buf);
   return found;
@@ -387,7 +388,7 @@ int rfc1524_mailcap_lookup (BODY *a, char *type, rfc1524_entry *entry, int opt)
   /* rfc1524 specifies that a path of mailcap files should be searched.
    * joy.  They say 
    * $HOME/.mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap, etc
-   * and overriden by the MAILCAPS environment variable, and, just to be nice, 
+   * and overridden by the MAILCAPS environment variable, and, just to be nice,
    * we'll make it specifiable in .muttrc
    */
   if (!curr || !*curr)
@@ -581,12 +582,12 @@ int mutt_rename_file (char *oldfile, char *newfile)
     return 3;
   if ((nfp = safe_fopen (newfile,"w")) == NULL)
   {
-    fclose(ofp);
+    safe_fclose (&ofp);
     return 3;
   }
   mutt_copy_stream (ofp,nfp);
-  fclose (nfp);
-  fclose (ofp);
+  safe_fclose (&nfp);
+  safe_fclose (&ofp);
   mutt_unlink (oldfile);
   return 0;
 }

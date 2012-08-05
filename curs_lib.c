@@ -98,7 +98,10 @@ event_t mutt_getch (void)
   mutt_allow_interrupt (0);
 
   if (SigInt)
+  {
     mutt_query_exit ();
+    return err;
+  }
 
   if(ch == ERR)
   {
@@ -204,9 +207,9 @@ int mutt_yesorno (const char *msg, int def)
   answer[1] = 0;
   
   reyes_ok = (expr = nl_langinfo (YESEXPR)) && expr[0] == '^' &&
-	     !regcomp (&reyes, expr, REG_NOSUB|REG_EXTENDED);
+	     !REGCOMP (&reyes, expr, REG_NOSUB);
   reno_ok = (expr = nl_langinfo (NOEXPR)) && expr[0] == '^' &&
-            !regcomp (&reno, expr, REG_NOSUB|REG_EXTENDED);
+            !REGCOMP (&reno, expr, REG_NOSUB);
 #endif
 
   CLEARLINE(LINES-1);
@@ -220,7 +223,7 @@ int mutt_yesorno (const char *msg, int def)
   answer_string = safe_malloc (COLS + 1);
   snprintf (answer_string, COLS + 1, " ([%s]/%s): ", def == M_YES ? yes : no, def == M_YES ? no : yes);
   answer_string_len = strlen (answer_string);
-  printw ("%.*s%s", COLS - answer_string_len, msg, answer_string);
+  mutt_message ("%.*s%s", COLS - answer_string_len, msg, answer_string);
   FREE (&answer_string);
 
   FOREVER
@@ -275,6 +278,12 @@ int mutt_yesorno (const char *msg, int def)
     addstr ((char *) (def == M_YES ? yes : no));
     mutt_refresh ();
   }
+  else
+  {
+    /* when the users cancels with ^G, clear the message stored with
+     * mutt_message() so it isn't displayed when the screen is refreshed. */
+    mutt_clear_error();
+  }
   return (def);
 }
 
@@ -295,54 +304,49 @@ void mutt_query_exit (void)
   SigInt = 0;
 }
 
-void mutt_curses_error (const char *fmt, ...)
+static void curses_message (int error, const char *fmt, va_list ap)
 {
-  va_list ap;
   char scratch[LONG_STRING];
 
-  va_start (ap, fmt);
   vsnprintf (scratch, sizeof (scratch), fmt, ap);
-  va_end (ap);
-  
+
   dprint (1, (debugfile, "%s\n", scratch));
   mutt_format_string (Errorbuf, sizeof (Errorbuf),
-		      0, COLS-2, FMT_LEFT, 0, scratch, sizeof (scratch), 0);
+		      0, COLS, FMT_LEFT, 0, scratch, sizeof (scratch), 0);
 
   if (!option (OPTKEEPQUIET))
   {
-    BEEP ();
-    SETCOLOR (MT_COLOR_ERROR);
+    if (error)
+      BEEP ();
+    SETCOLOR (error ? MT_COLOR_ERROR : MT_COLOR_MESSAGE);
     mvaddstr (LINES-1, 0, Errorbuf);
     clrtoeol ();
     SETCOLOR (MT_COLOR_NORMAL);
     mutt_refresh ();
   }
 
-  set_option (OPTMSGERR);
+  if (error)
+    set_option (OPTMSGERR);
+  else
+    unset_option (OPTMSGERR);
+}
+
+void mutt_curses_error (const char *fmt, ...)
+{
+  va_list ap;
+
+  va_start (ap, fmt);
+  curses_message (1, fmt, ap);
+  va_end (ap);
 }
 
 void mutt_curses_message (const char *fmt, ...)
 {
   va_list ap;
-  char scratch[LONG_STRING];
 
   va_start (ap, fmt);
-  vsnprintf (scratch, sizeof (scratch), fmt, ap);
+  curses_message (0, fmt, ap);
   va_end (ap);
-
-  mutt_format_string (Errorbuf, sizeof (Errorbuf),
-		      0, COLS-2, FMT_LEFT, 0, scratch, sizeof (scratch), 0);
-
-  if (!option (OPTKEEPQUIET))
-  {
-    SETCOLOR (MT_COLOR_MESSAGE);
-    mvaddstr (LINES - 1, 0, Errorbuf);
-    clrtoeol ();
-    SETCOLOR (MT_COLOR_NORMAL);
-    mutt_refresh ();
-  }
-
-  unset_option (OPTMSGERR);
 }
 
 void mutt_progress_init (progress_t* progress, const char *msg,
@@ -420,7 +424,6 @@ void mutt_progress_update (progress_t* progress, long pos, int percent)
 
   if (update)
   {
-    dprint (1, (debugfile, "Updating progress: %ld\n", pos));
     if (progress->flags & M_PROGRESS_SIZE)
     {
       pos = pos / (progress->inc << 10) * (progress->inc << 10);
@@ -428,7 +431,9 @@ void mutt_progress_update (progress_t* progress, long pos, int percent)
     }
     else
       snprintf (posstr, sizeof (posstr), "%ld", pos);
-    
+
+    dprint (5, (debugfile, "updating progress: %s\n", posstr));
+
     progress->pos = pos;
     if (now)
       progress->timestamp = now;
@@ -729,6 +734,11 @@ void mutt_format_string (char *dest, size_t destlen,
       w = 1; /* hack */
     else
     {
+#ifdef HAVE_ISWBLANK
+      if (iswblank (wc))
+	wc = ' ';
+      else
+#endif
       if (!IsWPrint (wc))
 	wc = '?';
       w = wcwidth (wc);
@@ -740,7 +750,7 @@ void mutt_format_string (char *dest, size_t destlen,
       min_width -= w;
       max_width -= w;
       strncpy (p, scratch, k2);
-      p += k2;            
+      p += k2;
       destlen -= k2;
     }
   }
@@ -879,7 +889,7 @@ int mutt_wstr_trunc (const char *src, size_t maxlen, size_t maxwid, size_t *widt
 {
   wchar_t wc;
   int w = 0, l = 0, cl;
-  size_t cw, n;
+  int cw, n;
   mbstate_t mbstate;
 
   if (!src)
@@ -893,7 +903,13 @@ int mutt_wstr_trunc (const char *src, size_t maxlen, size_t maxwid, size_t *widt
     if (cl == (size_t)(-1) || cl == (size_t)(-2))
       cw = cl = 1;
     else
+    {
       cw = wcwidth (wc);
+      /* hack because M_TREE symbols aren't turned into characters
+       * until rendered by print_enriched_string (#3364) */
+      if (cw < 0 && cl == 1 && src[0] && src[0] < M_TREE_MAX)
+	cw = 1;
+    }
     if (cl + l > maxlen || cw + w > maxwid)
       break;
     l += cl;

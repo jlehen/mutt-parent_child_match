@@ -422,9 +422,9 @@ void menu_jump (MUTTMENU *menu)
     buf[0] = 0;
     if (mutt_get_field (_("Jump to: "), buf, sizeof (buf), 0) == 0 && buf[0])
     {
-      n = atoi (buf) - 1;
-      if (n >= 0 && n < menu->max)
+      if (mutt_atoi (buf, &n) == 0 && n > 0 && n < menu->max + 1)
       {
+	n--;	/* msg numbers are 0-based */
 	menu->current = n;
 	menu->redraw = REDRAW_MOTION;
       }
@@ -725,27 +725,21 @@ static int menu_search (MUTTMENU *menu, int op)
   char* searchBuf = menu->menu >= 0 && menu->menu < MENU_MAX ?
                     SearchBuffers[menu->menu] : NULL;
 
-  if (op != OP_SEARCH_NEXT && op != OP_SEARCH_OPPOSITE)
+  if (!(searchBuf && *searchBuf) ||
+      (op != OP_SEARCH_NEXT && op != OP_SEARCH_OPPOSITE))
   {
-    strfcpy (buf, searchBuf ? searchBuf : "", sizeof (buf));
-    if (mutt_get_field ((op == OP_SEARCH) ? _("Search for: ") : 
-                                            _("Reverse search for: "),
-			 buf, sizeof (buf), M_CLEAR) != 0 || !buf[0])
+    strfcpy (buf, searchBuf && *searchBuf ? searchBuf : "", sizeof (buf));
+    if (mutt_get_field ((op == OP_SEARCH || op == OP_SEARCH_NEXT)
+			? _("Search for: ") : _("Reverse search for: "),
+			buf, sizeof (buf), M_CLEAR) != 0 || !buf[0])
       return (-1);
     if (menu->menu >= 0 && menu->menu < MENU_MAX)
     {
       mutt_str_replace (&SearchBuffers[menu->menu], buf);
       searchBuf = SearchBuffers[menu->menu];
     }
-    menu->searchDir = (op == OP_SEARCH) ? M_SEARCH_DOWN : M_SEARCH_UP;
-  }
-  else 
-  {
-    if (!searchBuf || !*searchBuf)
-    {
-      mutt_error _("No search pattern.");
-      return (-1);
-    }
+    menu->searchDir = (op == OP_SEARCH || op == OP_SEARCH_NEXT) ?
+		       M_SEARCH_DOWN : M_SEARCH_UP;
   }
 
   searchDir = (menu->searchDir == M_SEARCH_UP) ? -1 : 1;
@@ -755,7 +749,6 @@ static int menu_search (MUTTMENU *menu, int op)
   if ((r = REGCOMP (&re, searchBuf, REG_NOSUB | mutt_which_case (searchBuf))) != 0)
   {
     regerror (r, &re, buf, sizeof (buf));
-    regfree (&re);
     mutt_error ("%s", buf);
     return (-1);
   }

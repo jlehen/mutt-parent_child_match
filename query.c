@@ -51,7 +51,7 @@ static struct mapping_t QueryHelp[] = {
   { N_("Make Alias"), OP_CREATE_ALIAS },
   { N_("Search"), OP_SEARCH },
   { N_("Help"),   OP_HELP },
-  { NULL }
+  { NULL,	  0 }
 };
 
 static void query_menu (char *buf, size_t buflen, QUERY *results, int retbuf);
@@ -60,7 +60,7 @@ static ADDRESS *result_to_addr (QUERY *r)
 {
   static ADDRESS *tmp;
   
-  if (!(tmp = rfc822_cpy_adr (r->addr)))
+  if (!(tmp = rfc822_cpy_adr (r->addr, 0)))
     return NULL;
   
   if(!tmp->next && !tmp->personal)
@@ -96,7 +96,7 @@ static QUERY *run_query (char *s, int quiet)
   fgets (msg, sizeof (msg), fp);
   if ((p = strrchr (msg, '\n')))
     *p = '\0';
-  while ((buf = mutt_read_line (buf, &buflen, fp, &dummy)) != NULL)
+  while ((buf = mutt_read_line (buf, &buflen, fp, &dummy, 0)) != NULL)
   {
     if ((p = strtok(buf, "\t\n")))
     {
@@ -123,7 +123,7 @@ static QUERY *run_query (char *s, int quiet)
     }
   }
   FREE (&buf);
-  fclose (fp);
+  safe_fclose (&fp);
   if (mutt_wait_filter (thepid))
   {
     dprint (1, (debugfile, "Error: %s\n", msg));
@@ -426,7 +426,7 @@ static void query_menu (char *buf, size_t buflen, QUERY *results, int retbuf)
 	      if (QueryTable[i].tagged)
 	      {
 		ADDRESS *a = result_to_addr(QueryTable[i].data);
-		rfc822_append (&naddr, a);
+		rfc822_append (&naddr, a, 0);
 		rfc822_free_address (&a);
 	      }
 
@@ -461,7 +461,7 @@ static void query_menu (char *buf, size_t buflen, QUERY *results, int retbuf)
 	      if (QueryTable[i].tagged)
 	      {
 		ADDRESS *a = result_to_addr(QueryTable[i].data);
-		rfc822_append (&msg->env->to, a);
+		rfc822_append (&msg->env->to, a, 0);
 		rfc822_free_address (&a);
 	      }
 	  }

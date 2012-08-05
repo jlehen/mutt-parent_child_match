@@ -67,7 +67,7 @@ static int pop_read_header (POP_DATA *pop_data, HEADER *h)
   char buf[LONG_STRING];
   char tempfile[_POSIX_PATH_MAX];
 
-  mutt_mktemp (tempfile);
+  mutt_mktemp (tempfile, sizeof (tempfile));
   if (!(f = safe_fopen (tempfile, "w+")))
   {
     mutt_perror (tempfile);
@@ -130,7 +130,7 @@ static int pop_read_header (POP_DATA *pop_data, HEADER *h)
     }
   }
 
-  fclose (f);
+  safe_fclose (&f);
   unlink (tempfile);
   return ret;
 }
@@ -226,7 +226,7 @@ static header_cache_t *pop_hcache_open (POP_DATA *pop_data, const char *path)
  */
 static int pop_fetch_headers (CONTEXT *ctx)
 {
-  int i, ret, old_count, new_count;
+  int i, ret, old_count, new_count, deleted;
   unsigned short hcached = 0, bcached;
   POP_DATA *pop_data = (POP_DATA *)ctx->data;
   progress_t progress;
@@ -274,9 +274,20 @@ static int pop_fetch_headers (CONTEXT *ctx)
 
   if (ret == 0)
   {
-    for (i = 0; i < old_count; i++)
+    for (i = 0, deleted = 0; i < old_count; i++)
+    {
       if (ctx->hdrs[i]->refno == -1)
+      {
 	ctx->hdrs[i]->deleted = 1;
+	deleted++;
+      }
+    }
+    if (deleted > 0)
+    {
+      mutt_error (_("%d messages have been lost. Try reopening the mailbox."),
+		  deleted);
+      mutt_sleep (2);
+    }
 
     for (i = old_count; i < new_count; i++)
     {
@@ -418,6 +429,11 @@ int pop_open_mailbox (CONTEXT *ctx)
   memset (ctx->rights, 0, sizeof (ctx->rights));
   mutt_bit_set (ctx->rights, M_ACL_SEEN);
   mutt_bit_set (ctx->rights, M_ACL_DELETE);
+#if USE_HCACHE
+  /* flags are managed using header cache, so it only makes sense to
+   * enable them in that case */
+  mutt_bit_set (ctx->rights, M_ACL_WRITE);
+#endif
 
   FOREVER
   {
@@ -552,7 +568,7 @@ int pop_fetch_message (MESSAGE* msg, CONTEXT* ctx, int msgno)
     {
       /* no */
       bcache = 0;
-      mutt_mktemp (path);
+      mutt_mktemp (path, sizeof (path));
       if (!(msg->fp = safe_fopen (path, "w+")))
       {
 	mutt_perror (path);
@@ -652,7 +668,7 @@ int pop_sync_mailbox (CONTEXT *ctx, int *index_hint)
 
     for (i = 0, j = 0, ret = 0; ret == 0 && i < ctx->msgcount; i++)
     {
-      if (ctx->hdrs[i]->deleted)
+      if (ctx->hdrs[i]->deleted && ctx->hdrs[i]->refno != -1)
       {
 	j++;
 	if (!ctx->quiet)
@@ -666,6 +682,14 @@ int pop_sync_mailbox (CONTEXT *ctx, int *index_hint)
 #endif
 	}
       }
+
+#if USE_HCACHE
+      if (ctx->hdrs[i]->changed)
+      {
+	mutt_hcache_store (hc, ctx->hdrs[i]->data, ctx->hdrs[i], 0, strlen);
+      }
+#endif
+
     }
 
 #if USE_HCACHE

@@ -33,13 +33,9 @@ enum
   M_MBOX = 1,
   M_MMDF,
   M_MH,
-  M_MAILDIR
-#ifdef USE_IMAP
-  , M_IMAP
-#endif
-#ifdef USE_POP
-  , M_POP
-#endif
+  M_MAILDIR,
+  M_IMAP,
+  M_POP
 };
 
 WHERE short DefaultMagic INITVAL (M_MBOX);
@@ -56,6 +52,7 @@ int mbox_parse_mailbox (CONTEXT *);
 int mmdf_parse_mailbox (CONTEXT *);
 void mbox_unlock_mailbox (CONTEXT *);
 int mbox_check_empty (const char *);
+void mbox_reset_atime (CONTEXT *, struct stat *);
 
 int mh_read_dir (CONTEXT *, const char *);
 int mh_sync_mailbox (CONTEXT *, int *);

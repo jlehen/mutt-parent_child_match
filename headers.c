@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2009 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ void mutt_edit_headers (const char *editor,
   struct stat st;
   LIST *cur, **last = NULL, *tmp;
 
-  mutt_mktemp (path);
+  mutt_mktemp (path, sizeof (path));
   if ((ofp = safe_fopen (path, "w")) == NULL)
   {
     mutt_perror (path);
@@ -64,8 +64,8 @@ void mutt_edit_headers (const char *editor,
 
   mutt_copy_stream (ifp, ofp);
 
-  fclose (ifp);
-  fclose (ofp);
+  safe_fclose (&ifp);
+  safe_fclose (&ofp);
 
   if (stat (path, &st) == -1)
   {
@@ -98,7 +98,7 @@ void mutt_edit_headers (const char *editor,
   if ((ofp = safe_fopen (body, "w")) == NULL)
   {
     /* intentionally leak a possible temporary file here */
-    fclose (ifp);
+    safe_fclose (&ifp);
     mutt_perror (body);
     return;
   }
@@ -106,19 +106,26 @@ void mutt_edit_headers (const char *editor,
   n = mutt_read_rfc822_header (ifp, NULL, 1, 0);
   while ((i = fread (buffer, 1, sizeof (buffer), ifp)) > 0)
     fwrite (buffer, 1, i, ofp);
-  fclose (ofp);
-  fclose (ifp);
+  safe_fclose (&ofp);
+  safe_fclose (&ifp);
   mutt_unlink (path);
 
+  /* in case the user modifies/removes the In-Reply-To header with
+     $edit_headers set, we remove References: as they're likely invalid;
+     we can simply compare strings as we don't generate References for
+     multiple Message-Ids in IRT anyways */
+  if (!n->in_reply_to || (msg->env->in_reply_to &&
+			  mutt_strcmp (n->in_reply_to->data,
+				       msg->env->in_reply_to->data) != 0))
+    mutt_free_list (&msg->env->references);
+
   /* restore old info. */
+  mutt_free_list (&n->references);
   n->references = msg->env->references;
   msg->env->references = NULL;
 
   mutt_free_envelope (&msg->env);
   msg->env = n; n = NULL;
-
-  if (!msg->env->in_reply_to)
-    mutt_free_list (&msg->env->references);
 
   mutt_expand_aliases_env (msg->env);
 
@@ -147,23 +154,32 @@ void mutt_edit_headers (const char *editor,
     {
       BODY *body;
       BODY *parts;
-      char *q;
+      int l = 0;
 
       p = cur->data + 7;
       SKIPWS (p);
       if (*p)
       {
-	if ((q = strpbrk (p, " \t")))
+	for ( ; *p && *p != ' ' && *p != '\t'; p++)
 	{
-	  mutt_substrcpy (path, p, q, sizeof (path));
-	  SKIPWS (q);
+	  if (*p == '\\')
+	  {
+	    if (!*(p+1))
+	      break;
+	    p++;
+	  }
+	  if (l < sizeof (path) - 1)
+	    path[l++] = *p;
 	}
-	else
-	  strfcpy (path, p, sizeof (path));
+	if (*p)
+	  *p++ = 0;
+	SKIPWS (p);
+	path[l] = 0;
+
 	mutt_expand_path (path, sizeof (path));
 	if ((body = mutt_make_file_attach (path)))
 	{
-	  body->description = safe_strdup (q);
+	  body->description = safe_strdup (p);
 	  for (parts = msg->content; parts->next; parts = parts->next) ;
 	  parts->next = body;
 	}

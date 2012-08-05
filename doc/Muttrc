@@ -87,7 +87,7 @@ attachments   +I text/plain
 ## line is unnecessary if you already have "attach-allow */.*", of
 ## course.  These are off by default!  The MIME elements contained
 ## within a message/* or multipart/* are still examined, even if the
-## containers themseves don't qualify.
+## containers themselves don't qualify.
 ##
 #attachments  +A message/.* multipart/.*
 #attachments  +I message/.* multipart/.*
@@ -268,7 +268,10 @@ attachments   -I message/external-body
 # 
 # 
 # This variable is a colon-separated list of character encoding
-# schemes for text file attachments.
+# schemes for text file attachments. Mutt uses this setting to guess
+# which encoding files being attached are encoded in to convert them to
+# a proper character set given in $send_charset.
+# 
 # If unset, the value of $charset will be used instead.
 # For example, the following configuration would work for Japanese
 # text handling:
@@ -349,6 +352,19 @@ attachments   -I message/external-body
 # the section on $index_format.
 # 
 # 
+# set auto_tag=no
+#
+# Name: auto_tag
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, functions in the index menu which affect a message
+# will be applied to all tagged messages (if there are any).  When
+# unset, you must first use the <tag-prefix> function (bound to ``;''
+# by default) to make the next function apply to all tagged messages.
+# 
+# 
 # set autoedit=no
 #
 # Name: autoedit
@@ -362,20 +378,11 @@ attachments   -I message/external-body
 # message.  The send-menu may still be accessed once you have finished
 # editing the body of your message.
 # 
+# Note: when this option is set, you cannot use send-hooks that depend
+# on the recipients when composing a new (non-reply) message, as the initial
+# list of recipients is empty.
+# 
 # Also see $fast_reply.
-# 
-# 
-# set auto_tag=no
-#
-# Name: auto_tag
-# Type: boolean
-# Default: no
-# 
-# 
-# When set, functions in the index menu which affect a message
-# will be applied to all tagged messages (if there are any).  When
-# unset, you must first use the <tag-prefix> function (bound to ``;''
-# by default) to make the next function apply to all tagged messages.
 # 
 # 
 # set beep=yes
@@ -438,6 +445,44 @@ attachments   -I message/external-body
 # visual terminals don't permit making the cursor invisible.
 # 
 # 
+# set certificate_file="~/.mutt_certificates"
+#
+# Name: certificate_file
+# Type: path
+# Default: "~/.mutt_certificates"
+# 
+# 
+# This variable specifies the file where the certificates you trust
+# are saved. When an unknown certificate is encountered, you are asked
+# if you accept it or not. If you accept it, the certificate can also
+# be saved in this file and further connections are automatically
+# accepted.
+# 
+# You can also manually add CA certificates in this file. Any server
+# certificate that is signed with one of these CA certificates is
+# also automatically accepted.
+# 
+# Example:
+# set certificate_file=~/.mutt/certificates
+# 
+# 
+# set charset=""
+#
+# Name: charset
+# Type: string
+# Default: ""
+# 
+# 
+# Character set your terminal uses to display and enter textual data.
+# It is also the fallback for $send_charset.
+# 
+# Upon startup Mutt tries to derive this value from environment variables
+# such as $LC_CTYPE or $LANG.
+# 
+# Note: It should only be set in case Mutt isn't able to determine the
+# character set used correctly.
+# 
+# 
 # set check_mbox_size=no
 #
 # Name: check_mbox_size
@@ -456,23 +501,6 @@ attachments   -I message/external-body
 # because mutt needs to determine the initial new mail status of such a
 # mailbox by performing a fast mailbox scan when it is defined.
 # Afterwards the new mail status is tracked by file size changes.
-# 
-# 
-# set charset=""
-#
-# Name: charset
-# Type: string
-# Default: ""
-# 
-# 
-# Character set your terminal uses to display and enter textual data.
-# It is also the fallback for $send_charset.
-# 
-# Upon startup Mutt tries to derive this value from environment variables
-# such as $LC_CTYPE or $LANG.
-# 
-# Note: It should only be set in case Mutt isn't abled to determine the
-# character set used correctly.
 # 
 # 
 # set check_new=yes
@@ -502,17 +530,6 @@ attachments   -I message/external-body
 # 
 # When unset, Mutt will not collapse a thread if it contains any
 # unread messages.
-# 
-# 
-# set uncollapse_jump=no
-#
-# Name: uncollapse_jump
-# Type: boolean
-# Default: no
-# 
-# 
-# When set, Mutt will jump to the next unread message, if any,
-# when the current thread is uncollapsed.
 # 
 # 
 # set compose_format="-- Mutt: Compose  [Approx. msg size: %l   Atts: %a]%>-"
@@ -610,6 +627,122 @@ attachments   -I message/external-body
 # $save_name, $force_name and ``fcc-hook''.
 # 
 # 
+# set crypt_autoencrypt=no
+#
+# Name: crypt_autoencrypt
+# Type: boolean
+# Default: no
+# 
+# 
+# Setting this variable will cause Mutt to always attempt to PGP
+# encrypt outgoing messages.  This is probably only useful in
+# connection to the ``send-hook'' command.  It can be overridden
+# by use of the pgp menu, when encryption is not required or
+# signing is requested as well.  If $smime_is_default is set,
+# then OpenSSL is used instead to create S/MIME messages and
+# settings can be overridden by use of the smime menu instead.
+# (Crypto only)
+# 
+# 
+# set crypt_autopgp=yes
+#
+# Name: crypt_autopgp
+# Type: boolean
+# Default: yes
+# 
+# 
+# This variable controls whether or not mutt may automatically enable
+# PGP encryption/signing for messages.  See also $crypt_autoencrypt,
+# $crypt_replyencrypt,
+# $crypt_autosign, $crypt_replysign and $smime_is_default.
+# 
+# 
+# set crypt_autosign=no
+#
+# Name: crypt_autosign
+# Type: boolean
+# Default: no
+# 
+# 
+# Setting this variable will cause Mutt to always attempt to
+# cryptographically sign outgoing messages.  This can be overridden
+# by use of the pgp menu, when signing is not required or
+# encryption is requested as well. If $smime_is_default is set,
+# then OpenSSL is used instead to create S/MIME messages and settings can
+# be overridden by use of the smime menu instead of the pgp menu.
+# (Crypto only)
+# 
+# 
+# set crypt_autosmime=yes
+#
+# Name: crypt_autosmime
+# Type: boolean
+# Default: yes
+# 
+# 
+# This variable controls whether or not mutt may automatically enable
+# S/MIME encryption/signing for messages. See also $crypt_autoencrypt,
+# $crypt_replyencrypt,
+# $crypt_autosign, $crypt_replysign and $smime_is_default.
+# 
+# 
+# set crypt_replyencrypt=yes
+#
+# Name: crypt_replyencrypt
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set, automatically PGP or OpenSSL encrypt replies to messages which are
+# encrypted.
+# (Crypto only)
+# 
+# 
+# set crypt_replysign=no
+#
+# Name: crypt_replysign
+# Type: boolean
+# Default: no
+# 
+# 
+# If set, automatically PGP or OpenSSL sign replies to messages which are
+# signed.
+# 
+# Note: this does not work on messages that are encrypted
+# and signed!
+# (Crypto only)
+# 
+# 
+# set crypt_replysignencrypted=no
+#
+# Name: crypt_replysignencrypted
+# Type: boolean
+# Default: no
+# 
+# 
+# If set, automatically PGP or OpenSSL sign replies to messages
+# which are encrypted. This makes sense in combination with
+# $crypt_replyencrypt, because it allows you to sign all
+# messages which are automatically encrypted.  This works around
+# the problem noted in $crypt_replysign, that mutt is not able
+# to find out whether an encrypted message is also signed.
+# (Crypto only)
+# 
+# 
+# set crypt_timestamp=yes
+#
+# Name: crypt_timestamp
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set, mutt will include a time stamp in the lines surrounding
+# PGP or S/MIME output, so spoofing such lines is more difficult.
+# If you are using colors to mark these lines, and rely on these,
+# you may unset this setting.
+# (Crypto only)
+# 
+# 
 # set crypt_use_gpgme=no
 #
 # Name: crypt_use_gpgme
@@ -636,30 +769,17 @@ attachments   -I message/external-body
 # verification (only supported by the GPGME backend).
 # 
 # 
-# set crypt_autopgp=yes
+# set crypt_verify_sig=yes
 #
-# Name: crypt_autopgp
-# Type: boolean
+# Name: crypt_verify_sig
+# Type: quadoption
 # Default: yes
 # 
 # 
-# This variable controls whether or not mutt may automatically enable
-# PGP encryption/signing for messages.  See also $crypt_autoencrypt,
-# $crypt_replyencrypt,
-# $crypt_autosign, $crypt_replysign and $smime_is_default.
-# 
-# 
-# set crypt_autosmime=yes
-#
-# Name: crypt_autosmime
-# Type: boolean
-# Default: yes
-# 
-# 
-# This variable controls whether or not mutt may automatically enable
-# S/MIME encryption/signing for messages. See also $crypt_autoencrypt,
-# $crypt_replyencrypt,
-# $crypt_autosign, $crypt_replysign and $smime_is_default.
+# If ``yes'', always attempt to verify PGP or S/MIME signatures.
+# If ``ask-*'', ask whether or not to verify the signature.
+# If ``no'', never attempt to verify cryptographic signatures.
+# (Crypto only)
 # 
 # 
 # set date_format="!%a, %b %d, %Y at %I:%M:%S%p %Z"
@@ -781,7 +901,7 @@ attachments   -I message/external-body
 # Note: when using $sendmail for delivery, you should not enable
 # this unless you are either using Sendmail 8.8.x or greater or a MTA
 # providing a sendmail(1)-compatible interface supporting the -N option
-# for DSN. For SMTP delivery, DSN support is autodetected so that it
+# for DSN. For SMTP delivery, DSN support is auto-detected so that it
 # depends on the server whether DSN will be used or not.
 # 
 # 
@@ -802,7 +922,7 @@ attachments   -I message/external-body
 # Note: when using $sendmail for delivery, you should not enable
 # this unless you are either using Sendmail 8.8.x or greater or a MTA
 # providing a sendmail(1)-compatible interface supporting the -R option
-# for DSN. For SMTP delivery, DSN support is autodetected so that it
+# for DSN. For SMTP delivery, DSN support is auto-detected so that it
 # depends on the server whether DSN will be used or not.
 # 
 # 
@@ -859,6 +979,17 @@ attachments   -I message/external-body
 # misinterpreting the line as a mbox message separator).
 # 
 # 
+# set entropy_file=""
+#
+# Name: entropy_file
+# Type: path
+# Default: ""
+# 
+# 
+# The file which includes random data that is used to initialize SSL
+# library functions.
+# 
+# 
 # set envelope_from_address=""
 #
 # Name: envelope_from_address
@@ -877,7 +1008,7 @@ attachments   -I message/external-body
 # Default: "~"
 # 
 # 
-# Escape character to use for functions in the builtin editor.
+# Escape character to use for functions in the built-in editor.
 # 
 # 
 # set fast_reply=no
@@ -898,7 +1029,7 @@ attachments   -I message/external-body
 # set fcc_attach=yes
 #
 # Name: fcc_attach
-# Type: boolean
+# Type: quadoption
 # Default: yes
 # 
 # 
@@ -946,7 +1077,10 @@ attachments   -I message/external-body
 # its own set of printf(3)-like sequences:
 # %C      current file number
 # %d      date/time folder was last modified
-# %f      filename
+# %D      date/time folder was last modified using $date_format.
+# %f      filename (``/'' is appended to directory names,
+#         ``@'' to symbolic links and ``*'' to executable
+#         files)
 # %F      file permissions
 # %g      group name (or numeric gid, if missing)
 # %l      number of hard links
@@ -1015,6 +1149,20 @@ attachments   -I message/external-body
 # otherwise $mime_forward_decode is used instead.
 # 
 # 
+# set forward_decrypt=yes
+#
+# Name: forward_decrypt
+# Type: boolean
+# Default: yes
+# 
+# 
+# Controls the handling of encrypted messages when forwarding a message.
+# When set, the outer layer of encryption is stripped off.  This
+# variable is only used if $mime_forward is set and
+# $mime_forward_decode is unset.
+# (PGP only)
+# 
+# 
 # set forward_edit=yes
 #
 # Name: forward_edit
@@ -1077,7 +1225,7 @@ attachments   -I message/external-body
 # If the GECOS field contains a string like ``lastname, firstname'' then you
 # should set it to ``.*''.
 # 
-# This can be useful if you see the following behavior: you address a e-mail
+# This can be useful if you see the following behavior: you address an e-mail
 # to user ID ``stevef'' whose full name is ``Steve Franklin''.  If mutt expands
 # ``stevef'' to ``"Franklin" stevef@foo.bar'' then you should set the $gecos_mask to
 # a regular expression that will match the whole name so mutt will expand
@@ -1107,6 +1255,51 @@ attachments   -I message/external-body
 # When set, this variable causes Mutt to include the header
 # of the message you are replying to into the edit buffer.
 # The $weed setting applies.
+# 
+# 
+# set header_cache=""
+#
+# Name: header_cache
+# Type: path
+# Default: ""
+# 
+# 
+# This variable points to the header cache database.
+# If pointing to a directory Mutt will contain a header cache
+# database file per folder, if pointing to a file that file will
+# be a single global header cache. By default it is unset so no header
+# caching will be used.
+# 
+# Header caching can greatly improve speed when opening POP, IMAP
+# MH or Maildir folders, see ``caching'' for details.
+# 
+# 
+# set header_cache_compress=yes
+#
+# Name: header_cache_compress
+# Type: boolean
+# Default: yes
+# 
+# 
+# When mutt is compiled with qdbm or tokyocabinet as header cache backend,
+# this option determines whether the database will be compressed.
+# Compression results in database files roughly being one fifth
+# of the usual diskspace, but the decompression can result in a
+# slower opening of cached folder(s) which in general is still
+# much faster than opening non header cached folders.
+# 
+# 
+# set header_cache_pagesize="16384"
+#
+# Name: header_cache_pagesize
+# Type: string
+# Default: "16384"
+# 
+# 
+# When mutt is compiled with either gdbm or bdb4 as the header cache backend,
+# this option changes the database page size.  Too large or too small
+# values can waste space, memory, or CPU time. The default should be more
+# or less optimal for most use cases.
 # 
 # 
 # set help=yes
@@ -1219,6 +1412,22 @@ attachments   -I message/external-body
 # The file in which Mutt will save its history.
 # 
 # 
+# set honor_disposition=no
+#
+# Name: honor_disposition
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, Mutt will not display attachments with a
+# disposition of ``attachment'' inline even if it could
+# render the part to plain text. These MIME parts can only
+# be viewed from the attachment menu.
+# 
+# If unset, Mutt will render all MIME parts it can
+# properly transform to plain text.
+# 
+# 
 # set honor_followup_to=yes
 #
 # Name: honor_followup_to
@@ -1272,7 +1481,7 @@ attachments   -I message/external-body
 # Default: no
 # 
 # 
-# Affects the behaviour of the <reply> function when replying to
+# Affects the behavior of the <reply> function when replying to
 # messages from mailing lists (as defined by the ``subscribe'' or
 # ``lists'' commands).  When set, if the ``Reply-To:'' field is
 # set to the same value as the ``To:'' field, Mutt assumes that the
@@ -1293,7 +1502,7 @@ attachments   -I message/external-body
 # This is a colon-delimited list of authentication methods mutt may
 # attempt to use to log in to an IMAP server, in the order mutt should
 # try them.  Authentication methods are either ``login'' or the right
-# side of an IMAP ``AUTH=xxx'' capability string, eg ``digest-md5'', ``gssapi''
+# side of an IMAP ``AUTH=xxx'' capability string, e.g. ``digest-md5'', ``gssapi''
 # or ``cram-md5''. This option is case-insensitive. If it's
 # unset (the default) mutt will try all available methods,
 # in order from most-secure to least-secure.
@@ -1412,7 +1621,7 @@ attachments   -I message/external-body
 # 
 # 
 # Specifies the password for your IMAP account.  If unset, Mutt will
-# prompt you for your password when you invoke the <fetch-mail> function
+# prompt you for your password when you invoke the <imap-fetch-mail> function
 # or try to open an IMAP folder.
 # 
 # Warning: you should only use this option when you are on a
@@ -1537,12 +1746,11 @@ attachments   -I message/external-body
 # message to which you are replying.  You are strongly encouraged not to
 # change this value, as it tends to agitate the more fanatical netizens.
 # 
+# The value of this option is ignored if $text_flowed is set, too because
+# the quoting mechanism is strictly defined for format=flowed.
+# 
 # This option is a format string, please see the description of
 # $index_format for supported printf(3)-style sequences.
-# 
-# Because for format=lowed style messages the quoting mechanism
-# is strictly defined, this setting is ignored if $text_flowed is
-# set.
 # 
 # 
 # set index_format="%4C %Z %{%b %d} %-15.15L (%?l?%4l&%4c?) %s"
@@ -1586,7 +1794,7 @@ attachments   -I message/external-body
 # %O      original save folder where mutt would formerly have
 #         stashed the message: list name or recipient name
 #         if not sent to a list
-# %P      progress indicator for the builtin pager (how much of the file has been displayed)
+# %P      progress indicator for the built-in pager (how much of the file has been displayed)
 # %s      subject of the message
 # %S      status of the message (``N''/``D''/``d''/``!''/``r''/*)
 # %t      ``To:'' field (recipients)
@@ -1672,6 +1880,22 @@ attachments   -I message/external-body
 # new mail. Also see the $timeout variable.
 # 
 # 
+# set mail_check_recent=yes
+#
+# Name: mail_check_recent
+# Type: boolean
+# Default: yes
+# 
+# 
+# When set, Mutt will only notify you about new mail that has been received
+# since the last time you opened the mailbox.  When unset, Mutt will notify you
+# if any new mail exists in the mailbox, regardless of whether you have visited it
+# recently.
+# 
+# When $mark_old is set, Mutt does not consider the mailbox to contain new
+# mail if only old messages exist.
+# 
+# 
 # set mailcap_path=""
 #
 # Name: mailcap_path
@@ -1698,23 +1922,6 @@ attachments   -I message/external-body
 # DOING!
 # 
 # 
-# set header_cache=""
-#
-# Name: header_cache
-# Type: path
-# Default: ""
-# 
-# 
-# This variable points to the header cache database.
-# If pointing to a directory Mutt will contain a header cache
-# database file per folder, if pointing to a file that file will
-# be a single global header cache. By default it is unset so no header
-# caching will be used.
-# 
-# Header caching can greatly improve speed when opening POP, IMAP
-# MH or Maildir folders, see ``caching'' for details.
-# 
-# 
 # set maildir_header_cache_verify=yes
 #
 # Name: maildir_header_cache_verify
@@ -1726,34 +1933,6 @@ attachments   -I message/external-body
 # files when the header cache is in use.  This incurs one stat(2) per
 # message every time the folder is opened (which can be very slow for NFS
 # folders).
-# 
-# 
-# set header_cache_pagesize="16384"
-#
-# Name: header_cache_pagesize
-# Type: string
-# Default: "16384"
-# 
-# 
-# When mutt is compiled with either gdbm or bdb4 as the header cache backend,
-# this option changes the database page size.  Too large or too small
-# values can waste space, memory, or CPU time. The default should be more
-# or less optimal for most use cases.
-# 
-# 
-# set header_cache_compress=yes
-#
-# Name: header_cache_compress
-# Type: boolean
-# Default: yes
-# 
-# 
-# When mutt is compiled with qdbm or tokyocabinet as header cache backend,
-# this option determines whether the database will be compressed.
-# Compression results in database files roughly being one fifth
-# of the usual diskspace, but the uncompression can result in a
-# slower opening of cached folder(s) which in general is still
-# much faster than opening non header cached folders.
 # 
 # 
 # set maildir_trash=no
@@ -1829,18 +2008,8 @@ attachments   -I message/external-body
 # 
 # 
 # The default mailbox type used when creating new folders. May be any of
-# ``mbox'', ``MMDF'', ``MH'' and ``Maildir''.
-# 
-# 
-# set metoo=no
-#
-# Name: metoo
-# Type: boolean
-# Default: no
-# 
-# 
-# If unset, Mutt will remove your address (see the ``alternates''
-# command) from the list of recipients when replying to a message.
+# ``mbox'', ``MMDF'', ``MH'' and ``Maildir''. This is overridden by the
+# -m command-line option.
 # 
 # 
 # set menu_context=0
@@ -1879,6 +2048,49 @@ attachments   -I message/external-body
 # (useful for slow links to avoid many redraws).
 # 
 # 
+# set message_cache_clean=no
+#
+# Name: message_cache_clean
+# Type: boolean
+# Default: no
+# 
+# 
+# If set, mutt will clean out obsolete entries from the message cache when
+# the mailbox is synchronized. You probably only want to set it
+# every once in a while, since it can be a little slow
+# (especially for large folders).
+# 
+# 
+# set message_cachedir=""
+#
+# Name: message_cachedir
+# Type: path
+# Default: ""
+# 
+# 
+# Set this to a directory and mutt will cache copies of messages from
+# your IMAP and POP servers here. You are free to remove entries at any
+# time.
+# 
+# When setting this variable to a directory, mutt needs to fetch every
+# remote message only once and can perform regular expression searches
+# as fast as for local folders.
+# 
+# Also see the $message_cache_clean variable.
+# 
+# 
+# set message_format="%s"
+#
+# Name: message_format
+# Type: string
+# Default: "%s"
+# 
+# 
+# This is the string displayed in the ``attachment'' menu for
+# attachments of type message/rfc822.  For a full listing of defined
+# printf(3)-like sequences see the section on $index_format.
+# 
+# 
 # set meta_key=no
 #
 # Name: meta_key
@@ -1895,6 +2107,17 @@ attachments   -I message/external-body
 # ``x''.
 # 
 # 
+# set metoo=no
+#
+# Name: metoo
+# Type: boolean
+# Default: no
+# 
+# 
+# If unset, Mutt will remove your address (see the ``alternates''
+# command) from the list of recipients when replying to a message.
+# 
+# 
 # set mh_purge=no
 #
 # Name: mh_purge
@@ -1902,7 +2125,7 @@ attachments   -I message/external-body
 # Default: no
 # 
 # 
-# When unset, mutt will mimic mh's behaviour and rename deleted messages
+# When unset, mutt will mimic mh's behavior and rename deleted messages
 # to ,<old file name> in mh folders instead of really deleting
 # them. This leaves the message on disk but makes programs reading the folder
 # ignore it. If the variable is set, the message files will simply be
@@ -2023,49 +2246,6 @@ attachments   -I message/external-body
 # a ``mbox-hook'' command.
 # 
 # 
-# set message_cachedir=""
-#
-# Name: message_cachedir
-# Type: path
-# Default: ""
-# 
-# 
-# Set this to a directory and mutt will cache copies of messages from
-# your IMAP and POP servers here. You are free to remove entries at any
-# time.
-# 
-# When setting this variable to a directory, mutt needs to fetch every
-# remote message only once and can perform regular expression searches
-# as fast as for local folders.
-# 
-# Also see the $message_cache_clean variable.
-# 
-# 
-# set message_cache_clean=no
-#
-# Name: message_cache_clean
-# Type: boolean
-# Default: no
-# 
-# 
-# If set, mutt will clean out obsolete entries from the message cache when
-# the mailbox is synchronized. You probably only want to set it
-# every once in a while, since it can be a little slow
-# (especially for large folders).
-# 
-# 
-# set message_format="%s"
-#
-# Name: message_format
-# Type: string
-# Default: "%s"
-# 
-# 
-# This is the string displayed in the ``attachment'' menu for
-# attachments of type message/rfc822.  For a full listing of defined
-# printf(3)-like sequences see the section on $index_format.
-# 
-# 
 # set narrow_tree=no
 #
 # Name: narrow_tree
@@ -2099,7 +2279,7 @@ attachments   -I message/external-body
 # 
 # 
 # This variable specifies which pager you would like to use to view
-# messages. The value ``builtin'' means to use the builtin pager, otherwise this
+# messages. The value ``builtin'' means to use the built-in pager, otherwise this
 # variable should specify the pathname of the external pager you would
 # like to use.
 # 
@@ -2120,6 +2300,10 @@ attachments   -I message/external-body
 # when displaying the next or previous page in the internal pager.  By
 # default, Mutt will display the line after the last one on the screen
 # at the top of the next page (0 lines of context).
+# 
+# This variable also specifies the amount of context given for search
+# results. If positive, this many lines will be given before a match,
+# if 0, the match will be top-aligned.
 # 
 # 
 # set pager_format="-%Z- %C/%m: %-20.20n   %s%*  -- (%P)"
@@ -2167,172 +2351,141 @@ attachments   -I message/external-body
 # function.
 # 
 # 
-# set crypt_autosign=no
+# set pgp_auto_decode=no
 #
-# Name: crypt_autosign
+# Name: pgp_auto_decode
 # Type: boolean
 # Default: no
 # 
 # 
-# Setting this variable will cause Mutt to always attempt to
-# cryptographically sign outgoing messages.  This can be overridden
-# by use of the pgp menu, when signing is not required or
-# encryption is requested as well. If $smime_is_default is set,
-# then OpenSSL is used instead to create S/MIME messages and settings can
-# be overridden by use of the smime menu instead of the pgp menu.
-# (Crypto only)
+# If set, mutt will automatically attempt to decrypt traditional PGP
+# messages whenever the user performs an operation which ordinarily would
+# result in the contents of the message being operated on.  For example,
+# if the user displays a pgp-traditional message which has not been manually
+# checked with the <check-traditional-pgp> function, mutt will automatically
+# check the message for traditional pgp.
 # 
 # 
-# set crypt_autoencrypt=no
+# set pgp_autoinline=no
 #
-# Name: crypt_autoencrypt
+# Name: pgp_autoinline
 # Type: boolean
 # Default: no
 # 
 # 
-# Setting this variable will cause Mutt to always attempt to PGP
-# encrypt outgoing messages.  This is probably only useful in
-# connection to the ``send-hook'' command.  It can be overridden
-# by use of the pgp menu, when encryption is not required or
-# signing is requested as well.  If $smime_is_default is set,
-# then OpenSSL is used instead to create S/MIME messages and
-# settings can be overridden by use of the smime menu instead.
-# (Crypto only)
+# This option controls whether Mutt generates old-style inline
+# (traditional) PGP encrypted or signed messages under certain
+# circumstances.  This can be overridden by use of the pgp menu,
+# when inline is not required.
 # 
+# Note that Mutt might automatically use PGP/MIME for messages
+# which consist of more than a single MIME part.  Mutt can be
+# configured to ask before sending PGP/MIME messages when inline
+# (traditional) would not work.
 # 
-# set pgp_ignore_subkeys=yes
-#
-# Name: pgp_ignore_subkeys
-# Type: boolean
-# Default: yes
+# Also see the $pgp_mime_auto variable.
 # 
-# 
-# Setting this variable will cause Mutt to ignore OpenPGP subkeys. Instead,
-# the principal key will inherit the subkeys' capabilities.  Unset this
-# if you want to play interesting key selection games.
+# Also note that using the old-style PGP message format is strongly
+# deprecated.
 # (PGP only)
 # 
 # 
-# set crypt_replyencrypt=yes
+# set pgp_check_exit=yes
 #
-# Name: crypt_replyencrypt
+# Name: pgp_check_exit
 # Type: boolean
 # Default: yes
 # 
 # 
-# If set, automatically PGP or OpenSSL encrypt replies to messages which are
-# encrypted.
-# (Crypto only)
-# 
-# 
-# set crypt_replysign=no
-#
-# Name: crypt_replysign
-# Type: boolean
-# Default: no
-# 
-# 
-# If set, automatically PGP or OpenSSL sign replies to messages which are
-# signed.
-# 
-# Note: this does not work on messages that are encrypted
-# and signed!
-# (Crypto only)
-# 
-# 
-# set crypt_replysignencrypted=no
-#
-# Name: crypt_replysignencrypted
-# Type: boolean
-# Default: no
-# 
-# 
-# If set, automatically PGP or OpenSSL sign replies to messages
-# which are encrypted. This makes sense in combination with
-# $crypt_replyencrypt, because it allows you to sign all
-# messages which are automatically encrypted.  This works around
-# the problem noted in $crypt_replysign, that mutt is not able
-# to find out whether an encrypted message is also signed.
-# (Crypto only)
-# 
-# 
-# set crypt_timestamp=yes
-#
-# Name: crypt_timestamp
-# Type: boolean
-# Default: yes
-# 
-# 
-# If set, mutt will include a time stamp in the lines surrounding
-# PGP or S/MIME output, so spoofing such lines is more difficult.
-# If you are using colors to mark these lines, and rely on these,
-# you may unset this setting.
-# (Crypto only)
-# 
-# 
-# set pgp_use_gpg_agent=no
-#
-# Name: pgp_use_gpg_agent
-# Type: boolean
-# Default: no
-# 
-# 
-# If set, mutt will use a possibly-running gpg-agent(1) process.
+# If set, mutt will check the exit code of the PGP subprocess when
+# signing or encrypting.  A non-zero exit code means that the
+# subprocess failed.
 # (PGP only)
 # 
 # 
-# set crypt_verify_sig=yes
+# set pgp_clearsign_command=""
 #
-# Name: crypt_verify_sig
-# Type: quadoption
-# Default: yes
+# Name: pgp_clearsign_command
+# Type: string
+# Default: ""
 # 
 # 
-# If ``yes'', always attempt to verify PGP or S/MIME signatures.
-# If ``ask-*'', ask whether or not to verify the signature.
-# If \Fi``no'', never attempt to verify cryptographic signatures.
-# (Crypto only)
+# This format is used to create an old-style ``clearsigned'' PGP
+# message.  Note that the use of this format is strongly
+# deprecated.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
 # 
 # 
-# set smime_is_default=no
+# set pgp_decode_command=""
 #
-# Name: smime_is_default
-# Type: boolean
-# Default: no
+# Name: pgp_decode_command
+# Type: string
+# Default: ""
 # 
 # 
-# The default behaviour of mutt is to use PGP on all auto-sign/encryption
-# operations. To override and to use OpenSSL instead this must be set.
-# However, this has no effect while replying, since mutt will automatically
-# select the same application that was used to sign/encrypt the original
-# message.  (Note that this variable can be overridden by unsetting $crypt_autosmime.)
-# (S/MIME only)
+# This format strings specifies a command which is used to decode
+# application/pgp attachments.
+# 
+# The PGP command formats have their own set of printf(3)-like sequences:
+# %p      Expands to PGPPASSFD=0 when a pass phrase is needed, to an empty
+#         string otherwise. Note: This may be used with a %? construct.
+# %f      Expands to the name of a file containing a message.
+# %s      Expands to the name of a file containing the signature part
+#                    of a multipart/signed attachment when verifying it.
+# %a      The value of $pgp_sign_as.
+# %r      One or more key IDs.
 # 
 # 
-# set smime_ask_cert_label=yes
+# For examples on how to configure these formats for the various versions
+# of PGP which are floating around, see the pgp and gpg sample configuration files in
+# the samples/ subdirectory which has been installed on your system
+# alongside the documentation.
+# (PGP only)
+# 
+# 
+# set pgp_decrypt_command=""
 #
-# Name: smime_ask_cert_label
-# Type: boolean
-# Default: yes
+# Name: pgp_decrypt_command
+# Type: string
+# Default: ""
 # 
 # 
-# This flag controls whether you want to be asked to enter a label
-# for a certificate about to be added to the database or not. It is
-# set by default.
-# (S/MIME only)
+# This command is used to decrypt a PGP encrypted message.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
 # 
 # 
-# set smime_decrypt_use_default_key=yes
+# set pgp_encrypt_only_command=""
 #
-# Name: smime_decrypt_use_default_key
-# Type: boolean
-# Default: yes
+# Name: pgp_encrypt_only_command
+# Type: string
+# Default: ""
 # 
 # 
-# If set (default) this tells mutt to use the default key for decryption. Otherwise,
-# if managing multiple certificate-key-pairs, mutt will try to use the mailbox-address
-# to determine the key to use. It will ask you to supply a key, if it can't find one.
-# (S/MIME only)
+# This command is used to encrypt a body part without signing it.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
+# 
+# 
+# set pgp_encrypt_sign_command=""
+#
+# Name: pgp_encrypt_sign_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to both sign and encrypt a body part.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
 # 
 # 
 # set pgp_entry_format="%4n %t%f %4l/0x%k %-4a %2c %u"
@@ -2359,6 +2512,34 @@ attachments   -I message/external-body
 # (PGP only)
 # 
 # 
+# set pgp_export_command=""
+#
+# Name: pgp_export_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to export a public key from the user's
+# key ring.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
+# 
+# 
+# set pgp_getkeys_command=""
+#
+# Name: pgp_getkeys_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is invoked whenever mutt will need public key information.
+# Of the sequences supported by $pgp_decode_command, %r is the only
+# printf(3)-like sequence used with this format.
+# (PGP only)
+# 
+# 
 # set pgp_good_sign=""
 #
 # Name: pgp_good_sign
@@ -2373,16 +2554,69 @@ attachments   -I message/external-body
 # (PGP only)
 # 
 # 
-# set pgp_check_exit=yes
+# set pgp_ignore_subkeys=yes
 #
-# Name: pgp_check_exit
+# Name: pgp_ignore_subkeys
 # Type: boolean
 # Default: yes
 # 
 # 
-# If set, mutt will check the exit code of the PGP subprocess when
-# signing or encrypting.  A non-zero exit code means that the
-# subprocess failed.
+# Setting this variable will cause Mutt to ignore OpenPGP subkeys. Instead,
+# the principal key will inherit the subkeys' capabilities.  Unset this
+# if you want to play interesting key selection games.
+# (PGP only)
+# 
+# 
+# set pgp_import_command=""
+#
+# Name: pgp_import_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to import a key from a message into
+# the user's public key ring.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
+# 
+# 
+# set pgp_list_pubring_command=""
+#
+# Name: pgp_list_pubring_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to list the public key ring's contents.  The
+# output format must be analogous to the one used by
+# gpg --list-keys --with-colons.
+# 
+# This format is also generated by the pgpring utility which comes
+# with mutt.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
+# 
+# 
+# set pgp_list_secring_command=""
+#
+# Name: pgp_list_secring_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to list the secret key ring's contents.  The
+# output format must be analogous to the one used by:
+# gpg --list-keys --with-colons.
+# 
+# This format is also generated by the pgpring utility which comes
+# with mutt.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
 # (PGP only)
 # 
 # 
@@ -2397,40 +2631,16 @@ attachments   -I message/external-body
 # (PGP only)
 # 
 # 
-# set pgp_retainable_sigs=no
+# set pgp_mime_auto=ask-yes
 #
-# Name: pgp_retainable_sigs
-# Type: boolean
-# Default: no
+# Name: pgp_mime_auto
+# Type: quadoption
+# Default: ask-yes
 # 
 # 
-# If set, signed and encrypted messages will consist of nested
-# multipart/signed and multipart/encrypted body parts.
-# 
-# This is useful for applications like encrypted and signed mailing
-# lists, where the outer layer (multipart/encrypted) can be easily
-# removed, while the inner multipart/signed part is retained.
-# (PGP only)
-# 
-# 
-# set pgp_autoinline=no
-#
-# Name: pgp_autoinline
-# Type: boolean
-# Default: no
-# 
-# 
-# This option controls whether Mutt generates old-style inline
-# (traditional) PGP encrypted or signed messages under certain
-# circumstances.  This can be overridden by use of the pgp menu,
-# when inline is not required.
-# 
-# Note that Mutt might automatically use PGP/MIME for messages
-# which consist of more than a single MIME part.  Mutt can be
-# configured to ask before sending PGP/MIME messages when inline
-# (traditional) would not work.
-# 
-# Also see the $pgp_mime_auto variable.
+# This option controls whether Mutt will prompt you for
+# automatically sending a (signed/encrypted) message using
+# PGP/MIME when inline (traditional) fails (for any reason).
 # 
 # Also note that using the old-style PGP message format is strongly
 # deprecated.
@@ -2464,6 +2674,22 @@ attachments   -I message/external-body
 # (PGP only)
 # 
 # 
+# set pgp_retainable_sigs=no
+#
+# Name: pgp_retainable_sigs
+# Type: boolean
+# Default: no
+# 
+# 
+# If set, signed and encrypted messages will consist of nested
+# multipart/signed and multipart/encrypted body parts.
+# 
+# This is useful for applications like encrypted and signed mailing
+# lists, where the outer layer (multipart/encrypted) can be easily
+# removed, while the inner multipart/signed part is retained.
+# (PGP only)
+# 
+# 
 # set pgp_show_unusable=yes
 #
 # Name: pgp_show_unusable
@@ -2487,6 +2713,41 @@ attachments   -I message/external-body
 # If you have more than one key pair, this option allows you to specify
 # which of your private keys to use.  It is recommended that you use the
 # keyid form to specify your key (e.g. 0x00112233).
+# (PGP only)
+# 
+# 
+# set pgp_sign_command=""
+#
+# Name: pgp_sign_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to create the detached PGP signature for a
+# multipart/signed PGP/MIME body part.
+# 
+# This is a format string, see the $pgp_decode_command command for
+# possible printf(3)-like sequences.
+# (PGP only)
+# 
+# 
+# set pgp_sort_keys=address
+#
+# Name: pgp_sort_keys
+# Type: sort order
+# Default: address
+# 
+# 
+# Specifies how the entries in the pgp menu are sorted. The
+# following are legal values:
+# address sort alphabetically by user id
+# keyid   sort alphabetically by key id
+# date    sort by key creation date
+# trust   sort by the trust of the key
+# 
+# 
+# If you prefer reverse order of the above values, prefix it with
+# ``reverse-''.
 # (PGP only)
 # 
 # 
@@ -2516,94 +2777,14 @@ attachments   -I message/external-body
 # (PGP only)
 # 
 # 
-# set pgp_sort_keys=address
+# set pgp_use_gpg_agent=no
 #
-# Name: pgp_sort_keys
-# Type: sort order
-# Default: address
-# 
-# 
-# Specifies how the entries in the pgp menu are sorted. The
-# following are legal values:
-# address sort alphabetically by user id
-# keyid   sort alphabetically by key id
-# date    sort by key creation date
-# trust   sort by the trust of the key
-# 
-# 
-# If you prefer reverse order of the above values, prefix it with
-# ``reverse-''.
-# (PGP only)
-# 
-# 
-# set pgp_mime_auto=ask-yes
-#
-# Name: pgp_mime_auto
-# Type: quadoption
-# Default: ask-yes
-# 
-# 
-# This option controls whether Mutt will prompt you for
-# automatically sending a (signed/encrypted) message using
-# PGP/MIME when inline (traditional) fails (for any reason).
-# 
-# Also note that using the old-style PGP message format is strongly
-# deprecated.
-# (PGP only)
-# 
-# 
-# set pgp_auto_decode=no
-#
-# Name: pgp_auto_decode
+# Name: pgp_use_gpg_agent
 # Type: boolean
 # Default: no
 # 
 # 
-# If set, mutt will automatically attempt to decrypt traditional PGP
-# messages whenever the user performs an operation which ordinarily would
-# result in the contents of the message being operated on.  For example,
-# if the user displays a pgp-traditional message which has not been manually
-# checked with the <check-traditional-pgp> function, mutt will automatically
-# check the message for traditional pgp.
-# 
-# 
-# set pgp_decode_command=""
-#
-# Name: pgp_decode_command
-# Type: string
-# Default: ""
-# 
-# 
-# This format strings specifies a command which is used to decode
-# application/pgp attachments.
-# 
-# The PGP command formats have their own set of printf(3)-like sequences:
-# %p      Expands to PGPPASSFD=0 when a pass phrase is needed, to an empty
-#         string otherwise. Note: This may be used with a %? construct.
-# %f      Expands to the name of a file containing a message.
-# %s      Expands to the name of a file containing the signature part
-#                    of a multipart/signed attachment when verifying it.
-# %a      The value of $pgp_sign_as.
-# %r      One or more key IDs.
-# 
-# 
-# For examples on how to configure these formats for the various versions
-# of PGP which are floating around, see the pgp and gpg sample configuration files in
-# the samples/ subdirectory which has been installed on your system
-# alongside the documentation.
-# (PGP only)
-# 
-# 
-# set pgp_getkeys_command=""
-#
-# Name: pgp_getkeys_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is invoked whenever mutt will need public key information.
-# Of the sequences supported by $pgp_decode_command, %r is the only
-# printf(3)-like sequence used with this format.
+# If set, mutt will use a possibly-running gpg-agent(1) process.
 # (PGP only)
 # 
 # 
@@ -2615,109 +2796,6 @@ attachments   -I message/external-body
 # 
 # 
 # This command is used to verify PGP signatures.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_decrypt_command=""
-#
-# Name: pgp_decrypt_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to decrypt a PGP encrypted message.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_clearsign_command=""
-#
-# Name: pgp_clearsign_command
-# Type: string
-# Default: ""
-# 
-# 
-# This format is used to create a old-style ``clearsigned'' PGP
-# message.  Note that the use of this format is strongly
-# deprecated.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_sign_command=""
-#
-# Name: pgp_sign_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to create the detached PGP signature for a
-# multipart/signed PGP/MIME body part.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_encrypt_sign_command=""
-#
-# Name: pgp_encrypt_sign_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to both sign and encrypt a body part.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_encrypt_only_command=""
-#
-# Name: pgp_encrypt_only_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to encrypt a body part without signing it.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_import_command=""
-#
-# Name: pgp_import_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to import a key from a message into
-# the user's public key ring.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_export_command=""
-#
-# Name: pgp_export_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to export a public key from the user's
-# key ring.
 # 
 # This is a format string, see the $pgp_decode_command command for
 # possible printf(3)-like sequences.
@@ -2737,474 +2815,6 @@ attachments   -I message/external-body
 # This is a format string, see the $pgp_decode_command command for
 # possible printf(3)-like sequences.
 # (PGP only)
-# 
-# 
-# set pgp_list_secring_command=""
-#
-# Name: pgp_list_secring_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to list the secret key ring's contents.  The
-# output format must be analogous to the one used by:
-# gpg --list-keys --with-colons.
-# 
-# This format is also generated by the pgpring utility which comes
-# with mutt.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set pgp_list_pubring_command=""
-#
-# Name: pgp_list_pubring_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to list the public key ring's contents.  The
-# output format must be analogous to the one used by
-# gpg --list-keys --with-colons.
-# 
-# This format is also generated by the pgpring utility which comes
-# with mutt.
-# 
-# This is a format string, see the $pgp_decode_command command for
-# possible printf(3)-like sequences.
-# (PGP only)
-# 
-# 
-# set forward_decrypt=yes
-#
-# Name: forward_decrypt
-# Type: boolean
-# Default: yes
-# 
-# 
-# Controls the handling of encrypted messages when forwarding a message.
-# When set, the outer layer of encryption is stripped off.  This
-# variable is only used if $mime_forward is set and
-# $mime_forward_decode is unset.
-# (PGP only)
-# 
-# 
-# set smime_timeout=300
-#
-# Name: smime_timeout
-# Type: number
-# Default: 300
-# 
-# 
-# The number of seconds after which a cached passphrase will expire if
-# not used.
-# (S/MIME only)
-# 
-# 
-# set smime_encrypt_with=""
-#
-# Name: smime_encrypt_with
-# Type: string
-# Default: ""
-# 
-# 
-# This sets the algorithm that should be used for encryption.
-# Valid choices are ``des'', ``des3'', ``rc2-40'', ``rc2-64'', ``rc2-128''.
-# If unset, ``3des'' (TripleDES) is used.
-# (S/MIME only)
-# 
-# 
-# set smime_keys=""
-#
-# Name: smime_keys
-# Type: path
-# Default: ""
-# 
-# 
-# Since for S/MIME there is no pubring/secring as with PGP, mutt has to handle
-# storage and retrieval of keys/certs by itself. This is very basic right now,
-# and stores keys and certificates in two different directories, both
-# named as the hash-value retrieved from OpenSSL. There is an index file
-# which contains mailbox-address keyid pair, and which can be manually
-# edited. This option points to the location of the private keys.
-# (S/MIME only)
-# 
-# 
-# set smime_ca_location=""
-#
-# Name: smime_ca_location
-# Type: path
-# Default: ""
-# 
-# 
-# This variable contains the name of either a directory, or a file which
-# contains trusted certificates for use with OpenSSL.
-# (S/MIME only)
-# 
-# 
-# set smime_certificates=""
-#
-# Name: smime_certificates
-# Type: path
-# Default: ""
-# 
-# 
-# Since for S/MIME there is no pubring/secring as with PGP, mutt has to handle
-# storage and retrieval of keys by itself. This is very basic right
-# now, and keys and certificates are stored in two different
-# directories, both named as the hash-value retrieved from
-# OpenSSL. There is an index file which contains mailbox-address
-# keyid pairs, and which can be manually edited. This option points to
-# the location of the certificates.
-# (S/MIME only)
-# 
-# 
-# set smime_decrypt_command=""
-#
-# Name: smime_decrypt_command
-# Type: string
-# Default: ""
-# 
-# 
-# This format string specifies a command which is used to decrypt
-# application/x-pkcs7-mime attachments.
-# 
-# The OpenSSL command formats have their own set of printf(3)-like sequences
-# similar to PGP's:
-# %f      Expands to the name of a file containing a message.
-# %s      Expands to the name of a file containing the signature part
-#                    of a multipart/signed attachment when verifying it.
-# %k      The key-pair specified with $smime_default_key
-# %c      One or more certificate IDs.
-# %a      The algorithm used for encryption.
-# %C      CA location:  Depending on whether $smime_ca_location
-#                    points to a directory or file, this expands to
-#                    ``-CApath $smime_ca_location'' or ``-CAfile $smime_ca_location''.
-# 
-# 
-# For examples on how to configure these formats, see the smime.rc in
-# the samples/ subdirectory which has been installed on your system
-# alongside the documentation.
-# (S/MIME only)
-# 
-# 
-# set smime_verify_command=""
-#
-# Name: smime_verify_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to verify S/MIME signatures of type multipart/signed.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_verify_opaque_command=""
-#
-# Name: smime_verify_opaque_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to verify S/MIME signatures of type
-# application/x-pkcs7-mime.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_sign_command=""
-#
-# Name: smime_sign_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to created S/MIME signatures of type
-# multipart/signed, which can be read by all mail clients.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_sign_opaque_command=""
-#
-# Name: smime_sign_opaque_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to created S/MIME signatures of type
-# application/x-pkcs7-signature, which can only be handled by mail
-# clients supporting the S/MIME extension.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_encrypt_command=""
-#
-# Name: smime_encrypt_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to create encrypted S/MIME messages.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_pk7out_command=""
-#
-# Name: smime_pk7out_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to extract PKCS7 structures of S/MIME signatures,
-# in order to extract the public X509 certificate(s).
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_get_cert_command=""
-#
-# Name: smime_get_cert_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to extract X509 certificates from a PKCS7 structure.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_get_signer_cert_command=""
-#
-# Name: smime_get_signer_cert_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to extract only the signers X509 certificate from a S/MIME
-# signature, so that the certificate's owner may get compared to the
-# email's ``From:'' field.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_import_cert_command=""
-#
-# Name: smime_import_cert_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to import a certificate via smime_keys.
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_get_cert_email_command=""
-#
-# Name: smime_get_cert_email_command
-# Type: string
-# Default: ""
-# 
-# 
-# This command is used to extract the mail address(es) used for storing
-# X509 certificates, and for verification purposes (to check whether the
-# certificate was issued for the sender's mailbox).
-# 
-# This is a format string, see the $smime_decrypt_command command for
-# possible printf(3)-like sequences.
-# (S/MIME only)
-# 
-# 
-# set smime_default_key=""
-#
-# Name: smime_default_key
-# Type: string
-# Default: ""
-# 
-# 
-# This is the default key-pair to use for signing. This must be set to the
-# keyid (the hash-value that OpenSSL generates) to work properly
-# (S/MIME only)
-# 
-# 
-# set ssl_client_cert=""
-#
-# Name: ssl_client_cert
-# Type: path
-# Default: ""
-# 
-# 
-# The file containing a client certificate and its associated private
-# key.
-# 
-# 
-# set ssl_force_tls=no
-#
-# Name: ssl_force_tls
-# Type: boolean
-# Default: no
-# 
-# 
-# If this variable is set, Mutt will require that all connections
-# to remote servers be encrypted. Furthermore it will attempt to
-# negotiate TLS even if the server does not advertise the capability,
-# since it would otherwise have to abort the connection anyway. This
-# option supersedes $ssl_starttls.
-# 
-# 
-# set ssl_starttls=yes
-#
-# Name: ssl_starttls
-# Type: quadoption
-# Default: yes
-# 
-# 
-# If set (the default), mutt will attempt to use STARTTLS on servers
-# advertising the capability. When unset, mutt will not attempt to
-# use STARTTLS regardless of the server's capabilities.
-# 
-# 
-# set certificate_file="~/.mutt_certificates"
-#
-# Name: certificate_file
-# Type: path
-# Default: "~/.mutt_certificates"
-# 
-# 
-# This variable specifies the file where the certificates you trust
-# are saved. When an unknown certificate is encountered, you are asked
-# if you accept it or not. If you accept it, the certificate can also
-# be saved in this file and further connections are automatically
-# accepted.
-# 
-# You can also manually add CA certificates in this file. Any server
-# certificate that is signed with one of these CA certificates is
-# also automatically accepted.
-# 
-# Example:
-# set certificate_file=~/.mutt/certificates
-# 
-# 
-# set ssl_usesystemcerts=yes
-#
-# Name: ssl_usesystemcerts
-# Type: boolean
-# Default: yes
-# 
-# 
-# If set to yes, mutt will use CA certificates in the
-# system-wide certificate store when checking if a server certificate
-# is signed by a trusted CA.
-# 
-# 
-# set entropy_file=""
-#
-# Name: entropy_file
-# Type: path
-# Default: ""
-# 
-# 
-# The file which includes random data that is used to initialize SSL
-# library functions.
-# 
-# 
-# set ssl_use_sslv2=yes
-#
-# Name: ssl_use_sslv2
-# Type: boolean
-# Default: yes
-# 
-# 
-# This variables specifies whether to attempt to use SSLv2 in the
-# SSL authentication process.
-# 
-# 
-# set ssl_use_sslv3=yes
-#
-# Name: ssl_use_sslv3
-# Type: boolean
-# Default: yes
-# 
-# 
-# This variables specifies whether to attempt to use SSLv3 in the
-# SSL authentication process.
-# 
-# 
-# set ssl_use_tlsv1=yes
-#
-# Name: ssl_use_tlsv1
-# Type: boolean
-# Default: yes
-# 
-# 
-# This variables specifies whether to attempt to use TLSv1 in the
-# SSL authentication process.
-# 
-# 
-# set ssl_min_dh_prime_bits=0
-#
-# Name: ssl_min_dh_prime_bits
-# Type: number
-# Default: 0
-# 
-# 
-# This variable specifies the minimum acceptable prime size (in bits)
-# for use in any Diffie-Hellman key exchange. A value of 0 will use
-# the default from the GNUTLS library.
-# 
-# 
-# set ssl_ca_certificates_file=""
-#
-# Name: ssl_ca_certificates_file
-# Type: path
-# Default: ""
-# 
-# 
-# This variable specifies a file containing trusted CA certificates.
-# Any server certificate that is signed with one of these CA
-# certificates is also automatically accepted.
-# 
-# Example:
-# set ssl_ca_certificates_file=/etc/ssl/certs/ca-certificates.crt
-# 
-# 
-# set pipe_split=no
-#
-# Name: pipe_split
-# Type: boolean
-# Default: no
-# 
-# 
-# Used in connection with the <pipe-message> function following
-# <tag-prefix>.  If this variable is unset, when piping a list of
-# tagged messages Mutt will concatenate the messages and will pipe them
-# all concatenated.  When set, Mutt will pipe the messages one by one.
-# In both cases the messages are piped in the current sorted order,
-# and the $pipe_sep separator is added after each message.
 # 
 # 
 # set pipe_decode=no
@@ -3231,23 +2841,19 @@ attachments   -I message/external-body
 # messages to an external Unix command.
 # 
 # 
-# set pop_authenticators=""
+# set pipe_split=no
 #
-# Name: pop_authenticators
-# Type: string
-# Default: ""
+# Name: pipe_split
+# Type: boolean
+# Default: no
 # 
 # 
-# This is a colon-delimited list of authentication methods mutt may
-# attempt to use to log in to an POP server, in the order mutt should
-# try them.  Authentication methods are either ``user'', ``apop'' or any
-# SASL mechanism, eg ``digest-md5'', ``gssapi'' or ``cram-md5''.
-# This option is case-insensitive. If this option is unset
-# (the default) mutt will try all available methods, in order from
-# most-secure to least-secure.
-# 
-# Example:
-# set pop_authenticators="digest-md5:apop:user"
+# Used in connection with the <pipe-message> function following
+# <tag-prefix>.  If this variable is unset, when piping a list of
+# tagged messages Mutt will concatenate the messages and will pipe them
+# all concatenated.  When set, Mutt will pipe the messages one by one.
+# In both cases the messages are piped in the current sorted order,
+# and the $pipe_sep separator is added after each message.
 # 
 # 
 # set pop_auth_try_all=yes
@@ -3261,6 +2867,25 @@ attachments   -I message/external-body
 # When unset, Mutt will only fall back to other authentication
 # methods if the previous methods are unavailable. If a method is
 # available but authentication fails, Mutt will not connect to the POP server.
+# 
+# 
+# set pop_authenticators=""
+#
+# Name: pop_authenticators
+# Type: string
+# Default: ""
+# 
+# 
+# This is a colon-delimited list of authentication methods mutt may
+# attempt to use to log in to an POP server, in the order mutt should
+# try them.  Authentication methods are either ``user'', ``apop'' or any
+# SASL mechanism, e.g. ``digest-md5'', ``gssapi'' or ``cram-md5''.
+# This option is case-insensitive. If this option is unset
+# (the default) mutt will try all available methods, in order from
+# most-secure to least-secure.
+# 
+# Example:
+# set pop_authenticators="digest-md5:apop:user"
 # 
 # 
 # set pop_checkinterval=60
@@ -3294,7 +2919,7 @@ attachments   -I message/external-body
 # 
 # 
 # The name of your POP server for the <fetch-mail> function.  You
-# can also specify an alternative port, username and password, ie:
+# can also specify an alternative port, username and password, i.e.:
 # [pop[s]://][username[:password]@]popserver[:port]
 # 
 # where ``[...]'' denotes an optional part.
@@ -3310,6 +2935,21 @@ attachments   -I message/external-body
 # If this variable is set, mutt will try to use the ``LAST'' POP command
 # for retrieving only unread messages from the POP server when using
 # the <fetch-mail> function.
+# 
+# 
+# set pop_pass=""
+#
+# Name: pop_pass
+# Type: string
+# Default: ""
+# 
+# 
+# Specifies the password for your POP account.  If unset, Mutt will
+# prompt you for your password when you open a POP mailbox.
+# 
+# Warning: you should only use this option when you are on a
+# fairly secure machine, because the superuser can read your muttrc
+# even if you are the only one who can read the file.
 # 
 # 
 # set pop_reconnect=ask-yes
@@ -3333,21 +2973,6 @@ attachments   -I message/external-body
 # Your login name on the POP server.
 # 
 # This variable defaults to your user name on the local machine.
-# 
-# 
-# set pop_pass=""
-#
-# Name: pop_pass
-# Type: string
-# Default: ""
-# 
-# 
-# Specifies the password for your POP account.  If unset, Mutt will
-# prompt you for your password when you open a POP mailbox.
-# 
-# Warning: you should only use this option when you are on a
-# fairly secure machine, because the superuser can read your muttrc
-# even if you are the only one who can read the file.
 # 
 # 
 # set post_indent_string=""
@@ -3485,10 +3110,13 @@ attachments   -I message/external-body
 # Default: ""
 # 
 # 
-# This specifies the command that mutt will use to make external address
-# queries.  The string should contain a ``%s'', which will be substituted
-# with the query string the user types.  See ``query'' for more
-# information.
+# This specifies the command Mutt will use to make external address
+# queries.  The string may contain a ``%s'', which will be substituted
+# with the query string the user types.  Mutt will add quotes around the
+# string substituted for ``%s'' automatically according to shell quoting
+# rules, so you should avoid adding your own.  If no ``%s'' is found in
+# the string, Mutt will append the user's query to the end of the string.
+# See ``query'' for more information.
 # 
 # 
 # set query_format="%4c %t %-25.25a %-25.25n %?e?(%e)?"
@@ -3726,7 +3354,7 @@ attachments   -I message/external-body
 # Default: yes
 # 
 # 
-# This variable fine-tunes the behaviour of the $reverse_name feature.
+# This variable fine-tunes the behavior of the $reverse_name feature.
 # When it is set, mutt will use the address from incoming messages as-is,
 # possibly including eventual real names.  When it is unset, mutt will
 # override any such real names with the setting of the $realname variable.
@@ -3861,6 +3489,17 @@ attachments   -I message/external-body
 # of this variable will never mark a message read.
 # 
 # 
+# set search_context=0
+#
+# Name: search_context
+# Type: number
+# Default: 0
+# 
+# 
+# For the pager, this variable specifies the number of lines shown
+# before search results. By default, search results will be top-aligned.
+# 
+# 
 # set send_charset="us-ascii:iso-8859-1:utf-8"
 #
 # Name: send_charset
@@ -3936,7 +3575,7 @@ attachments   -I message/external-body
 # this variable unless your signature contains just your name.  The
 # reason for this is because many software packages use ``-- \n'' to
 # detect your signature.  For example, Mutt has the ability to highlight
-# the signature in a different color in the builtin pager.
+# the signature in a different color in the built-in pager.
 # 
 # 
 # set sig_on_top=no
@@ -3982,6 +3621,19 @@ attachments   -I message/external-body
 # For the default value, ``joe'' would be expanded to: ``~f joe | ~s joe''.
 # 
 # 
+# set sleep_time=1
+#
+# Name: sleep_time
+# Type: number
+# Default: 1
+# 
+# 
+# Specifies time, in seconds, to pause while displaying certain informational
+# messages, while moving from folder to folder and after expunging
+# messages from the current folder.  The default is to pause one second, so
+# a value of zero for this option suppresses the pause.
+# 
+# 
 # set smart_wrap=yes
 #
 # Name: smart_wrap
@@ -4008,17 +3660,305 @@ attachments   -I message/external-body
 # happens at the beginning of a line.
 # 
 # 
-# set sleep_time=1
+# set smime_ask_cert_label=yes
 #
-# Name: sleep_time
+# Name: smime_ask_cert_label
+# Type: boolean
+# Default: yes
+# 
+# 
+# This flag controls whether you want to be asked to enter a label
+# for a certificate about to be added to the database or not. It is
+# set by default.
+# (S/MIME only)
+# 
+# 
+# set smime_ca_location=""
+#
+# Name: smime_ca_location
+# Type: path
+# Default: ""
+# 
+# 
+# This variable contains the name of either a directory, or a file which
+# contains trusted certificates for use with OpenSSL.
+# (S/MIME only)
+# 
+# 
+# set smime_certificates=""
+#
+# Name: smime_certificates
+# Type: path
+# Default: ""
+# 
+# 
+# Since for S/MIME there is no pubring/secring as with PGP, mutt has to handle
+# storage and retrieval of keys by itself. This is very basic right
+# now, and keys and certificates are stored in two different
+# directories, both named as the hash-value retrieved from
+# OpenSSL. There is an index file which contains mailbox-address
+# keyid pairs, and which can be manually edited. This option points to
+# the location of the certificates.
+# (S/MIME only)
+# 
+# 
+# set smime_decrypt_command=""
+#
+# Name: smime_decrypt_command
+# Type: string
+# Default: ""
+# 
+# 
+# This format string specifies a command which is used to decrypt
+# application/x-pkcs7-mime attachments.
+# 
+# The OpenSSL command formats have their own set of printf(3)-like sequences
+# similar to PGP's:
+# %f      Expands to the name of a file containing a message.
+# %s      Expands to the name of a file containing the signature part
+#                    of a multipart/signed attachment when verifying it.
+# %k      The key-pair specified with $smime_default_key
+# %c      One or more certificate IDs.
+# %a      The algorithm used for encryption.
+# %C      CA location:  Depending on whether $smime_ca_location
+#                    points to a directory or file, this expands to
+#                    ``-CApath $smime_ca_location'' or ``-CAfile $smime_ca_location''.
+# 
+# 
+# For examples on how to configure these formats, see the smime.rc in
+# the samples/ subdirectory which has been installed on your system
+# alongside the documentation.
+# (S/MIME only)
+# 
+# 
+# set smime_decrypt_use_default_key=yes
+#
+# Name: smime_decrypt_use_default_key
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set (default) this tells mutt to use the default key for decryption. Otherwise,
+# if managing multiple certificate-key-pairs, mutt will try to use the mailbox-address
+# to determine the key to use. It will ask you to supply a key, if it can't find one.
+# (S/MIME only)
+# 
+# 
+# set smime_default_key=""
+#
+# Name: smime_default_key
+# Type: string
+# Default: ""
+# 
+# 
+# This is the default key-pair to use for signing. This must be set to the
+# keyid (the hash-value that OpenSSL generates) to work properly
+# (S/MIME only)
+# 
+# 
+# set smime_encrypt_command=""
+#
+# Name: smime_encrypt_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to create encrypted S/MIME messages.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_encrypt_with=""
+#
+# Name: smime_encrypt_with
+# Type: string
+# Default: ""
+# 
+# 
+# This sets the algorithm that should be used for encryption.
+# Valid choices are ``des'', ``des3'', ``rc2-40'', ``rc2-64'', ``rc2-128''.
+# If unset, ``3des'' (TripleDES) is used.
+# (S/MIME only)
+# 
+# 
+# set smime_get_cert_command=""
+#
+# Name: smime_get_cert_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to extract X509 certificates from a PKCS7 structure.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_get_cert_email_command=""
+#
+# Name: smime_get_cert_email_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to extract the mail address(es) used for storing
+# X509 certificates, and for verification purposes (to check whether the
+# certificate was issued for the sender's mailbox).
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_get_signer_cert_command=""
+#
+# Name: smime_get_signer_cert_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to extract only the signers X509 certificate from a S/MIME
+# signature, so that the certificate's owner may get compared to the
+# email's ``From:'' field.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_import_cert_command=""
+#
+# Name: smime_import_cert_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to import a certificate via smime_keys.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_is_default=no
+#
+# Name: smime_is_default
+# Type: boolean
+# Default: no
+# 
+# 
+# The default behavior of mutt is to use PGP on all auto-sign/encryption
+# operations. To override and to use OpenSSL instead this must be set.
+# However, this has no effect while replying, since mutt will automatically
+# select the same application that was used to sign/encrypt the original
+# message.  (Note that this variable can be overridden by unsetting $crypt_autosmime.)
+# (S/MIME only)
+# 
+# 
+# set smime_keys=""
+#
+# Name: smime_keys
+# Type: path
+# Default: ""
+# 
+# 
+# Since for S/MIME there is no pubring/secring as with PGP, mutt has to handle
+# storage and retrieval of keys/certs by itself. This is very basic right now,
+# and stores keys and certificates in two different directories, both
+# named as the hash-value retrieved from OpenSSL. There is an index file
+# which contains mailbox-address keyid pair, and which can be manually
+# edited. This option points to the location of the private keys.
+# (S/MIME only)
+# 
+# 
+# set smime_pk7out_command=""
+#
+# Name: smime_pk7out_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to extract PKCS7 structures of S/MIME signatures,
+# in order to extract the public X509 certificate(s).
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_sign_command=""
+#
+# Name: smime_sign_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to created S/MIME signatures of type
+# multipart/signed, which can be read by all mail clients.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_sign_opaque_command=""
+#
+# Name: smime_sign_opaque_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to created S/MIME signatures of type
+# application/x-pkcs7-signature, which can only be handled by mail
+# clients supporting the S/MIME extension.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_timeout=300
+#
+# Name: smime_timeout
 # Type: number
-# Default: 1
+# Default: 300
 # 
 # 
-# Specifies time, in seconds, to pause while displaying certain informational
-# messages, while moving from folder to folder and after expunging
-# messages from the current folder.  The default is to pause one second, so
-# a value of zero for this option suppresses the pause.
+# The number of seconds after which a cached passphrase will expire if
+# not used.
+# (S/MIME only)
+# 
+# 
+# set smime_verify_command=""
+#
+# Name: smime_verify_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to verify S/MIME signatures of type multipart/signed.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_verify_opaque_command=""
+#
+# Name: smime_verify_opaque_command
+# Type: string
+# Default: ""
+# 
+# 
+# This command is used to verify S/MIME signatures of type
+# application/x-pkcs7-mime.
+# 
+# This is a format string, see the $smime_decrypt_command command for
+# possible printf(3)-like sequences.
+# (S/MIME only)
 # 
 # 
 # set smtp_authenticators=""
@@ -4030,7 +3970,7 @@ attachments   -I message/external-body
 # 
 # This is a colon-delimited list of authentication methods mutt may
 # attempt to use to log in to an SMTP server, in the order mutt should
-# try them.  Authentication methods are any SASL mechanism, eg
+# try them.  Authentication methods are any SASL mechanism, e.g.
 # ``digest-md5'', ``gssapi'' or ``cram-md5''.
 # This option is case-insensitive. If it is ``unset''
 # (the default) mutt will try all available methods, in order from
@@ -4064,10 +4004,10 @@ attachments   -I message/external-body
 # 
 # 
 # Defines the SMTP smarthost where sent messages should relayed for
-# delivery. This should take the form of an SMTP URL, eg:
-# smtp[s]://[user[:pass]@]host[:port]/
+# delivery. This should take the form of an SMTP URL, e.g.:
+# smtp[s]://[user[:pass]@]host[:port]
 # 
-# ... where ``[...]'' denotes an optional part.
+# where ``[...]'' denotes an optional part.
 # Setting this variable overrides the value of the $sendmail
 # variable.
 # 
@@ -4196,8 +4136,143 @@ attachments   -I message/external-body
 # 
 # If your spool mailbox is in a non-default place where Mutt cannot find
 # it, you can specify its location with this variable.  Mutt will
-# automatically set this variable to the value of the environment
-# variable $MAIL if it is not set.
+# initially set this variable to the value of the environment
+# variable $MAIL or $MAILDIR if either is defined.
+# 
+# 
+# set ssl_ca_certificates_file=""
+#
+# Name: ssl_ca_certificates_file
+# Type: path
+# Default: ""
+# 
+# 
+# This variable specifies a file containing trusted CA certificates.
+# Any server certificate that is signed with one of these CA
+# certificates is also automatically accepted.
+# 
+# Example:
+# set ssl_ca_certificates_file=/etc/ssl/certs/ca-certificates.crt
+# 
+# 
+# set ssl_client_cert=""
+#
+# Name: ssl_client_cert
+# Type: path
+# Default: ""
+# 
+# 
+# The file containing a client certificate and its associated private
+# key.
+# 
+# 
+# set ssl_force_tls=no
+#
+# Name: ssl_force_tls
+# Type: boolean
+# Default: no
+# 
+# 
+# If this variable is set, Mutt will require that all connections
+# to remote servers be encrypted. Furthermore it will attempt to
+# negotiate TLS even if the server does not advertise the capability,
+# since it would otherwise have to abort the connection anyway. This
+# option supersedes $ssl_starttls.
+# 
+# 
+# set ssl_min_dh_prime_bits=0
+#
+# Name: ssl_min_dh_prime_bits
+# Type: number
+# Default: 0
+# 
+# 
+# This variable specifies the minimum acceptable prime size (in bits)
+# for use in any Diffie-Hellman key exchange. A value of 0 will use
+# the default from the GNUTLS library.
+# 
+# 
+# set ssl_starttls=yes
+#
+# Name: ssl_starttls
+# Type: quadoption
+# Default: yes
+# 
+# 
+# If set (the default), mutt will attempt to use STARTTLS on servers
+# advertising the capability. When unset, mutt will not attempt to
+# use STARTTLS regardless of the server's capabilities.
+# 
+# 
+# set ssl_use_sslv2=no
+#
+# Name: ssl_use_sslv2
+# Type: boolean
+# Default: no
+# 
+# 
+# This variable specifies whether to attempt to use SSLv2 in the
+# SSL authentication process.
+# 
+# 
+# set ssl_use_sslv3=yes
+#
+# Name: ssl_use_sslv3
+# Type: boolean
+# Default: yes
+# 
+# 
+# This variable specifies whether to attempt to use SSLv3 in the
+# SSL authentication process.
+# 
+# 
+# set ssl_use_tlsv1=yes
+#
+# Name: ssl_use_tlsv1
+# Type: boolean
+# Default: yes
+# 
+# 
+# This variable specifies whether to attempt to use TLSv1 in the
+# SSL authentication process.
+# 
+# 
+# set ssl_usesystemcerts=yes
+#
+# Name: ssl_usesystemcerts
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set to yes, mutt will use CA certificates in the
+# system-wide certificate store when checking if a server certificate
+# is signed by a trusted CA.
+# 
+# 
+# set ssl_verify_dates=yes
+#
+# Name: ssl_verify_dates
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set (the default), mutt will not automatically accept a server
+# certificate that is either not yet valid or already expired. You should
+# only unset this for particular known hosts, using the
+# <account-hook> function.
+# 
+# 
+# set ssl_verify_host=yes
+#
+# Name: ssl_verify_host
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set (the default), mutt will not automatically accept a server
+# certificate whose host name does not match the host used in your folder
+# URL. You should only unset this for particular known hosts, using
+# the <account-hook> function.
 # 
 # 
 # set status_chars="-*%A"
@@ -4322,7 +4397,7 @@ attachments   -I message/external-body
 # personal mailbox where you might have several unrelated messages with
 # the subjects like ``hi'' which will get grouped together. See also
 # $sort_re for a less drastic way of controlling this
-# behaviour.
+# behavior.
 # 
 # 
 # set suspend=yes
@@ -4353,22 +4428,11 @@ attachments   -I message/external-body
 # Note that $indent_string is ignored when this option is set.
 # 
 # 
-# set thread_received=no
-#
-# Name: thread_received
-# Type: boolean
-# Default: no
-# 
-# 
-# When set, mutt uses the date received rather than the date sent
-# to thread messages by subject.
-# 
-# 
-# set thorough_search=no
+# set thorough_search=yes
 #
 # Name: thorough_search
 # Type: boolean
-# Default: no
+# Default: yes
 # 
 # 
 # Affects the ~b and ~h search operations described in
@@ -4381,6 +4445,17 @@ attachments   -I message/external-body
 # character set conversions. Otherwise mutt will attempt to match against the
 # raw message received (for example quoted-printable encoded or with encoded
 # headers) which may lead to incorrect search results.
+# 
+# 
+# set thread_received=no
+#
+# Name: thread_received
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, mutt uses the date received rather than the date sent
+# to thread messages by subject.
 # 
 # 
 # set tilde=no
@@ -4417,7 +4492,7 @@ attachments   -I message/external-body
 # Default: 600
 # 
 # 
-# When Mutt is waiting for user input either idleing in menus or
+# When Mutt is waiting for user input either idling in menus or
 # in an interactive prompt, Mutt would block until input is
 # present. Depending on the context, this would prevent certain
 # operations from working, like checking for new mail or keeping
@@ -4476,6 +4551,21 @@ attachments   -I message/external-body
 # 
 # Note: For this example to work you must be able to log in to the remote
 # machine without having to enter a password.
+# 
+# When set, Mutt uses the tunnel for all remote connections.
+# Please see ``account-hook'' in the manual for how to use different
+# tunnel commands per connection.
+# 
+# 
+# set uncollapse_jump=no
+#
+# Name: uncollapse_jump
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, Mutt will jump to the next unread message, if any,
+# when the current thread is uncollapsed.
 # 
 # 
 # set use_8bitmime=no
@@ -4580,7 +4670,7 @@ attachments   -I message/external-body
 # 
 # 
 # Specifies the visual editor to invoke when the ``~v'' command is
-# given in the builtin editor.
+# given in the built-in editor.
 # 
 # 
 # set wait_key=yes
@@ -4623,7 +4713,24 @@ attachments   -I message/external-body
 # 
 # When set to a positive value, mutt will wrap text at $wrap characters.
 # When set to a negative value, mutt will wrap text so that there are $wrap
-# characters of empty space on the right side of the terminal.
+# characters of empty space on the right side of the terminal. Setting it
+# to zero makes mutt wrap at the terminal width.
+# 
+# 
+# set wrap_headers=78
+#
+# Name: wrap_headers
+# Type: number
+# Default: 78
+# 
+# 
+# This option specifies the number of characters to use for wrapping
+# an outgoing message's headers. Allowed values are between 78 and 998
+# inclusive.
+# 
+# Note: This option usually shouldn't be changed. RFC5233
+# recommends a line length of 78 (the default), so please only change
+# this setting when you know what you're doing.
 # 
 # 
 # set wrap_search=yes
@@ -4649,6 +4756,20 @@ attachments   -I message/external-body
 # (DEPRECATED) Equivalent to setting $wrap with a negative value.
 # 
 # 
+# set write_bcc=yes
+#
+# Name: write_bcc
+# Type: boolean
+# Default: yes
+# 
+# 
+# Controls whether mutt writes out the ``Bcc:'' header when preparing
+# messages to be sent.  Exim users may wish to unset this. If mutt
+# is set to deliver directly via SMTP (see $smtp_url), this
+# option does nothing: mutt will never write out the ``Bcc:'' header
+# in this case.
+# 
+# 
 # set write_inc=10
 #
 # Name: write_inc
@@ -4662,19 +4783,5 @@ attachments   -I message/external-body
 # 
 # Also see the $read_inc, $net_inc and $time_inc variables and the
 # ``tuning'' section of the manual for performance considerations.
-# 
-# 
-# set write_bcc=yes
-#
-# Name: write_bcc
-# Type: boolean
-# Default: yes
-# 
-# 
-# Controls whether mutt writes out the ``Bcc:'' header when preparing
-# messages to be sent.  Exim users may wish to unset this. If mutt
-# is set to deliver directly via SMTP (see $smtp_url), this
-# option does nothing: mutt will never write out the ``Bcc:'' header
-# in this case.
 # 
 # 

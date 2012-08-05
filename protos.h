@@ -75,11 +75,6 @@ typedef const char * format_t (char *, size_t, size_t, char, const char *, const
 void mutt_FormatString (char *, size_t, size_t, const char *, format_t *, unsigned long, format_flag);
 void mutt_parse_content_type (char *, BODY *);
 void mutt_generate_boundary (PARAMETER **);
-void mutt_group_add_adrlist (group_t *, ADDRESS *);
-void mutt_group_context_add (group_context_t **ctx, group_t *group);
-void mutt_group_context_destroy (group_context_t **ctx);
-void mutt_group_add_adrlist (group_t *g, ADDRESS *a);
-void mutt_group_context_add_adrlist (group_context_t *ctx, ADDRESS *a);
 void mutt_delete_parameter (const char *attribute, PARAMETER **p);
 void mutt_set_parameter (const char *, const char *, PARAMETER **);
 
@@ -190,6 +185,7 @@ void mutt_edit_headers (const char *, const char *, HEADER *, char *, size_t);
 int mutt_filter_unprintable (char **);
 void mutt_curses_error (const char *, ...);
 void mutt_curses_message (const char *, ...);
+void mutt_encode_path (char *, size_t, const char *);
 void mutt_enter_command (void);
 void mutt_expand_aliases_env (ENVELOPE *);
 void mutt_expand_file_fmt (char *, size_t, const char *, const char *);
@@ -221,8 +217,8 @@ void mutt_make_misc_reply_headers (ENVELOPE *env, CONTEXT *ctx, HEADER *cur, ENV
 void mutt_make_post_indent (CONTEXT *ctx, HEADER *cur, FILE *out);
 void mutt_merge_envelopes(ENVELOPE* base, ENVELOPE** extra);
 void mutt_message_to_7bit (BODY *, FILE *);
-#define mutt_mktemp(a) _mutt_mktemp (a, __FILE__, __LINE__)
-void _mutt_mktemp (char *, const char *, int);
+#define mutt_mktemp(a,b) _mutt_mktemp (a, b, __FILE__, __LINE__)
+void _mutt_mktemp (char *, size_t, const char *, int);
 void mutt_normalize_time (struct tm *);
 void mutt_paddstr (int, const char *);
 void mutt_parse_mime_message (CONTEXT *ctx, HEADER *);
@@ -310,8 +306,6 @@ int mutt_get_field_unbuffered (char *, char *, size_t, int);
 #define mutt_get_password(A,B,C) mutt_get_field_unbuffered(A,B,C,M_PASS)
 int mutt_get_postponed (CONTEXT *, HEADER *, HEADER **, char *, size_t);
 int mutt_get_tmp_attachment (BODY *);
-int mutt_group_match (group_t *g, const char *s);
-int mutt_group_context_add_rx (group_context_t *ctx, const char *s, int flags, BUFFER *err);
 int mutt_index_menu (void);
 int mutt_invoke_sendmail (ADDRESS *, ADDRESS *, ADDRESS *, ADDRESS *, const char *, int);
 int mutt_is_autoview (BODY *, const char *);
@@ -371,7 +365,7 @@ int mutt_which_case (const char *);
 int mutt_write_fcc (const char *path, HEADER *hdr, const char *msgid, int, char *);
 int mutt_write_mime_body (BODY *, FILE *);
 int mutt_write_mime_header (BODY *, FILE *);
-int mutt_write_one_header (FILE *fp, const char *tag, const char *value, const char *pfx, int wraplen);
+int mutt_write_one_header (FILE *fp, const char *tag, const char *value, const char *pfx, int wraplen, int flags);
 int mutt_write_rfc822_header (FILE *, ENVELOPE *, BODY *, int, int);
 void mutt_write_references (LIST *, FILE *, int);
 int mutt_yesorno (const char *, int);
@@ -415,6 +409,15 @@ void mutt_pattern_free (pattern_t **pat);
 /* ----------------------------------------------------------------------------
  * Prototypes for broken systems
  */
+
+#ifdef HAVE_LONG_LONG_INT
+#ifdef LONGLONG
+#error LONGLONG is already defined
+#endif
+#define LONGLONG long long
+#else
+#define LONGLONG long
+#endif
 
 #ifdef HAVE_SRAND48
 #define LRAND lrand48
@@ -549,3 +552,14 @@ char *strsep (char **, const char *);
 char *strtok_r (char *, const char *, char **);
 #endif
 
+#ifndef HAVE_WCSCASECMP
+int wcscasecmp (const wchar_t *a, const wchar_t *b);
+#endif
+
+#ifndef HAVE_STRCASESTR
+char *strcasestr (const char *, const char *);
+#endif
+
+#ifndef HAVE_MKDTEMP
+char *mkdtemp (char *tmpl);
+#endif

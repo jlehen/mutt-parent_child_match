@@ -22,13 +22,14 @@
 
 typedef struct buffy_t
 {
-  char *path;
+  char path[_POSIX_PATH_MAX];
   off_t size;
   struct buffy_t *next;
   short new;			/* mailbox has new mail */
   short notified;		/* user has been notified */
   short magic;			/* mailbox type */
   short newly_created;		/* mbox or mmdf just popped into existence */
+  time_t last_visited;		/* time of last exit from this mailbox */
 }
 BUFFY;
 
@@ -39,3 +40,10 @@ extern time_t BuffyDoneTime;	/* last time we knew for sure how much mail there w
 
 BUFFY *mutt_find_mailbox (const char *path);
 void mutt_update_mailbox (BUFFY * b);
+
+/* fixes up atime + mtime after mbox/mmdf mailbox was modified
+   according to stat() info taken before a modification */
+void mutt_buffy_cleanup (const char *buf, struct stat *st);
+
+/* mark mailbox just left as already notified */
+void mutt_buffy_setnotified (const char *path);

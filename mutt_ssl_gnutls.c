@@ -33,6 +33,16 @@
 #include "mutt_ssl.h"
 #include "mutt_regex.h"
 
+/* certificate error bitmap values */
+#define CERTERR_VALID       0
+#define CERTERR_EXPIRED     1
+#define CERTERR_NOTYETVALID 2
+#define CERTERR_REVOKED     4
+#define CERTERR_NOTTRUSTED  8
+#define CERTERR_HOSTNAME    16
+#define CERTERR_SIGNERNOTCA 32
+#define CERTERR_INSECUREALG 64
+
 typedef struct _tlssockdata
 {
   gnutls_session state;
@@ -265,6 +275,12 @@ static int tls_negotiate (CONNECTION * conn)
                                           SslClientCert, GNUTLS_X509_FMT_PEM);
   }
 
+#if HAVE_DECL_GNUTLS_VERIFY_DISABLE_TIME_CHECKS
+  /* disable checking certificate activation/expiration times
+     in gnutls, we do the checks ourselves */
+  gnutls_certificate_set_verify_flags(data->xcred, GNUTLS_VERIFY_DISABLE_TIME_CHECKS);
+#endif
+
   gnutls_init(&data->state, GNUTLS_CLIENT);
 
   /* set socket */
@@ -408,7 +424,7 @@ static int tls_compare_certificates (const gnutls_datum *peercert)
   }
 
   b64_data.size = fread(b64_data.data, 1, b64_data.size, fd1);
-  fclose(fd1);
+  safe_fclose (&fd1);
 
   do {
     ret = gnutls_pem_base64_decode_alloc(NULL, &b64_data, &cert);
@@ -496,15 +512,15 @@ static int tls_check_stored_hostname (const gnutls_datum *cert,
   /* try checking against names stored in stored certs file */
   if ((fp = fopen (SslCertFile, "r")))
   {
-    if (regcomp(&preg, "^#H ([a-zA-Z0-9_\\.-]+) ([0-9A-F]{4}( [0-9A-F]{4}){7})[ \t]*$", REG_ICASE|REG_EXTENDED) != 0)
+    if (REGCOMP(&preg, "^#H ([a-zA-Z0-9_\\.-]+) ([0-9A-F]{4}( [0-9A-F]{4}){7})[ \t]*$",
+                REG_ICASE) != 0)
     {
-       regfree(&preg);
        return 0;
     }
 
     buf[0] = '\0';
     tls_fingerprint (GNUTLS_DIG_MD5, buf, sizeof (buf), cert);
-    while ((linestr = mutt_read_line(linestr, &linestrsize, fp, &linenum)) != NULL)
+    while ((linestr = mutt_read_line(linestr, &linestrsize, fp, &linenum, 0)) != NULL)
     {
       if(linestr[0] == '#' && linestr[1] == 'H')
       {
@@ -517,7 +533,7 @@ static int tls_check_stored_hostname (const gnutls_datum *cert,
           {
             regfree(&preg);
             FREE(&linestr);
-            fclose(fp);
+            safe_fclose (&fp);
             return 1;
           }
         }
@@ -525,24 +541,137 @@ static int tls_check_stored_hostname (const gnutls_datum *cert,
     }
 
     regfree(&preg);
-    fclose(fp);
+    safe_fclose (&fp);
   }
 
   /* not found a matching name */
   return 0;
 }
 
+static int tls_check_preauth (const gnutls_datum_t *certdata,
+                              gnutls_certificate_status certstat,
+                              const char *hostname, int chainidx, int* certerr,
+                              int* savedcert)
+{
+  gnutls_x509_crt cert;
+
+  *certerr = CERTERR_VALID;
+  *savedcert = 0;
+
+  if (gnutls_x509_crt_init (&cert) < 0)
+  {
+    mutt_error (_("Error initialising gnutls certificate data"));
+    mutt_sleep (2);
+    return -1;
+  }
+
+  if (gnutls_x509_crt_import (cert, certdata, GNUTLS_X509_FMT_DER) < 0)
+  {
+    mutt_error (_("Error processing certificate data"));
+    mutt_sleep (2);
+    gnutls_x509_crt_deinit (cert);
+    return -1;
+  }
+
+  if (option (OPTSSLVERIFYDATES) != M_NO)
+  {
+    if (gnutls_x509_crt_get_expiration_time (cert) < time(NULL))
+      *certerr |= CERTERR_EXPIRED;
+    if (gnutls_x509_crt_get_activation_time (cert) > time(NULL))
+      *certerr |= CERTERR_NOTYETVALID;
+  }
+
+  if (chainidx == 0 && option (OPTSSLVERIFYHOST) != M_NO
+      && !gnutls_x509_crt_check_hostname (cert, hostname)
+      && !tls_check_stored_hostname (certdata, hostname))
+    *certerr |= CERTERR_HOSTNAME;
+
+  /* see whether certificate is in our cache (certificates file) */
+  if (tls_compare_certificates (certdata))
+  {
+    *savedcert = 1;
+
+    if (chainidx == 0 && certstat & GNUTLS_CERT_INVALID)
+    {
+      /* doesn't matter - have decided is valid because server
+       certificate is in our trusted cache */
+      certstat ^= GNUTLS_CERT_INVALID;
+    }
+
+    if (chainidx == 0 && certstat & GNUTLS_CERT_SIGNER_NOT_FOUND)
+    {
+      /* doesn't matter that we haven't found the signer, since
+       certificate is in our trusted cache */
+      certstat ^= GNUTLS_CERT_SIGNER_NOT_FOUND;
+    }
+
+    if (chainidx <= 1 && certstat & GNUTLS_CERT_SIGNER_NOT_CA)
+    {
+      /* Hmm. Not really sure how to handle this, but let's say
+       that we don't care if the CA certificate hasn't got the
+       correct X.509 basic constraints if server or first signer
+       certificate is in our cache. */
+      certstat ^= GNUTLS_CERT_SIGNER_NOT_CA;
+    }
+
+    if (chainidx == 0 && certstat & GNUTLS_CERT_INSECURE_ALGORITHM)
+    {
+      /* doesn't matter that it was signed using an insecure
+         algorithm, since certificate is in our trusted cache */
+      certstat ^= GNUTLS_CERT_INSECURE_ALGORITHM;
+    }
+  }
+
+  if (certstat & GNUTLS_CERT_REVOKED)
+  {
+    *certerr |= CERTERR_REVOKED;
+    certstat ^= GNUTLS_CERT_REVOKED;
+  }
+
+  if (certstat & GNUTLS_CERT_INVALID)
+  {
+    *certerr |= CERTERR_NOTTRUSTED;
+    certstat ^= GNUTLS_CERT_INVALID;
+  }
+
+  if (certstat & GNUTLS_CERT_SIGNER_NOT_FOUND)
+  {
+    /* NB: already cleared if cert in cache */
+    *certerr |= CERTERR_NOTTRUSTED;
+    certstat ^= GNUTLS_CERT_SIGNER_NOT_FOUND;
+  }
+
+  if (certstat & GNUTLS_CERT_SIGNER_NOT_CA)
+  {
+    /* NB: already cleared if cert in cache */
+    *certerr |= CERTERR_SIGNERNOTCA;
+    certstat ^= GNUTLS_CERT_SIGNER_NOT_CA;
+  }
+
+  if (certstat & GNUTLS_CERT_INSECURE_ALGORITHM)
+  {
+    /* NB: already cleared if cert in cache */
+    *certerr |= CERTERR_INSECUREALG;
+    certstat ^= GNUTLS_CERT_INSECURE_ALGORITHM;
+  }
+
+  gnutls_x509_crt_deinit (cert);
+
+  /* we've been zeroing the interesting bits in certstat -
+   don't return OK if there are any unhandled bits we don't
+   understand */
+  if (*certerr == CERTERR_VALID && certstat == 0)
+    return 0;
+
+  return -1;
+}
+
 static int tls_check_one_certificate (const gnutls_datum_t *certdata,
                                       gnutls_certificate_status certstat,
                                       const char* hostname, int idx, int len)
 {
+  int certerr, savedcert;
   gnutls_x509_crt cert;
-  int certerr_hostname = 0;
-  int certerr_expired = 0;
-  int certerr_notyetvalid = 0;
-  int certerr_nottrusted = 0;
-  int certerr_revoked = 0;
-  int certerr_signernotca = 0;
   char buf[SHORT_STRING];
   char fpbuf[SHORT_STRING];
   size_t buflen;
@@ -562,13 +691,29 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
   gnutls_datum pemdata;
   int i, row, done, ret;
 
+  if (!tls_check_preauth (certdata, certstat, hostname, idx, &certerr,
+      &savedcert))
+    return 1;
+
+  /* skip signers if insecure algorithm was used */
+  if (idx && (certerr & CERTERR_INSECUREALG))
+  {
+    if (idx == 1)
+    {
+      mutt_error (_("Warning: Server certificate was signed using an insecure algorithm"));
+      mutt_sleep (2);
+    }
+    return 0;
+  }
+
+  /* interactive check from user */
   if (gnutls_x509_crt_init (&cert) < 0)
   {
     mutt_error (_("Error initialising gnutls certificate data"));
     mutt_sleep (2);
     return 0;
   }
-  
+
   if (gnutls_x509_crt_import (cert, certdata, GNUTLS_X509_FMT_DER) < 0)
   {
     mutt_error (_("Error processing certificate data"));
@@ -576,94 +721,17 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
     gnutls_x509_crt_deinit (cert);
     return -1;
   }
-  
-  if (gnutls_x509_crt_get_expiration_time (cert) < time(NULL))
-    certerr_expired = 1;
-  if (gnutls_x509_crt_get_activation_time (cert) > time(NULL))
-    certerr_notyetvalid = 1;
 
-  if (!idx)
-  {
-    if (!gnutls_x509_crt_check_hostname (cert, hostname) &&
-        !tls_check_stored_hostname (certdata, hostname))
-      certerr_hostname = 1;
-  }
-  
-  /* see whether certificate is in our cache (certificates file) */
-  if (tls_compare_certificates (certdata))
-  {
-    if (certstat & GNUTLS_CERT_INVALID)
-    {
-      /* doesn't matter - have decided is valid because server
-       certificate is in our trusted cache */
-      certstat ^= GNUTLS_CERT_INVALID;
-    }
-    
-    if (certstat & GNUTLS_CERT_SIGNER_NOT_FOUND)
-    {
-      /* doesn't matter that we haven't found the signer, since
-       certificate is in our trusted cache */
-      certstat ^= GNUTLS_CERT_SIGNER_NOT_FOUND;
-    }
-    
-    if (certstat & GNUTLS_CERT_SIGNER_NOT_CA)
-    {
-      /* Hmm. Not really sure how to handle this, but let's say
-       that we don't care if the CA certificate hasn't got the
-       correct X.509 basic constraints if server certificate is
-       in our cache. */
-      certstat ^= GNUTLS_CERT_SIGNER_NOT_CA;
-    }
-  }
-
-  if (certstat & GNUTLS_CERT_REVOKED)
-  {
-    certerr_revoked = 1;
-    certstat ^= GNUTLS_CERT_REVOKED;
-  }
-  
-  if (certstat & GNUTLS_CERT_INVALID)
-  {
-    certerr_nottrusted = 1;
-    certstat ^= GNUTLS_CERT_INVALID;
-  }
-  
-  if (certstat & GNUTLS_CERT_SIGNER_NOT_FOUND)
-  {
-    /* NB: already cleared if cert in cache */
-    certerr_nottrusted = 1;
-    certstat ^= GNUTLS_CERT_SIGNER_NOT_FOUND;
-  }
-  
-  if (certstat & GNUTLS_CERT_SIGNER_NOT_CA)
-  {
-    /* NB: already cleared if cert in cache */
-    certerr_signernotca = 1;
-    certstat ^= GNUTLS_CERT_SIGNER_NOT_CA;
-  }
-
-  /* OK if signed by (or is) a trusted certificate */
-  /* we've been zeroing the interesting bits in certstat - 
-   don't return OK if there are any unhandled bits we don't
-   understand */
-  if (!(certerr_expired || certerr_notyetvalid || 
-	certerr_hostname || certerr_nottrusted) && certstat == 0)
-  {
-    gnutls_x509_crt_deinit (cert);
-    return 1;
-  }
-
-  /* interactive check from user */
   menu = mutt_new_menu (-1);
   menu->max = 25;
   menu->dialog = (char **) safe_calloc (1, menu->max * sizeof (char *));
   for (i = 0; i < menu->max; i++)
     menu->dialog[i] = (char *) safe_calloc (1, SHORT_STRING * sizeof (char));
-  
+
   row = 0;
   strfcpy (menu->dialog[row], _("This certificate belongs to:"), SHORT_STRING);
   row++;
-  
+
   buflen = sizeof (dn_common_name);
   if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0,
                                      dn_common_name, &buflen) != 0)
@@ -692,17 +760,17 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
   if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_COUNTRY_NAME, 0, 0,
                                      dn_country, &buflen) != 0)
     dn_country[0] = '\0';
-  
+
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s  %s", dn_common_name, dn_email);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organization);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organizational_unit);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s  %s  %s",
             dn_locality, dn_province, dn_country);
   row++;
-  
+
   strfcpy (menu->dialog[row], _("This certificate was issued by:"), SHORT_STRING);
   row++;
-  
+
   buflen = sizeof (dn_common_name);
   if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0,
                                             dn_common_name, &buflen) != 0)
@@ -731,52 +799,52 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
   if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_COUNTRY_NAME, 0, 0,
                                             dn_country, &buflen) != 0)
     dn_country[0] = '\0';
-  
+
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s  %s", dn_common_name, dn_email);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organization);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organizational_unit);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s  %s  %s",
             dn_locality, dn_province, dn_country);
   row++;
-  
+
   snprintf (menu->dialog[row++], SHORT_STRING, _("This certificate is valid"));
-  
+
   t = gnutls_x509_crt_get_activation_time (cert);
-  snprintf (menu->dialog[row++], SHORT_STRING, _("   from %s"), 
+  snprintf (menu->dialog[row++], SHORT_STRING, _("   from %s"),
 	    tls_make_date (t, datestr, 30));
-  
+
   t = gnutls_x509_crt_get_expiration_time (cert);
-  snprintf (menu->dialog[row++], SHORT_STRING, _("     to %s"), 
+  snprintf (menu->dialog[row++], SHORT_STRING, _("     to %s"),
 	    tls_make_date (t, datestr, 30));
-  
+
   fpbuf[0] = '\0';
   tls_fingerprint (GNUTLS_DIG_SHA, fpbuf, sizeof (fpbuf), certdata);
   snprintf (menu->dialog[row++], SHORT_STRING, _("SHA1 Fingerprint: %s"), fpbuf);
   fpbuf[0] = '\0';
   tls_fingerprint (GNUTLS_DIG_MD5, fpbuf, sizeof (fpbuf), certdata);
   snprintf (menu->dialog[row++], SHORT_STRING, _("MD5 Fingerprint: %s"), fpbuf);
-  
-  if (certerr_notyetvalid)
+
+  if (certerr & CERTERR_NOTYETVALID)
   {
     row++;
     strfcpy (menu->dialog[row], _("WARNING: Server certificate is not yet valid"), SHORT_STRING);
   }
-  if (certerr_expired)
+  if (certerr & CERTERR_EXPIRED)
   {
     row++;
     strfcpy (menu->dialog[row], _("WARNING: Server certificate has expired"), SHORT_STRING);
   }
-  if (certerr_revoked)
+  if (certerr & CERTERR_REVOKED)
   {
     row++;
     strfcpy (menu->dialog[row], _("WARNING: Server certificate has been revoked"), SHORT_STRING);
   }
-  if (certerr_hostname)
+  if (certerr & CERTERR_HOSTNAME)
   {
     row++;
     strfcpy (menu->dialog[row], _("WARNING: Server hostname does not match certificate"), SHORT_STRING);
   }
-  if (certerr_signernotca)
+  if (certerr & CERTERR_SIGNERNOTCA)
   {
     row++;
     strfcpy (menu->dialog[row], _("WARNING: Signer of server certificate is not a CA"), SHORT_STRING);
@@ -788,7 +856,9 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
   menu->title = title;
   /* certificates with bad dates, or that are revoked, must be
    accepted manually each and every time */
-  if (SslCertFile && !certerr_expired && !certerr_notyetvalid && !certerr_revoked)
+  if (SslCertFile && !savedcert
+        && !(certerr & (CERTERR_EXPIRED | CERTERR_NOTYETVALID
+                        | CERTERR_REVOKED)))
   {
     menu->prompt = _("(r)eject, accept (o)nce, (a)ccept always");
     menu->keys = _("roa");
@@ -798,14 +868,14 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
     menu->prompt = _("(r)eject, accept (o)nce");
     menu->keys = _("ro");
   }
-  
+
   helpstr[0] = '\0';
   mutt_make_help (buf, sizeof (buf), _("Exit  "), MENU_GENERIC, OP_EXIT);
   safe_strcat (helpstr, sizeof (helpstr), buf);
   mutt_make_help (buf, sizeof (buf), _("Help"), MENU_GENERIC, OP_HELP);
   safe_strcat (helpstr, sizeof (helpstr), buf);
   menu->help = helpstr;
-  
+
   done = 0;
   set_option (OPTUNBUFFEREDINPUT);
   while (!done)
@@ -822,12 +892,12 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
         if ((fp = fopen (SslCertFile, "a")))
 	{
 	  /* save hostname if necessary */
-	  if (certerr_hostname)
+	  if (certerr & CERTERR_HOSTNAME)
 	  {
 	    fprintf(fp, "#H %s %s\n", hostname, fpbuf);
 	    done = 1;
 	  }
-	  if (certerr_nottrusted)
+	  if (certerr & CERTERR_NOTTRUSTED)
 	  {
             done = 0;
 	    ret = gnutls_pem_base64_encode_alloc ("CERTIFICATE", certdata,
@@ -841,7 +911,7 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
               gnutls_free (pemdata.data);
 	    }
 	  }
-	  fclose (fp);
+	  safe_fclose (&fp);
 	}
 	if (!done)
         {
@@ -866,23 +936,14 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
   return (done == 2);
 }
 
-static int tls_check_certificate (CONNECTION* conn)
+/* sanity-checking wrapper for gnutls_certificate_verify_peers */
+static gnutls_certificate_status tls_verify_peers (gnutls_session tlsstate)
 {
-  tlssockdata *data = conn->sockdata;
-  gnutls_session state = data->state;
-  const gnutls_datum *cert_list;
-  unsigned int cert_list_size = 0;
   gnutls_certificate_status certstat;
-  int i, rc;
 
-  if (gnutls_auth_get_type (state) != GNUTLS_CRD_CERTIFICATE)
-  {
-    mutt_error (_("Unable to get certificate from peer"));
-    mutt_sleep (2);
-    return 0;
-  }
-
-  certstat = gnutls_certificate_verify_peers (state);
+  certstat = gnutls_certificate_verify_peers (tlsstate);
+  if (!certstat)
+    return certstat;
 
   if (certstat == GNUTLS_E_NO_CERTIFICATE_FOUND)
   {
@@ -899,12 +960,33 @@ static int tls_check_certificate (CONNECTION* conn)
   }
 
   /* We only support X.509 certificates (not OpenPGP) at the moment */
-  if (gnutls_certificate_type_get (state) != GNUTLS_CRT_X509)
+  if (gnutls_certificate_type_get (tlsstate) != GNUTLS_CRT_X509)
   {
     mutt_error (_("Certificate is not X.509"));
     mutt_sleep (2);
     return 0;
   }
+
+  return certstat;
+}
+
+static int tls_check_certificate (CONNECTION* conn)
+{
+  tlssockdata *data = conn->sockdata;
+  gnutls_session state = data->state;
+  const gnutls_datum *cert_list;
+  unsigned int cert_list_size = 0;
+  gnutls_certificate_status certstat;
+  int certerr, i, preauthrc, savedcert, rc = 0;
+
+  if (gnutls_auth_get_type (state) != GNUTLS_CRD_CERTIFICATE)
+  {
+    mutt_error (_("Unable to get certificate from peer"));
+    mutt_sleep (2);
+    return 0;
+  }
+
+  certstat = tls_verify_peers (state);
 
   cert_list = gnutls_certificate_get_peers (state, &cert_list_size);
   if (!cert_list)
@@ -914,13 +996,42 @@ static int tls_check_certificate (CONNECTION* conn)
     return 0;
   }
 
+  /* tls_verify_peers doesn't check hostname or expiration, so walk
+   * from most specific to least checking these. If we see a saved certificate,
+   * its status short-circuits the remaining checks. */
+  preauthrc = 0;
+  for (i = 0; i < cert_list_size; i++) {
+    rc = tls_check_preauth(&cert_list[i], certstat, conn->account.host, i,
+                           &certerr, &savedcert);
+    preauthrc += rc;
+
+    if (savedcert)
+    {
+      if (!preauthrc)
+        return 1;
+      else
+        break;
+    }
+  }
+
+  /* then check interactively, starting from chain root */
   for (i = cert_list_size - 1; i >= 0; i--)
   {
     rc = tls_check_one_certificate (&cert_list[i], certstat, conn->account.host,
                                     i, cert_list_size);
-    if (rc)
-      return rc;
+
+    /* add signers to trust set, then reverify */
+    if (i && rc) {
+      rc = gnutls_certificate_set_x509_trust_mem (data->xcred, &cert_list[i],
+                                                  GNUTLS_X509_FMT_DER);
+      if (rc != 1)
+        dprint (1, (debugfile, "error trusting certificate %d: %d\n", i, rc));
+
+      certstat = tls_verify_peers (state);
+      if (!certstat)
+        return 1;
+    }
   }
 
-  return 0;
+  return rc;
 }

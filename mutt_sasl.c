@@ -304,7 +304,7 @@ int mutt_sasl_interact (sasl_interact_t* interaction)
 
     snprintf (prompt, sizeof (prompt), "%s: ", interaction->prompt);
     resp[0] = '\0';
-    if (mutt_get_field (prompt, resp, sizeof (resp), 0))
+    if (option (OPTNOCURSES) || mutt_get_field (prompt, resp, sizeof (resp), 0))
       return SASL_FAIL;
 
     interaction->len = mutt_strlen (resp)+1;
@@ -481,6 +481,7 @@ static int mutt_sasl_conn_close (CONNECTION* conn)
   conn->conn_close = sasldata->msasl_close;
   conn->conn_read = sasldata->msasl_read;
   conn->conn_write = sasldata->msasl_write;
+  conn->conn_poll = sasldata->msasl_poll;
 
   /* release sasl resources */
   sasl_dispose (&sasldata->saslconn);

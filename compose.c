@@ -94,7 +94,7 @@ static struct mapping_t ComposeHelp[] = {
   { N_("Attach file"),  OP_COMPOSE_ATTACH_FILE },
   { N_("Descrip"), OP_COMPOSE_EDIT_DESCRIPTION },
   { N_("Help"),    OP_HELP },
-  { NULL }
+  { NULL,	0 }
 };
 
 static void snd_entry (char *b, size_t blen, MUTTMENU *menu, int num)
@@ -112,21 +112,13 @@ static void redraw_crypt_lines (HEADER *msg)
 {
   int off = 0;
 
-  if ((WithCrypto & APPLICATION_PGP) && (WithCrypto & APPLICATION_SMIME))
-  {     
-    if (!msg->security)
-      mvaddstr (HDR_CRYPT, 0,     "Security: ");
-    else if (msg->security & APPLICATION_SMIME)
-      mvaddstr (HDR_CRYPT, 0,     "  S/MIME: ");
-    else if (msg->security & APPLICATION_PGP)
-      mvaddstr (HDR_CRYPT, 0,     "     PGP: ");
-  }
-  else if ((WithCrypto & APPLICATION_SMIME))
-    mvaddstr (HDR_CRYPT, 0,     "  S/MIME: ");
-  else if ((WithCrypto & APPLICATION_PGP))
-    mvaddstr (HDR_CRYPT, 0,     "     PGP: ");
-  else
+  mvaddstr (HDR_CRYPT, 0, "Security: ");
+
+  if ((WithCrypto & (APPLICATION_PGP | APPLICATION_SMIME)) == 0)
+  {
+    addstr(_("Not supported"));
     return;
+  }
 
   if ((msg->security & (ENCRYPT | SIGN)) == (ENCRYPT | SIGN))
     addstr (_("Sign, Encrypt"));
@@ -135,21 +127,26 @@ static void redraw_crypt_lines (HEADER *msg)
   else if (msg->security & SIGN)
     addstr (_("Sign"));
   else
-    addstr (_("Clear"));
+    addstr (_("None"));
 
-  if ((WithCrypto & APPLICATION_PGP))
-    if ((msg->security & APPLICATION_PGP) 
-	&& (msg->security & (ENCRYPT | SIGN)))
+  if ((msg->security & (ENCRYPT | SIGN)))
+  {
+    if ((WithCrypto & APPLICATION_PGP) && (msg->security & APPLICATION_PGP))
     {
       if ((msg->security & INLINE))
-	addstr (_(" (inline)"));
+        addstr (_(" (inline PGP)"));
       else
-	addstr (_(" (PGP/MIME)"));
+        addstr (_(" (PGP/MIME)"));
     }
-  clrtoeol ();
+    else if ((WithCrypto & APPLICATION_SMIME) &&
+             (msg->security & APPLICATION_SMIME))
+      addstr (_(" (S/MIME)"));
+  }
 
+  clrtoeol ();
   move (HDR_CRYPTINFO, 0);
   clrtoeol ();
+
   if ((WithCrypto & APPLICATION_PGP)
       && msg->security & APPLICATION_PGP  && msg->security & SIGN)
     printw ("%s%s", _(" sign as: "), PgpSignAs ? PgpSignAs : _("<default>"));
@@ -241,7 +238,7 @@ check_attachments(ATTACHPTR **idx, short idxlen)
 
 static void draw_envelope_addr (int line, ADDRESS *addr)
 {
-  char buf[STRING];
+  char buf[LONG_STRING];
 
   buf[0] = 0;
   rfc822_write_address (buf, sizeof (buf), addr, 1);
@@ -581,7 +578,7 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	{
 	  mutt_edit_file (Editor, msg->content->filename);
 	  mutt_update_encoding (msg->content);
-	  menu->redraw = REDRAW_CURRENT | REDRAW_STATUS;
+	  menu->redraw = REDRAW_FULL;
 	  mutt_message_hook (NULL, msg, M_SEND2HOOK);
 	  break;
 	}
@@ -1073,7 +1070,7 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	    FREE (&idx[idxlen]);
 	    continue;
 	  }
-	  fclose (fp);
+	  safe_fclose (&fp);
 
 	  if ((idx[idxlen]->content = mutt_make_file_attach (fname)) == NULL)
 	  {
@@ -1206,7 +1203,7 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
          if (msg->content->next)
            msg->content = mutt_make_multipart (msg->content);
 
-         if (mutt_write_fcc (fname, msg, NULL, 1, NULL) < 0)
+         if (mutt_write_fcc (fname, msg, NULL, 0, NULL) < 0)
            msg->content = mutt_remove_multipart (msg->content);
          else
            mutt_message _("Message written.");

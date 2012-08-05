@@ -109,7 +109,7 @@ be_snarf_file (const char *path, char **buf, int *max, int *len, int verbose)
       snprintf(tmp, sizeof(tmp), "\"%s\" %lu bytes\n", path, (unsigned long) sb.st_size);
       addstr(tmp);
     }
-    fclose (f);
+    safe_fclose (&f);
   }
   else
   {
@@ -153,8 +153,7 @@ be_include_messages (char *msg, char **buf, int *bufmax, int *buflen,
 
   while ((msg = strtok (msg, " ,")) != NULL)
   {
-    n = atoi (msg);
-    if (n > 0 && n <= Context->msgcount)
+    if (mutt_atoi (msg, &n) == 0 && n > 0 && n <= Context->msgcount)
     {
       n--;
 
