@@ -45,6 +45,7 @@ static int eat_regexp (pattern_t *pat, BUFFER *, BUFFER *);
 static int eat_date (pattern_t *pat, BUFFER *, BUFFER *);
 static int eat_range (pattern_t *pat, BUFFER *, BUFFER *);
 static int patmatch (const pattern_t *pat, const char *buf);
+static int pattern_exec (struct pattern_t *pat, pattern_exec_flag flags, CONTEXT *ctx, HEADER *h);
 
 struct pattern_flags
 {
@@ -780,6 +781,8 @@ pattern_t *mutt_pattern_comp (/* const */ char *s, int flags, BUFFER *err)
   pattern_t *last = NULL;
   int not = 0;
   int alladdr = 0;
+  int parentmatch = 0;
+  int childsmatch = 0;
   int or = 0;
   int implicit = 1;	/* used to detect logical AND operator */
   struct pattern_flags *entry;
@@ -803,6 +806,24 @@ pattern_t *mutt_pattern_comp (/* const */ char *s, int flags, BUFFER *err)
       case '!':
 	ps.dptr++;
 	not = !not;
+	break;
+      case '<':
+	ps.dptr++;
+	if (childsmatch) {
+	  snprintf (err->data, err->dsize, _("cannot use both < and > as a pattern modifier"));
+	  mutt_pattern_free (&curlist);
+	  return NULL;
+	}
+	parentmatch = 1;
+	break;
+      case '>':
+	ps.dptr++;
+	if (parentmatch) {
+	  snprintf (err->data, err->dsize, _("cannot use both < and > as a pattern modifier"));
+	  mutt_pattern_free (&curlist);
+	  return NULL;
+	}
+	childsmatch = 1;
 	break;
       case '|':
 	if (!or)
@@ -829,6 +850,8 @@ pattern_t *mutt_pattern_comp (/* const */ char *s, int flags, BUFFER *err)
 	implicit = 0;
 	not = 0;
 	alladdr = 0;
+	parentmatch = 0;
+	childsmatch = 0;
 	break;
       case '%':
       case '=':
@@ -852,8 +875,12 @@ pattern_t *mutt_pattern_comp (/* const */ char *s, int flags, BUFFER *err)
 	  last = tmp;
 	  tmp->not ^= not;
 	  tmp->alladdr |= alladdr;
+	  tmp->parentmatch |= parentmatch;
+	  tmp->childsmatch |= childsmatch;
 	  not = 0;
 	  alladdr = 0;
+	  parentmatch = 0;
+	  childsmatch = 0;
 	  /* compile the sub-expression */
 	  buf = mutt_substrdup (ps.dptr + 1, p);
 	  if ((tmp2 = mutt_pattern_comp (buf, flags, err)) == NULL)
@@ -881,10 +908,14 @@ pattern_t *mutt_pattern_comp (/* const */ char *s, int flags, BUFFER *err)
 	tmp = new_pattern ();
 	tmp->not = not;
 	tmp->alladdr = alladdr;
+	tmp->parentmatch = parentmatch;
+	tmp->childsmatch = childsmatch;
         tmp->stringmatch = (*ps.dptr == '=') ? 1 : 0;
         tmp->groupmatch  = (*ps.dptr == '%') ? 1 : 0;
 	not = 0;
 	alladdr = 0;
+	parentmatch = 0;
+	childsmatch = 0;
 
 	if (last)
 	  last->next = tmp;
@@ -950,8 +981,12 @@ pattern_t *mutt_pattern_comp (/* const */ char *s, int flags, BUFFER *err)
 	last = tmp;
 	tmp->not ^= not;
 	tmp->alladdr |= alladdr;
+	tmp->parentmatch |= parentmatch;
+	tmp->childsmatch |= childsmatch;
 	not = 0;
 	alladdr = 0;
+	parentmatch = 0;
+	childsmatch = 0;
 	ps.dptr = p + 1; /* restore location */
 	break;
       default:
@@ -1091,6 +1126,36 @@ static int match_threadcomplete(struct pattern_t *pat, pattern_exec_flag flags, 
    	M_MATCH_FULL_ADDRESS	match both personal and machine address */
 int
 mutt_pattern_exec (struct pattern_t *pat, pattern_exec_flag flags, CONTEXT *ctx, HEADER *h)
+{
+  THREAD *t;
+
+  if (pat->parentmatch) {
+    if (h->thread && h->thread->parent && h->thread->parent->message)
+      return pattern_exec (pat, flags, ctx, h->thread->parent->message);
+    else
+      return pat->not;
+  }
+  if (pat->childsmatch) {
+    if (!h->thread)
+      return pat->not;
+    if (!h->thread->child)
+      return pat->not;
+    t = h->thread->child;
+    while (t->prev)
+      t = t->prev;
+    for (; t; t = t->next) {
+      if (!t->message)
+	continue;
+      if (pattern_exec (pat, flags, ctx, t->message))
+	return !pat->not;
+    }
+    return pat->not;
+  }
+  return pattern_exec (pat, flags, ctx, h);
+}
+
+static int
+pattern_exec (struct pattern_t *pat, pattern_exec_flag flags, CONTEXT *ctx, HEADER *h)
 {
   switch (pat->op)
   {

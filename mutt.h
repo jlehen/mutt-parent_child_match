@@ -829,6 +829,8 @@ typedef struct pattern_t
   unsigned int alladdr : 1;
   unsigned int stringmatch : 1;
   unsigned int groupmatch : 1;
+  unsigned int parentmatch : 1;
+  unsigned int childsmatch : 1;
   int min;
   int max;
   struct pattern_t *next;

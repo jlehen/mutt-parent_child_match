@@ -3950,6 +3950,22 @@ This example matches all mails which only has recipients from Germany.
 
 </para>
 
+<para>
+<emphasis role="bold">Parent and child match</emphasis>.
+You can tell mutt that the following pattern has to be matched against
+the parent message with &lt; or one of its childs with &gt;.
+This example matches all mails which have at least an unread duplicate
+message:
+</para>
+
+<para>
+
+<screen>
+>(~= ~N)
+</screen>
+
+</para>
+
 </sect2>
 
 <sect2>
