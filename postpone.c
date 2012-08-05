@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1999-2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1999-2002,2004 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -23,13 +23,11 @@
 
 #include "mutt.h"
 #include "mutt_menu.h"
-#include "rfc1524.h"
 #include "mime.h"
 #include "mailbox.h"
 #include "mapping.h"
 #include "sort.h"
 #ifdef USE_IMAP
-#include "mx.h"
 #include "imap.h"
 #endif
 #include "mutt_crypt.h"
@@ -93,10 +91,10 @@ int mutt_num_postponed (int force)
       if (newpc >= 0)
       {
 	PostCount = newpc;
-	dprint (2, (debugfile, "mutt_num_postponed: %d postponed IMAP messages found.\n", PostCount));
+	dprint (3, (debugfile, "mutt_num_postponed: %d postponed IMAP messages found.\n", PostCount));
       }
       else
-	dprint (2, (debugfile, "mutt_num_postponed: using old IMAP postponed count.\n"));
+	dprint (3, (debugfile, "mutt_num_postponed: using old IMAP postponed count.\n"));
     }
     return PostCount;
   }
@@ -160,9 +158,8 @@ static HEADER *select_msg (void)
   char helpstr[LONG_STRING];
   short orig_sort;
 
-  menu = mutt_new_menu ();
+  menu = mutt_new_menu (MENU_POST);
   menu->make_entry = post_entry;
-  menu->menu = MENU_POST;
   menu->max = PostContext->msgcount;
   menu->title = _("Postponed Messages");
   menu->data = PostContext;
@@ -322,7 +319,7 @@ int mutt_get_postponed (CONTEXT *ctx, HEADER *hdr, HEADER **cur, char *fcc, size
       p = tmp->data + 11;
       SKIPWS (p);
       strfcpy (fcc, p, fcclen);
-      mutt_pretty_mailbox (fcc);
+      mutt_pretty_mailbox (fcc, fcclen);
 
       /* remove the X-Mutt-Fcc: header field */
       next = tmp->next;

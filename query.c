@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2003 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "mutt_menu.h"
 #include "mutt_idna.h"
 #include "mapping.h"
-#include "sort.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -55,10 +54,6 @@ static struct mapping_t QueryHelp[] = {
   { NULL }
 };
 
-/* Variables for outsizing output format */
-static int FirstColumn;
-static int SecondColumn;
-
 static void query_menu (char *buf, size_t buflen, QUERY *results, int retbuf);
 
 static ADDRESS *result_to_addr (QUERY *r)
@@ -87,7 +82,6 @@ static QUERY *run_query (char *s, int quiet)
   char msg[STRING];
   char *p;
   pid_t thepid;
-  int l;
 
 
   mutt_expand_file_fmt (cmd, sizeof(cmd), QueryCmd, s);
@@ -108,8 +102,6 @@ static QUERY *run_query (char *s, int quiet)
     {
       if (first == NULL)
       {
-	FirstColumn = 0;
-	SecondColumn = 0;
 	first = (QUERY *) safe_calloc (1, sizeof (QUERY));
 	cur = first;
       }
@@ -119,23 +111,14 @@ static QUERY *run_query (char *s, int quiet)
 	cur = cur->next;
       }
 
-      l = mutt_strwidth (p);
-      if (l > SecondColumn)
-	SecondColumn = l;
-	
       cur->addr = rfc822_parse_adrlist (cur->addr, p);
       p = strtok(NULL, "\t\n");
       if (p)
       {
-	l = mutt_strwidth (p);
-	if (l > FirstColumn)
-	  FirstColumn = l;
 	cur->name = safe_strdup (p);
 	p = strtok(NULL, "\t\n");
 	if (p)
-	{
 	  cur->other = safe_strdup (p);
-	}
       }
     }
   }
@@ -202,7 +185,7 @@ static const char * query_format_str (char *dest, size_t destlen, size_t col,
     break;
   case 'c':
     snprintf (tmp, sizeof (tmp), "%%%sd", fmt);
-    snprintf (dest, destlen, tmp, query->num);
+    snprintf (dest, destlen, tmp, query->num + 1);
     break;
   case 'e':
     if (!optional)
@@ -317,11 +300,10 @@ static void query_menu (char *buf, size_t buflen, QUERY *results, int retbuf)
 
   snprintf (title, sizeof (title), _("Query")); /* FIXME */
 
-  menu = mutt_new_menu ();
+  menu = mutt_new_menu (MENU_QUERY);
   menu->make_entry = query_entry;
   menu->search = query_search;
   menu->tag = query_tag;
-  menu->menu = MENU_QUERY;
   menu->title = title;
   menu->help = mutt_compile_help (helpstr, sizeof (helpstr), MENU_QUERY, QueryHelp);
 
@@ -390,11 +372,10 @@ static void query_menu (char *buf, size_t buflen, QUERY *results, int retbuf)
 
 	      menu->current = 0;
 	      mutt_menuDestroy (&menu);
-	      menu = mutt_new_menu ();
+	      menu = mutt_new_menu (MENU_QUERY);
 	      menu->make_entry = query_entry;
 	      menu->search = query_search;
 	      menu->tag = query_tag;
-	      menu->menu = MENU_QUERY;
 	      menu->title = title;
 	      menu->help = mutt_compile_help (helpstr, sizeof (helpstr), MENU_QUERY, QueryHelp);
 

@@ -1,6 +1,6 @@
 /* mutt - text oriented MIME mail user agent
  * Copyright (C) 2002 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 2005-7 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 2005-9 Brendan Cully <brendan@kublai.com>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -89,13 +89,14 @@ smtp_get_resp (CONNECTION * conn)
 
   do {
     n = mutt_socket_readln (buf, sizeof (buf), conn);
-    if (n == -1)
+    if (n < 4) {
+      /* read error, or no response code */
       return smtp_err_read;
-    n = atoi (buf);
+    }
 
     if (!ascii_strncasecmp ("8BITMIME", buf + 4, 8))
       mutt_bit_set (Capabilities, EIGHTBITMIME);
-    else if (!ascii_strncasecmp ("AUTH", buf + 4, 4))
+    else if (!ascii_strncasecmp ("AUTH ", buf + 4, 5))
     {
       mutt_bit_set (Capabilities, AUTH);
       FREE (&AuthMechs);
@@ -105,6 +106,8 @@ smtp_get_resp (CONNECTION * conn)
       mutt_bit_set (Capabilities, DSN);
     else if (!ascii_strncasecmp ("STARTTLS", buf + 4, 8))
       mutt_bit_set (Capabilities, STARTTLS);
+
+    n = atoi (buf);
   } while (buf[3] == '-');
 
   if (smtp_success (n) || n == smtp_continue)
@@ -210,8 +213,21 @@ mutt_smtp_send (const ADDRESS* from, const ADDRESS* to, const ADDRESS* cc,
 {
   CONNECTION *conn;
   ACCOUNT account;
-  int ret = -1;
+  const char* envfrom;
   char buf[1024];
+  int ret = -1;
+
+  /* it might be better to synthesize an envelope from from user and host
+   * but this condition is most likely arrived at accidentally */
+  if (EnvFrom)
+    envfrom = EnvFrom->mailbox;
+  else if (from)
+    envfrom = from->mailbox;
+  else
+  {
+    mutt_error (_("No from address given"));
+    return -1;
+  }
 
   if (smtp_fill_account (&account) < 0)
     return ret;
@@ -229,8 +245,7 @@ mutt_smtp_send (const ADDRESS* from, const ADDRESS* to, const ADDRESS* cc,
     FREE (&AuthMechs);
 
     /* send the sender's address */
-    ret = snprintf (buf, sizeof (buf), "MAIL FROM:<%s>",
-                    EnvFrom ? EnvFrom->mailbox : from->mailbox);
+    ret = snprintf (buf, sizeof (buf), "MAIL FROM:<%s>", envfrom);
     if (eightbit && mutt_bit_isset (Capabilities, EIGHTBITMIME))
     {
       safe_strncat (buf, sizeof (buf), " BODY=8BITMIME", 15);
@@ -325,6 +340,7 @@ static int smtp_fill_account (ACCOUNT* account)
 static int smtp_helo (CONNECTION* conn)
 {
   char buf[LONG_STRING];
+  const char* fqdn;
 
   memset (Capabilities, 0, sizeof (Capabilities));
 
@@ -339,7 +355,10 @@ static int smtp_helo (CONNECTION* conn)
 #endif
   }
 
-  snprintf (buf, sizeof (buf), "%s %s\r\n", Esmtp ? "EHLO" : "HELO", Fqdn);
+  if(!(fqdn = mutt_fqdn (0)))
+    fqdn = NONULL (Hostname);
+
+  snprintf (buf, sizeof (buf), "%s %s\r\n", Esmtp ? "EHLO" : "HELO", fqdn);
   /* XXX there should probably be a wrapper in mutt_socket.c that
     * repeatedly calls conn->write until all data is sent.  This
     * currently doesn't check for a short write.
@@ -435,7 +454,14 @@ static int smtp_auth (CONNECTION* conn)
 
       dprint (2, (debugfile, "smtp_authenticate: Trying method %s\n", method));
 
-      if ((r = smtp_auth_sasl (conn, method)) != SMTP_AUTH_UNAVAIL)
+      r = smtp_auth_sasl (conn, method);
+      
+      if (r == SMTP_AUTH_FAIL && delim)
+      {
+        mutt_error (_("%s authentication failed, trying next method"), method);
+        mutt_sleep (1);
+      }
+      else if (r != SMTP_AUTH_UNAVAIL)
         break;
     }
 
@@ -447,7 +473,12 @@ static int smtp_auth (CONNECTION* conn)
   if (r != SMTP_AUTH_SUCCESS)
     mutt_account_unsetpass (&conn->account);
 
-  if (r == SMTP_AUTH_UNAVAIL)
+  if (r == SMTP_AUTH_FAIL)
+  {
+    mutt_error (_("SASL authentication failed"));
+    mutt_sleep (1);
+  }
+  else if (r == SMTP_AUTH_UNAVAIL)
   {
     mutt_error (_("No authenticators available"));
     mutt_sleep (1);
@@ -484,7 +515,8 @@ static int smtp_auth_sasl (CONNECTION* conn, const char* mechlist)
     return SMTP_AUTH_UNAVAIL;
   }
 
-  mutt_message (_("Authenticating (%s)..."), mech);
+  if (!option(OPTNOCURSES))
+    mutt_message (_("Authenticating (%s)..."), mech);
 
   snprintf (buf, sizeof (buf), "AUTH %s", mech);
   if (len)
@@ -539,17 +571,8 @@ static int smtp_auth_sasl (CONNECTION* conn, const char* mechlist)
     mutt_sasl_setup_conn (conn, saslconn);
     return SMTP_AUTH_SUCCESS;
   }
-  else if (SmtpAuthenticators && *SmtpAuthenticators)
-  {
-    /* if we're given a mech list to attempt, failure means try the next */
-    dprint (2, (debugfile, "smtp_auth_sasl: %s failed\n", mech));
-    sasl_dispose (&saslconn);
-    return SMTP_AUTH_UNAVAIL;
-  }
 
 fail:
-  mutt_error (_("SASL authentication failed"));
-  mutt_sleep (1);
   sasl_dispose (&saslconn);
   return SMTP_AUTH_FAIL;
 }

@@ -2,7 +2,7 @@
 ## Use aclocal -I m4; automake --foreign
 
 AUTOMAKE_OPTIONS = 1.6 foreign
-EXTRA_PROGRAMS = mutt_dotlock pgpring pgpewrap
+EXTRA_PROGRAMS = mutt_dotlock pgpring pgpewrap mutt_md5
 
 if BUILD_IMAP
 IMAP_SUBDIR = imap
@@ -29,7 +29,7 @@ mutt_SOURCES = \
 	score.c send.c sendlib.c signal.c sort.c \
 	status.c system.c thread.c charset.c history.c lib.c \
 	muttlib.c editmsg.c mbyte.c \
-	url.c ascii.c mutt_idna.c crypt-mod.c crypt-mod.h
+	url.c ascii.c crypt-mod.c crypt-mod.h
 
 nodist_mutt_SOURCES = $(BUILT_SOURCES)
 
@@ -47,14 +47,14 @@ AM_CPPFLAGS=-I. -I$(top_srcdir) $(IMAP_INCLUDES) $(GPGME_CFLAGS) -Iintl
 
 CPPFLAGS=@CPPFLAGS@
 
-EXTRA_mutt_SOURCES = account.c md5.c mutt_sasl.c mutt_socket.c mutt_ssl.c \
-	mutt_tunnel.c pop.c pop_auth.c pop_lib.c smime.c pgp.c pgpinvoke.c pgpkey.c \
-	pgplib.c sha1.c pgpmicalg.c gnupgparse.c resize.c dotlock.c remailer.c \
-	smtp.c browser.h mbyte.h remailer.h url.h \
-	crypt-mod-pgp-classic.c crypt-mod-smime-classic.c \
-	pgppacket.c mutt_idna.h hcache.h hcache.c bcache.c bcache.h mutt_ssl_gnutls.c \
-	crypt-gpgme.c crypt-mod-pgp-gpgme.c crypt-mod-smime-gpgme.c \
-	utf8.c wcwidth.c 
+EXTRA_mutt_SOURCES = account.c bcache.c crypt-gpgme.c crypt-mod-pgp-classic.c \
+	crypt-mod-pgp-gpgme.c crypt-mod-smime-classic.c \
+	crypt-mod-smime-gpgme.c dotlock.c gnupgparse.c hcache.c md5.c \
+	mutt_idna.c mutt_sasl.c mutt_socket.c mutt_ssl.c mutt_ssl_gnutls.c \
+	mutt_tunnel.c pgp.c pgpinvoke.c pgpkey.c pgplib.c pgpmicalg.c \
+	pgppacket.c pop.c pop_auth.c pop_lib.c remailer.c resize.c sha1.c \
+	smime.c smtp.c utf8.c wcwidth.c \
+	bcache.h browser.h hcache.h mbyte.h mutt_idna.h remailer.h url.h
 
 EXTRA_DIST = COPYRIGHT GPL OPS OPS.PGP OPS.CRYPT OPS.SMIME TODO UPDATING \
 	configure account.h \
@@ -68,7 +68,7 @@ EXTRA_DIST = COPYRIGHT GPL OPS OPS.PGP OPS.CRYPT OPS.SMIME TODO UPDATING \
 	mbyte.h lib.h extlib.c pgpewrap.c smime_keys.pl pgplib.h \
 	README.SSL smime.h \
 	muttbug pgppacket.h depcomp ascii.h BEWARE PATCHES patchlist.sh \
-	ChangeLog ChangeLog.old mkchangelog.sh mutt_idna.h \
+	ChangeLog mkchangelog.sh mutt_idna.h \
 	snprintf.c regex.c crypt-gpgme.h hcachever.sh.in
 
 EXTRA_SCRIPTS = smime_keys
@@ -80,6 +80,12 @@ mutt_dotlock_DEPENDENCIES = @LIBOBJS@
 pgpring_SOURCES = pgppubring.c pgplib.c lib.c extlib.c sha1.c md5.c pgppacket.c ascii.c
 pgpring_LDADD = @LIBOBJS@ $(INTLLIBS) 
 pgpring_DEPENDENCIES = @LIBOBJS@ $(INTLDEPS)
+
+mutt_md5_SOURCES = md5.c
+mutt_md5_CFLAGS = -DMD5UTIL
+mutt_md5_LDADD =
+
+noinst_PROGRAMS = $(MUTT_MD5)
 
 mutt_dotlock.c: dotlock.c
 	cp $(srcdir)/dotlock.c mutt_dotlock.c
@@ -114,7 +120,7 @@ reldate.h: $(srcdir)/ChangeLog
 	cmp -s reldate.h.tmp reldate.h || cp reldate.h.tmp reldate.h; \
 	rm reldate.h.tmp
 
-hcversion.h: $(srcdir)/mutt.h $(srcdir)/rfc822.h hcachever.sh
+hcversion.h: $(srcdir)/mutt.h $(srcdir)/rfc822.h hcachever.sh $(MUTT_MD5)
 	( echo '#include "config.h"'; echo '#include "mutt.h"'; ) \
 	| $(CPP) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) - | sh ./hcachever.sh hcversion.h
 
@@ -147,22 +153,14 @@ uninstall-local:
 		rm $(DESTDIR)$(sysconfdir)/$${i}.dist ; \
 	done
 
-# Don't make this one ChangeLog - it's intended to be
-# used manually.
-
 pclean:
 	cat /dev/null > $(top_srcdir)/PATCHES
 
 check-security:
 	(cd $(top_srcdir) && ./check_sec.sh)
 
-commit-real:
-	(cd $(top_srcdir) && cvs commit)
-
-commit-changelog:
-	(cd $(top_srcdir) && cvs commit -m "# changelog commit" ChangeLog)
-
-commit: pclean check-security commit-real update-changelog commit-changelog
+commit:
+	@echo "make commit is obsolete; use hg-commit"; false
 
 update-changelog:
 	(cd $(top_srcdir); \
@@ -175,5 +173,4 @@ mutt-dist:
 update-doc:
 	(cd doc && $(MAKE) update-doc)
 
-.PHONY: commit pclean check-security commit-real commit-changelog
-# .PHONY: changelog ChangeLog
+.PHONY: commit pclean check-security

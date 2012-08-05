@@ -23,6 +23,7 @@
 #include "mutt.h"
 #include "mapping.h"
 #include "mutt_curses.h"
+#include "mutt_menu.h"
 #include "mutt_regex.h"
 #include "history.h"
 #include "keymap.h"
@@ -56,7 +57,7 @@
 	  snprintf (err->data, err->dsize, \
 	    _("Not available in this menu.")); \
 	  return (-1); \
-	} else
+	}
 
 typedef struct myvar
 {
@@ -73,7 +74,7 @@ static void myvar_set (const char* var, const char* val);
 static const char* myvar_get (const char* var);
 static void myvar_del (const char* var);
 
-void toggle_quadoption (int opt)
+static void toggle_quadoption (int opt)
 {
   int n = opt/4;
   int b = (opt % 4) * 2;
@@ -119,7 +120,7 @@ int query_quadoption (int opt, const char *prompt)
 
 /* given the variable ``s'', return the index into the rc_vars array which
    matches, or -1 if the variable is not found.  */
-int mutt_option_index (char *s)
+static int mutt_option_index (char *s)
 {
   int i;
 
@@ -236,7 +237,7 @@ int mutt_extract_token (BUFFER *dest, BUFFER *tok, int flags)
       } while (pc && *pc != '`');
       if (!pc)
       {
-	dprint (1, (debugfile, "mutt_get_token: mismatched backtics\n"));
+	dprint (1, (debugfile, "mutt_get_token: mismatched backticks\n"));
 	return (-1);
       }
       cmd = mutt_substrdup (tok->dptr, pc);
@@ -943,8 +944,8 @@ static int parse_attach_list (BUFFER *buf, BUFFER *s, LIST **ldata, BUFFER *err)
 
   /* Find the last item in the list that data points to. */
   lastp = NULL;
-  dprint(5, (debugfile, "parse_attach_list: ldata = %08x, *ldata = %08x\n",
-	      (unsigned int)ldata, (unsigned int)*ldata));
+  dprint(5, (debugfile, "parse_attach_list: ldata = %p, *ldata = %p\n",
+	      (void *)ldata, (void *)*ldata));
   for (listp = *ldata; listp; listp = listp->next)
   {
     a = (ATTACH_MATCH *)listp->data;
@@ -1263,7 +1264,7 @@ static int parse_unalias (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *er
     {
       if (CurrentMenu == MENU_ALIAS)
       {
-	for (tmp = Aliases; tmp ; tmp = tmp->next)
+	for (tmp = Aliases; tmp ; tmp = tmp->next) 
 	  tmp->del = 1;
 	set_option (OPTFORCEREDRAWINDEX);
       }
@@ -1336,6 +1337,7 @@ static int parse_alias (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
   }
   else
   {
+    mutt_alias_delete_reverse (tmp);
     /* override the previous value */
     rfc822_free_address (&tmp->addr);
     if (CurrentMenu == MENU_ALIAS)
@@ -1343,7 +1345,7 @@ static int parse_alias (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
   }
 
   mutt_extract_token (buf, s, M_TOKEN_QUOTE | M_TOKEN_SPACE | M_TOKEN_SEMICOLON);
-  dprint (2, (debugfile, "parse_alias: Second token is '%s'.\n",
+  dprint (3, (debugfile, "parse_alias: Second token is '%s'.\n",
 	      buf->data));
 
   tmp->addr = mutt_parse_adrlist (tmp->addr, buf->data);
@@ -1360,7 +1362,7 @@ static int parse_alias (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
   }
 
   mutt_group_context_add_adrlist (gc, tmp->addr);
-
+  mutt_alias_add_reverse (tmp);
 
 #ifdef DEBUG
   if (debuglevel >= 2) 
@@ -1370,10 +1372,10 @@ static int parse_alias (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
     for (a = tmp->addr; a && a->mailbox; a = a->next)
     {
       if (!a->group)
-	dprint (2, (debugfile, "parse_alias:   %s\n",
+	dprint (3, (debugfile, "parse_alias:   %s\n",
 		    a->mailbox));
       else
-	dprint (2, (debugfile, "parse_alias:   Group %s\n",
+	dprint (3, (debugfile, "parse_alias:   Group %s\n",
 		    a->mailbox));
     }
   }
@@ -1684,6 +1686,26 @@ static void pretty_var (char *dst, size_t len, const char *option, const char *v
   *p = 0;
 }
 
+static int check_charset (struct option_t *opt, const char *val)
+{
+  char *p, *q = NULL, *s = safe_strdup (val);
+  int rc = 0, strict = strcmp (opt->option, "send_charset") == 0;
+
+  for (p = strtok_r (s, ":", &q); p; p = strtok_r (NULL, ":", &q))
+  {
+    if (!*p)
+      continue;
+    if (mutt_check_charset (p, strict) < 0)
+    {
+      rc = -1;
+      break;
+    }
+  }
+
+  FREE(&s);
+  return rc;
+}
+
 static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
 {
   int query, unset, inv, reset, r = 0;
@@ -1830,7 +1852,7 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
       }
       else if (query || *s->dptr != '=')
       {
-	char _tmp[STRING];
+	char _tmp[LONG_STRING];
 	const char *val = NULL;
 
         if (myvar)
@@ -1856,7 +1878,7 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
 	{
 	  _tmp[0] = '\0';
 	  strfcpy (_tmp, NONULL(*((char **) MuttVars[idx].data)), sizeof (_tmp));
-	  mutt_pretty_mailbox (_tmp);
+	  mutt_pretty_mailbox (_tmp, sizeof (_tmp));
 	  val = _tmp;
 	}
 	else
@@ -1877,14 +1899,9 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
 	  myvar = safe_strdup (myvar);
           myvar_del (myvar);
 	}
-        else if (DTYPE (MuttVars[idx].type) == DT_ADDR)
-	  rfc822_free_address ((ADDRESS **) MuttVars[idx].data);
-        else
-	  /* MuttVars[idx].data is already 'char**' (or some 'void**') or... 
-	   * so cast to 'void*' is okay */
-	  FREE ((void *) MuttVars[idx].data);		/* __FREE_CHECKED__ */
 
         mutt_extract_token (tmp, s, 0);
+
         if (myvar)
         {
           myvar_set (myvar, tmp->data);
@@ -1893,18 +1910,32 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
         }
         else if (DTYPE (MuttVars[idx].type) == DT_PATH)
         {
+	  /* MuttVars[idx].data is already 'char**' (or some 'void**') or... 
+	   * so cast to 'void*' is okay */
+	  FREE ((void *) MuttVars[idx].data);		/* __FREE_CHECKED__ */
+
 	  strfcpy (scratch, tmp->data, sizeof (scratch));
 	  mutt_expand_path (scratch, sizeof (scratch));
 	  *((char **) MuttVars[idx].data) = safe_strdup (scratch);
         }
         else if (DTYPE (MuttVars[idx].type) == DT_STR)
         {
+	  if (strstr (MuttVars[idx].option, "charset") &&
+	      check_charset (&MuttVars[idx], tmp->data) < 0)
+	  {
+	    snprintf (err->data, err->dsize, _("Invalid value for option %s: \"%s\""),
+		      MuttVars[idx].option, tmp->data);
+	    return (-1);
+	  }
+
+	  FREE ((void *) MuttVars[idx].data);		/* __FREE_CHECKED__ */
 	  *((char **) MuttVars[idx].data) = safe_strdup (tmp->data);
 	  if (mutt_strcmp (MuttVars[idx].option, "charset") == 0)
 	    mutt_set_charset (Charset);
         }
         else
         {
+	  rfc822_free_address ((ADDRESS **) MuttVars[idx].data);
 	  *((ADDRESS **) MuttVars[idx].data) = rfc822_parse_adrlist (NULL, tmp->data);
         }
       }
@@ -2087,6 +2118,13 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
 	else
 	  *ptr = -*ptr;
       }
+#ifdef USE_IMAP
+      else if (mutt_strcmp (MuttVars[idx].option, "imap_pipeline_depth") == 0)
+      {
+        if (*ptr < 0)
+          *ptr = 0;
+      }
+#endif
     }
     else if (DTYPE (MuttVars[idx].type) == DT_QUAD)
     {
@@ -2310,6 +2348,9 @@ int mutt_parse_rc_line (/* const */ char *line, BUFFER *token, BUFFER *err)
   int i, r = -1;
   BUFFER expn;
 
+  if (!line || !*line)
+    return 0;
+
   memset (&expn, 0, sizeof (expn));
   expn.data = expn.dptr = line;
   expn.dsize = mutt_strlen (line);
@@ -2354,13 +2395,13 @@ finish:
 #define NUMCOMMANDS (sizeof (Commands)/sizeof (Commands[0]))
 /* initial string that starts completion. No telling how much crap 
  * the user has typed so far. Allocate LONG_STRING just to be sure! */
-char User_typed [LONG_STRING] = {0}; 
+static char User_typed [LONG_STRING] = {0}; 
 
-int  Num_matched = 0; /* Number of matches for completion */
-char Completed [STRING] = {0}; /* completed string (command or variable) */
-const char **Matches;
+static int  Num_matched = 0; /* Number of matches for completion */
+static char Completed [STRING] = {0}; /* completed string (command or variable) */
+static const char **Matches;
 /* this is a lie until mutt_init runs: */
-int  Matches_listsize = MAX(NUMVARS,NUMCOMMANDS) + 10;
+static int  Matches_listsize = MAX(NUMVARS,NUMCOMMANDS) + 10;
 
 static void matches_ensure_morespace(int current)
 {
@@ -2618,7 +2659,7 @@ static int var_to_string (int idx, char* val, size_t len)
   {
     strfcpy (tmp, NONULL (*((char **) MuttVars[idx].data)), sizeof (tmp));
     if (DTYPE (MuttVars[idx].type) == DT_PATH)
-      mutt_pretty_mailbox (tmp);
+      mutt_pretty_mailbox (tmp, sizeof (tmp));
   }
   else if (DTYPE (MuttVars[idx].type) == DT_ADDR)
   {
@@ -2703,7 +2744,7 @@ int mutt_query_variables (LIST *queries)
 {
   LIST *p;
   
-  char errbuff[STRING];
+  char errbuff[LONG_STRING];
   char command[STRING];
   
   BUFFER err, token;
@@ -2735,7 +2776,7 @@ int mutt_dump_variables (void)
 {
   int i;
   
-  char errbuff[STRING];
+  char errbuff[LONG_STRING];
   char command[STRING];
   
   BUFFER err, token;
@@ -2845,7 +2886,10 @@ void mutt_init (int skip_sys_rc, LIST *commands)
   err.dsize = sizeof (error);
 
   Groups = hash_create (1031);
+  ReverseAlias = hash_create (1031);
   
+  mutt_menu_init ();
+
   /* 
    * XXX - use something even more difficult to predict?
    */

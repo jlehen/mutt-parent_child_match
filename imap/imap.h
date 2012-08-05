@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 2000-6 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 2000-7 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -69,5 +69,7 @@ void imap_pretty_mailbox (char* path);
 
 int imap_wait_keepalive (pid_t pid);
 void imap_keepalive (void);
+
+int imap_account_match (const ACCOUNT* a1, const ACCOUNT* a2);
 
 #endif

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 2000 Edmund Grimley Evans <edmundo@rano.org>
+ * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 2000-1 Edmund Grimley Evans <edmundo@rano.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -120,7 +120,7 @@ static void my_wcstombs (char *dest, size_t dlen, const wchar_t *src, size_t sle
   }
 }
 
-size_t my_mbstowcs (wchar_t **pwbuf, size_t *pwbuflen, size_t i, char *buf)
+static size_t my_mbstowcs (wchar_t **pwbuf, size_t *pwbuflen, size_t i, char *buf)
 {
   wchar_t wc;
   mbstate_t st;
@@ -572,7 +572,7 @@ int _mutt_enter_string (char *buf, size_t buflen, int y, int x,
 	      set_option (OPTNEEDREDRAW);
 	      if (*buf)
 	      {
-		mutt_pretty_mailbox (buf);
+		mutt_pretty_mailbox (buf, buflen);
 		if (!pass)
 		  mutt_history_add (hclass, buf, 1);
 		rv = 0;
@@ -603,7 +603,7 @@ int _mutt_enter_string (char *buf, size_t buflen, int y, int x,
 	    event_t event;
 	    /*ADDCH (LastKey);*/
 	    event = mutt_getch ();
-	    if (event.ch != -1)
+	    if (event.ch >= 0)
 	    {
 	      LastKey = event.ch;
 	      goto self_insert;

@@ -98,13 +98,17 @@ static int tls_socket_read (CONNECTION* conn, char* buf, size_t len)
     return -1;
   }
 
-  ret = gnutls_record_recv (data->state, buf, len);
-  if (ret < 0 && gnutls_error_is_fatal(ret) == 1)
-  {
-    mutt_error ("tls_socket_read (%s)", gnutls_strerror (ret));
-    mutt_sleep (4);
-    return -1;
+  do {
+    ret = gnutls_record_recv (data->state, buf, len);
+    if (ret < 0 && gnutls_error_is_fatal(ret) == 1)
+    {
+      mutt_error ("tls_socket_read (%s)", gnutls_strerror (ret));
+      mutt_sleep (4);
+      return -1;
+    }
   }
+  while (ret == GNUTLS_E_AGAIN || ret == GNUTLS_E_INTERRUPTED);
+
   return ret;
 }
 
@@ -169,6 +173,61 @@ int mutt_ssl_starttls (CONNECTION* conn)
   return 0;
 }
 
+static void tls_get_client_cert (CONNECTION* conn)
+{
+  tlssockdata *data = conn->sockdata;
+  const gnutls_datum_t* crtdata;
+  gnutls_x509_crt_t clientcrt;
+  char* dn;
+  char* cn;
+  char* cnend;
+  size_t dnlen;
+
+  /* get our cert CN if we have one */
+  if (!(crtdata = gnutls_certificate_get_ours (data->state)))
+    return;
+
+  if (gnutls_x509_crt_init (&clientcrt) < 0)
+  {
+    dprint (1, (debugfile, "Failed to init gnutls crt\n"));
+    return;
+  }
+  if (gnutls_x509_crt_import (clientcrt, crtdata, GNUTLS_X509_FMT_DER) < 0)
+  {
+    dprint (1, (debugfile, "Failed to import gnutls client crt\n"));
+    goto err_crt;
+  }
+  /* get length of DN */
+  dnlen = 0;
+  gnutls_x509_crt_get_dn (clientcrt, NULL, &dnlen);
+  if (!(dn = calloc (1, dnlen)))
+  {
+    dprint (1, (debugfile, "could not allocate DN\n"));
+    goto err_crt;
+  }
+  gnutls_x509_crt_get_dn (clientcrt, dn, &dnlen);
+  dprint (2, (debugfile, "client certificate DN: %s\n", dn));
+
+  /* extract CN to use as external user name */
+  if (!(cn = strstr (dn, "CN=")))
+  {
+    dprint (1, (debugfile, "no CN found in DN\n"));
+    goto err_dn;
+  }
+  cn += 3;
+
+  if ((cnend = strstr (dn, ",EMAIL=")))
+    *cnend = '\0';
+
+  /* if we are using a client cert, SASL may expect an external auth name */
+  mutt_account_getuser (&conn->account);
+
+err_dn:
+  FREE (&dn);
+err_crt:
+  gnutls_x509_crt_deinit (clientcrt);
+}
+
 static int protocol_priority[] = {GNUTLS_TLS1, GNUTLS_SSL3, 0};
 
 /* tls_negotiate: After TLS state has been initialised, attempt to negotiate
@@ -199,10 +258,12 @@ static int tls_negotiate (CONNECTION * conn)
                                             GNUTLS_X509_FMT_PEM);
   }
 
-/*
-  gnutls_set_x509_client_key (data->xcred, "", "");
-  gnutls_set_x509_cert_callback (data->xcred, cert_callback);
-*/
+  if (SslClientCert)
+  {
+    dprint (2, (debugfile, "Using client certificate %s\n", SslClientCert));
+    gnutls_certificate_set_x509_key_file (data->xcred, SslClientCert,
+                                          SslClientCert, GNUTLS_X509_FMT_PEM);
+  }
 
   gnutls_init(&data->state, GNUTLS_CLIENT);
 
@@ -273,12 +334,16 @@ static int tls_negotiate (CONNECTION * conn)
   /* NB: gnutls_cipher_get_key_size() returns key length in bytes */
   conn->ssf = gnutls_cipher_get_key_size (gnutls_cipher_get (data->state)) * 8;
 
-  mutt_message (_("SSL/TLS connection using %s (%s/%s/%s)"),
-		gnutls_protocol_get_name (gnutls_protocol_get_version (data->state)),
-		gnutls_kx_get_name (gnutls_kx_get (data->state)),
-		gnutls_cipher_get_name (gnutls_cipher_get (data->state)),
-		gnutls_mac_get_name (gnutls_mac_get (data->state)));
-  mutt_sleep (0);
+  tls_get_client_cert (conn);
+
+  if (!option(OPTNOCURSES)) {
+    mutt_message (_("SSL/TLS connection using %s (%s/%s/%s)"),
+                  gnutls_protocol_get_name (gnutls_protocol_get_version (data->state)),
+                  gnutls_kx_get_name (gnutls_kx_get (data->state)),
+                  gnutls_cipher_get_name (gnutls_cipher_get (data->state)),
+                  gnutls_mac_get_name (gnutls_mac_get (data->state)));
+    mutt_sleep (0);
+  }
 
   return 0;
 
@@ -467,11 +532,17 @@ static int tls_check_stored_hostname (const gnutls_datum *cert,
   return 0;
 }
 
-static int tls_check_certificate (CONNECTION* conn)
+static int tls_check_one_certificate (const gnutls_datum_t *certdata,
+                                      gnutls_certificate_status certstat,
+                                      const char* hostname, int idx, int len)
 {
-  tlssockdata *data = conn->sockdata;
-  gnutls_session state = data->state;
-  char helpstr[LONG_STRING];
+  gnutls_x509_crt cert;
+  int certerr_hostname = 0;
+  int certerr_expired = 0;
+  int certerr_notyetvalid = 0;
+  int certerr_nottrusted = 0;
+  int certerr_revoked = 0;
+  int certerr_signernotca = 0;
   char buf[SHORT_STRING];
   char fpbuf[SHORT_STRING];
   size_t buflen;
@@ -482,118 +553,67 @@ static int tls_check_certificate (CONNECTION* conn)
   char dn_locality[SHORT_STRING];
   char dn_province[SHORT_STRING];
   char dn_country[SHORT_STRING];
-  MUTTMENU *menu;
-  int done, row, i, ret;
-  FILE *fp;
   time_t t;
-  const gnutls_datum *cert_list;
-  unsigned int cert_list_size = 0;
-  gnutls_certificate_status certstat;
   char datestr[30];
-  gnutls_x509_crt cert;
+  MUTTMENU *menu;
+  char helpstr[LONG_STRING];
+  char title[STRING];
+  FILE *fp;
   gnutls_datum pemdata;
-  int certerr_expired = 0;
-  int certerr_notyetvalid = 0;
-  int certerr_hostname = 0;
-  int certerr_nottrusted = 0;
-  int certerr_revoked = 0;
-  int certerr_signernotca = 0;
+  int i, row, done, ret;
 
-  if (gnutls_auth_get_type(state) != GNUTLS_CRD_CERTIFICATE)
-  {
-    mutt_error (_("Unable to get certificate from peer"));
-    mutt_sleep (2);
-    return 0;
-  }
-
-  certstat = gnutls_certificate_verify_peers(state);
-
-  if (certstat == GNUTLS_E_NO_CERTIFICATE_FOUND)
-  {
-    mutt_error (_("Unable to get certificate from peer"));
-    mutt_sleep (2);
-    return 0;
-  }
-  if (certstat < 0)
-  {
-    mutt_error (_("Certificate verification error (%s)"), gnutls_strerror(certstat));
-    mutt_sleep (2);
-    return 0;
-  }
-
-  /* We only support X.509 certificates (not OpenPGP) at the moment */
-  if (gnutls_certificate_type_get(state) != GNUTLS_CRT_X509)
-  {
-    mutt_error (_("Certificate is not X.509"));
-    mutt_sleep (2);
-    return 0;
-  }
-
-  if (gnutls_x509_crt_init(&cert) < 0)
+  if (gnutls_x509_crt_init (&cert) < 0)
   {
     mutt_error (_("Error initialising gnutls certificate data"));
     mutt_sleep (2);
     return 0;
   }
-
-  cert_list = gnutls_certificate_get_peers(state, &cert_list_size);
-  if (!cert_list)
-  {
-    mutt_error (_("Unable to get certificate from peer"));
-    mutt_sleep (2);
-    return 0;
-  }
-
-  /* FIXME: Currently only check first certificate in chain. */
-  if (gnutls_x509_crt_import(cert, &cert_list[0], GNUTLS_X509_FMT_DER) < 0)
+  
+  if (gnutls_x509_crt_import (cert, certdata, GNUTLS_X509_FMT_DER) < 0)
   {
     mutt_error (_("Error processing certificate data"));
     mutt_sleep (2);
-    return 0;
+    gnutls_x509_crt_deinit (cert);
+    return -1;
   }
-
-  if (gnutls_x509_crt_get_expiration_time(cert) < time(NULL))
-  {
+  
+  if (gnutls_x509_crt_get_expiration_time (cert) < time(NULL))
     certerr_expired = 1;
-  }
-
-  if (gnutls_x509_crt_get_activation_time(cert) > time(NULL))
-  {
+  if (gnutls_x509_crt_get_activation_time (cert) > time(NULL))
     certerr_notyetvalid = 1;
-  }
 
-  if (!gnutls_x509_crt_check_hostname(cert, conn->account.host) &&
-      !tls_check_stored_hostname (&cert_list[0], conn->account.host))
+  if (!idx)
   {
-    certerr_hostname = 1;
+    if (!gnutls_x509_crt_check_hostname (cert, hostname) &&
+        !tls_check_stored_hostname (certdata, hostname))
+      certerr_hostname = 1;
   }
-
+  
   /* see whether certificate is in our cache (certificates file) */
-  if (tls_compare_certificates (&cert_list[0]))
+  if (tls_compare_certificates (certdata))
   {
     if (certstat & GNUTLS_CERT_INVALID)
     {
       /* doesn't matter - have decided is valid because server
-         certificate is in our trusted cache */
+       certificate is in our trusted cache */
       certstat ^= GNUTLS_CERT_INVALID;
     }
-
+    
     if (certstat & GNUTLS_CERT_SIGNER_NOT_FOUND)
     {
       /* doesn't matter that we haven't found the signer, since
-         certificate is in our trusted cache */
+       certificate is in our trusted cache */
       certstat ^= GNUTLS_CERT_SIGNER_NOT_FOUND;
     }
-
+    
     if (certstat & GNUTLS_CERT_SIGNER_NOT_CA)
     {
       /* Hmm. Not really sure how to handle this, but let's say
-         that we don't care if the CA certificate hasn't got the
-         correct X.509 basic constraints if server certificate is
-         in our cache. */
+       that we don't care if the CA certificate hasn't got the
+       correct X.509 basic constraints if server certificate is
+       in our cache. */
       certstat ^= GNUTLS_CERT_SIGNER_NOT_CA;
     }
-
   }
 
   if (certstat & GNUTLS_CERT_REVOKED)
@@ -601,20 +621,20 @@ static int tls_check_certificate (CONNECTION* conn)
     certerr_revoked = 1;
     certstat ^= GNUTLS_CERT_REVOKED;
   }
-
+  
   if (certstat & GNUTLS_CERT_INVALID)
   {
     certerr_nottrusted = 1;
     certstat ^= GNUTLS_CERT_INVALID;
   }
-
+  
   if (certstat & GNUTLS_CERT_SIGNER_NOT_FOUND)
   {
     /* NB: already cleared if cert in cache */
     certerr_nottrusted = 1;
     certstat ^= GNUTLS_CERT_SIGNER_NOT_FOUND;
   }
-
+  
   if (certstat & GNUTLS_CERT_SIGNER_NOT_CA)
   {
     /* NB: already cleared if cert in cache */
@@ -624,56 +644,55 @@ static int tls_check_certificate (CONNECTION* conn)
 
   /* OK if signed by (or is) a trusted certificate */
   /* we've been zeroing the interesting bits in certstat - 
-     don't return OK if there are any unhandled bits we don't
-     understand */
+   don't return OK if there are any unhandled bits we don't
+   understand */
   if (!(certerr_expired || certerr_notyetvalid || 
 	certerr_hostname || certerr_nottrusted) && certstat == 0)
   {
-    gnutls_x509_crt_deinit(cert);
+    gnutls_x509_crt_deinit (cert);
     return 1;
   }
 
-
   /* interactive check from user */
-  menu = mutt_new_menu ();
+  menu = mutt_new_menu (-1);
   menu->max = 25;
   menu->dialog = (char **) safe_calloc (1, menu->max * sizeof (char *));
   for (i = 0; i < menu->max; i++)
     menu->dialog[i] = (char *) safe_calloc (1, SHORT_STRING * sizeof (char));
-
+  
   row = 0;
   strfcpy (menu->dialog[row], _("This certificate belongs to:"), SHORT_STRING);
   row++;
-
-  buflen = sizeof(dn_common_name);
-  if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0,
-                                    dn_common_name, &buflen) != 0)
+  
+  buflen = sizeof (dn_common_name);
+  if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0,
+                                     dn_common_name, &buflen) != 0)
     dn_common_name[0] = '\0';
-  buflen = sizeof(dn_email);
-  if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_PKCS9_EMAIL, 0, 0,
-                                    dn_email, &buflen) != 0)
+  buflen = sizeof (dn_email);
+  if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_PKCS9_EMAIL, 0, 0,
+                                     dn_email, &buflen) != 0)
     dn_email[0] = '\0';
-  buflen = sizeof(dn_organization);
-  if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_ORGANIZATION_NAME, 0, 0,
-                                    dn_organization, &buflen) != 0)
+  buflen = sizeof (dn_organization);
+  if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_ORGANIZATION_NAME, 0, 0,
+                                     dn_organization, &buflen) != 0)
     dn_organization[0] = '\0';
-  buflen = sizeof(dn_organizational_unit);
-  if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_ORGANIZATIONAL_UNIT_NAME, 0, 0,
-                                    dn_organizational_unit, &buflen) != 0)
+  buflen = sizeof (dn_organizational_unit);
+  if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_ORGANIZATIONAL_UNIT_NAME, 0, 0,
+                                     dn_organizational_unit, &buflen) != 0)
     dn_organizational_unit[0] = '\0';
-  buflen = sizeof(dn_locality);
-  if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_LOCALITY_NAME, 0, 0,
-                                    dn_locality, &buflen) != 0)
+  buflen = sizeof (dn_locality);
+  if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_LOCALITY_NAME, 0, 0,
+                                     dn_locality, &buflen) != 0)
     dn_locality[0] = '\0';
-  buflen = sizeof(dn_province);
-  if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_STATE_OR_PROVINCE_NAME, 0, 0,
-                                    dn_province, &buflen) != 0)
+  buflen = sizeof (dn_province);
+  if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_STATE_OR_PROVINCE_NAME, 0, 0,
+                                     dn_province, &buflen) != 0)
     dn_province[0] = '\0';
-  buflen = sizeof(dn_country);
-  if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_COUNTRY_NAME, 0, 0,
-                                    dn_country, &buflen) != 0)
+  buflen = sizeof (dn_country);
+  if (gnutls_x509_crt_get_dn_by_oid (cert, GNUTLS_OID_X520_COUNTRY_NAME, 0, 0,
+                                     dn_country, &buflen) != 0)
     dn_country[0] = '\0';
-
+  
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s  %s", dn_common_name, dn_email);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organization);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organizational_unit);
@@ -683,60 +702,60 @@ static int tls_check_certificate (CONNECTION* conn)
   
   strfcpy (menu->dialog[row], _("This certificate was issued by:"), SHORT_STRING);
   row++;
-
-  buflen = sizeof(dn_common_name);
-  if (gnutls_x509_crt_get_issuer_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0,
-                                    dn_common_name, &buflen) != 0)
+  
+  buflen = sizeof (dn_common_name);
+  if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0,
+                                            dn_common_name, &buflen) != 0)
     dn_common_name[0] = '\0';
-  buflen = sizeof(dn_email);
-  if (gnutls_x509_crt_get_issuer_dn_by_oid(cert, GNUTLS_OID_PKCS9_EMAIL, 0, 0,
-                                    dn_email, &buflen) != 0)
+  buflen = sizeof (dn_email);
+  if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_PKCS9_EMAIL, 0, 0,
+                                            dn_email, &buflen) != 0)
     dn_email[0] = '\0';
-  buflen = sizeof(dn_organization);
-  if (gnutls_x509_crt_get_issuer_dn_by_oid(cert, GNUTLS_OID_X520_ORGANIZATION_NAME, 0, 0,
-                                    dn_organization, &buflen) != 0)
+  buflen = sizeof (dn_organization);
+  if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_ORGANIZATION_NAME, 0, 0,
+                                            dn_organization, &buflen) != 0)
     dn_organization[0] = '\0';
-  buflen = sizeof(dn_organizational_unit);
-  if (gnutls_x509_crt_get_issuer_dn_by_oid(cert, GNUTLS_OID_X520_ORGANIZATIONAL_UNIT_NAME, 0, 0,
-                                    dn_organizational_unit, &buflen) != 0)
+  buflen = sizeof (dn_organizational_unit);
+  if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_ORGANIZATIONAL_UNIT_NAME, 0, 0,
+                                            dn_organizational_unit, &buflen) != 0)
     dn_organizational_unit[0] = '\0';
-  buflen = sizeof(dn_locality);
-  if (gnutls_x509_crt_get_issuer_dn_by_oid(cert, GNUTLS_OID_X520_LOCALITY_NAME, 0, 0,
-                                    dn_locality, &buflen) != 0)
+  buflen = sizeof (dn_locality);
+  if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_LOCALITY_NAME, 0, 0,
+                                            dn_locality, &buflen) != 0)
     dn_locality[0] = '\0';
-  buflen = sizeof(dn_province);
-  if (gnutls_x509_crt_get_issuer_dn_by_oid(cert, GNUTLS_OID_X520_STATE_OR_PROVINCE_NAME, 0, 0,
-                                    dn_province, &buflen) != 0)
+  buflen = sizeof (dn_province);
+  if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_STATE_OR_PROVINCE_NAME, 0, 0,
+                                            dn_province, &buflen) != 0)
     dn_province[0] = '\0';
-  buflen = sizeof(dn_country);
-  if (gnutls_x509_crt_get_issuer_dn_by_oid(cert, GNUTLS_OID_X520_COUNTRY_NAME, 0, 0,
-                                    dn_country, &buflen) != 0)
+  buflen = sizeof (dn_country);
+  if (gnutls_x509_crt_get_issuer_dn_by_oid (cert, GNUTLS_OID_X520_COUNTRY_NAME, 0, 0,
+                                            dn_country, &buflen) != 0)
     dn_country[0] = '\0';
-
+  
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s  %s", dn_common_name, dn_email);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organization);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s", dn_organizational_unit);
   snprintf (menu->dialog[row++], SHORT_STRING, "   %s  %s  %s",
             dn_locality, dn_province, dn_country);
   row++;
-
+  
   snprintf (menu->dialog[row++], SHORT_STRING, _("This certificate is valid"));
-
-  t = gnutls_x509_crt_get_activation_time(cert);
+  
+  t = gnutls_x509_crt_get_activation_time (cert);
   snprintf (menu->dialog[row++], SHORT_STRING, _("   from %s"), 
-	    tls_make_date(t, datestr, 30));
-
-  t = gnutls_x509_crt_get_expiration_time(cert);
+	    tls_make_date (t, datestr, 30));
+  
+  t = gnutls_x509_crt_get_expiration_time (cert);
   snprintf (menu->dialog[row++], SHORT_STRING, _("     to %s"), 
-	    tls_make_date(t, datestr, 30));
-
+	    tls_make_date (t, datestr, 30));
+  
   fpbuf[0] = '\0';
-  tls_fingerprint (GNUTLS_DIG_SHA, fpbuf, sizeof (fpbuf), &cert_list[0]);
+  tls_fingerprint (GNUTLS_DIG_SHA, fpbuf, sizeof (fpbuf), certdata);
   snprintf (menu->dialog[row++], SHORT_STRING, _("SHA1 Fingerprint: %s"), fpbuf);
   fpbuf[0] = '\0';
-  tls_fingerprint (GNUTLS_DIG_MD5, fpbuf, sizeof (fpbuf), &cert_list[0]);
+  tls_fingerprint (GNUTLS_DIG_MD5, fpbuf, sizeof (fpbuf), certdata);
   snprintf (menu->dialog[row++], SHORT_STRING, _("MD5 Fingerprint: %s"), fpbuf);
-
+  
   if (certerr_notyetvalid)
   {
     row++;
@@ -763,9 +782,12 @@ static int tls_check_certificate (CONNECTION* conn)
     strfcpy (menu->dialog[row], _("WARNING: Signer of server certificate is not a CA"), SHORT_STRING);
   }
 
-  menu->title = _("TLS/SSL Certificate check");
+  snprintf (title, sizeof (title),
+            _("SSL Certificate check (certificate %d of %d in chain)"),
+            len - idx, len);
+  menu->title = title;
   /* certificates with bad dates, or that are revoked, must be
-     accepted manually each and every time */
+   accepted manually each and every time */
   if (SslCertFile && !certerr_expired && !certerr_notyetvalid && !certerr_revoked)
   {
     menu->prompt = _("(r)eject, accept (o)nce, (a)ccept always");
@@ -783,7 +805,7 @@ static int tls_check_certificate (CONNECTION* conn)
   mutt_make_help (buf, sizeof (buf), _("Help"), MENU_GENERIC, OP_HELP);
   safe_strcat (helpstr, sizeof (helpstr), buf);
   menu->help = helpstr;
-
+  
   done = 0;
   set_option (OPTUNBUFFEREDINPUT);
   while (!done)
@@ -802,21 +824,21 @@ static int tls_check_certificate (CONNECTION* conn)
 	  /* save hostname if necessary */
 	  if (certerr_hostname)
 	  {
-	    fprintf(fp, "#H %s %s\n", conn->account.host, fpbuf);
+	    fprintf(fp, "#H %s %s\n", hostname, fpbuf);
 	    done = 1;
 	  }
 	  if (certerr_nottrusted)
 	  {
             done = 0;
-	    ret = gnutls_pem_base64_encode_alloc ("CERTIFICATE", &cert_list[0],
+	    ret = gnutls_pem_base64_encode_alloc ("CERTIFICATE", certdata,
                                                   &pemdata);
 	    if (ret == 0)
 	    {
-	      if (fwrite(pemdata.data, pemdata.size, 1, fp) == 1)
+	      if (fwrite (pemdata.data, pemdata.size, 1, fp) == 1)
 	      {
 		done = 1;
 	      }
-              gnutls_free(pemdata.data);
+              gnutls_free (pemdata.data);
 	    }
 	  }
 	  fclose (fp);
@@ -839,6 +861,66 @@ static int tls_check_certificate (CONNECTION* conn)
   }
   unset_option (OPTUNBUFFEREDINPUT);
   mutt_menuDestroy (&menu);
-  gnutls_x509_crt_deinit(cert);
+  gnutls_x509_crt_deinit (cert);
+
   return (done == 2);
+}
+
+static int tls_check_certificate (CONNECTION* conn)
+{
+  tlssockdata *data = conn->sockdata;
+  gnutls_session state = data->state;
+  const gnutls_datum *cert_list;
+  unsigned int cert_list_size = 0;
+  gnutls_certificate_status certstat;
+  int i, rc;
+
+  if (gnutls_auth_get_type (state) != GNUTLS_CRD_CERTIFICATE)
+  {
+    mutt_error (_("Unable to get certificate from peer"));
+    mutt_sleep (2);
+    return 0;
+  }
+
+  certstat = gnutls_certificate_verify_peers (state);
+
+  if (certstat == GNUTLS_E_NO_CERTIFICATE_FOUND)
+  {
+    mutt_error (_("Unable to get certificate from peer"));
+    mutt_sleep (2);
+    return 0;
+  }
+  if (certstat < 0)
+  {
+    mutt_error (_("Certificate verification error (%s)"),
+                gnutls_strerror (certstat));
+    mutt_sleep (2);
+    return 0;
+  }
+
+  /* We only support X.509 certificates (not OpenPGP) at the moment */
+  if (gnutls_certificate_type_get (state) != GNUTLS_CRT_X509)
+  {
+    mutt_error (_("Certificate is not X.509"));
+    mutt_sleep (2);
+    return 0;
+  }
+
+  cert_list = gnutls_certificate_get_peers (state, &cert_list_size);
+  if (!cert_list)
+  {
+    mutt_error (_("Unable to get certificate from peer"));
+    mutt_sleep (2);
+    return 0;
+  }
+
+  for (i = cert_list_size - 1; i >= 0; i--)
+  {
+    rc = tls_check_one_certificate (&cert_list[i], certstat, conn->account.host,
+                                    i, cert_list_size);
+    if (rc)
+      return rc;
+  }
+
+  return 0;
 }

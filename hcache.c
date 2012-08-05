@@ -26,6 +26,8 @@
 #include <depot.h>
 #include <cabin.h>
 #include <villa.h>
+#elif HAVE_TC
+#include <tcbdb.h>
 #elif HAVE_GDBM
 #include <gdbm.h>
 #elif HAVE_DB4
@@ -40,10 +42,6 @@
 #include "mutt.h"
 #include "hcache.h"
 #include "hcversion.h"
-#ifdef USE_IMAP
-#include "message.h"
-#endif
-#include "mime.h"
 #include "mx.h"
 #include "lib.h"
 #include "md5.h"
@@ -52,6 +50,13 @@
 static struct header_cache
 {
   VILLA *db;
+  char *folder;
+  unsigned int crc;
+} HEADER_CACHE;
+#elif HAVE_TC
+static struct header_cache
+{
+  TCBDB *db;
   char *folder;
   unsigned int crc;
 } HEADER_CACHE;
@@ -362,19 +367,31 @@ restore_parameter(PARAMETER ** p, const unsigned char *d, int *off, int convert)
 static unsigned char *
 dump_body(BODY * c, unsigned char *d, int *off, int convert)
 {
+  BODY nb;
+
+  memcpy (&nb, c, sizeof (BODY));
+
+  /* some fields are not safe to cache */
+  nb.content = NULL;
+  nb.charset = NULL;
+  nb.next = NULL;
+  nb.parts = NULL;
+  nb.hdr = NULL;
+  nb.aptr = NULL;
+
   lazy_realloc(&d, *off + sizeof (BODY));
-  memcpy(d + *off, c, sizeof (BODY));
+  memcpy(d + *off, &nb, sizeof (BODY));
   *off += sizeof (BODY);
 
-  d = dump_char(c->xtype, d, off, 0);
-  d = dump_char(c->subtype, d, off, 0);
+  d = dump_char(nb.xtype, d, off, 0);
+  d = dump_char(nb.subtype, d, off, 0);
 
-  d = dump_parameter(c->parameter, d, off, convert);
+  d = dump_parameter(nb.parameter, d, off, convert);
 
-  d = dump_char(c->description, d, off, convert);
-  d = dump_char(c->form_name, d, off, convert);
-  d = dump_char(c->filename, d, off, convert);
-  d = dump_char(c->d_filename, d, off, convert);
+  d = dump_char(nb.description, d, off, convert);
+  d = dump_char(nb.form_name, d, off, convert);
+  d = dump_char(nb.filename, d, off, convert);
+  d = dump_char(nb.d_filename, d, off, convert);
 
   return d;
 }
@@ -620,9 +637,9 @@ mutt_hcache_dump(header_cache_t *h, HEADER * header, int *off,
   memcpy(d + *off, &nh, sizeof (HEADER));
   *off += sizeof (HEADER);
 
-  d = dump_envelope(header->env, d, off, convert);
-  d = dump_body(header->content, d, off, convert);
-  d = dump_char(header->maildir_flags, d, off, convert);
+  d = dump_envelope(nh.env, d, off, convert);
+  d = dump_body(nh.content, d, off, convert);
+  d = dump_char(nh.maildir_flags, d, off, convert);
 
   return d;
 }
@@ -689,6 +706,9 @@ mutt_hcache_fetch_raw (header_cache_t *h, const char *filename,
 #endif
 #ifdef HAVE_QDBM
   char *data = NULL;
+#elif HAVE_TC
+  void *data;
+  int sp;
 #elif HAVE_GDBM
   datum key;
   datum data;
@@ -720,6 +740,10 @@ mutt_hcache_fetch_raw (header_cache_t *h, const char *filename,
 #ifdef HAVE_QDBM
   data = vlget(h->db, path, ksize, NULL);
   
+  return data;
+#elif HAVE_TC
+  data = tcbdbget(h->db, path, ksize, &sp);
+
   return data;
 #elif HAVE_GDBM
   key.dptr = path;
@@ -791,6 +815,8 @@ mutt_hcache_store_raw (header_cache_t* h, const char* filename, void* data,
 #endif
 #if HAVE_QDBM
   return vlput(h->db, path, ksize, data, dlen, VL_DOVER);
+#elif HAVE_TC
+  return tcbdbput(h->db, path, ksize, data, dlen);
 #elif HAVE_GDBM
   key.dptr = path;
   key.dsize = ksize;
@@ -862,6 +888,52 @@ mutt_hcache_delete(header_cache_t *h, const char *filename,
   ksize = strlen(h->folder) + keylen(path + strlen(h->folder));
 
   return vlout(h->db, path, ksize);
+}
+
+#elif HAVE_TC
+static int
+hcache_open_tc (struct header_cache* h, const char* path)
+{
+  h->db = tcbdbnew();
+  if (option(OPTHCACHECOMPRESS))
+    tcbdbtune(h->db, 0, 0, 0, -1, -1, BDBTDEFLATE);
+  if (tcbdbopen(h->db, path, BDBOWRITER | BDBOCREAT))
+    return 0;
+  else
+  {
+    tcbdbdel(h->db);
+    return -1;
+  }
+}
+
+void
+mutt_hcache_close(header_cache_t *h)
+{
+  if (!h)
+    return;
+
+  tcbdbclose(h->db);
+  tcbdbdel(h->db);
+  FREE(&h->folder);
+  FREE(&h);
+}
+
+int
+mutt_hcache_delete(header_cache_t *h, const char *filename,
+		   size_t(*keylen) (const char *fn))
+{
+  char path[_POSIX_PATH_MAX];
+  int ksize;
+
+  if (!h)
+    return -1;
+
+  strncpy(path, h->folder, sizeof (path));
+  safe_strcat(path, sizeof (path), filename);
+
+  ksize = strlen(h->folder) + keylen(path + strlen(h->folder));
+
+  return tcbdbout(h->db, path, ksize);
 }
 
 #elif HAVE_GDBM
@@ -1027,6 +1099,8 @@ mutt_hcache_open(const char *path, const char *folder, hcache_namer_t namer)
 
 #if HAVE_QDBM
   hcache_open = hcache_open_qdbm;
+#elif HAVE_TC
+  hcache_open= hcache_open_tc;
 #elif HAVE_GDBM
   hcache_open = hcache_open_gdbm;
 #elif HAVE_DB4
@@ -1077,5 +1151,10 @@ const char *mutt_hcache_backend (void)
 const char *mutt_hcache_backend (void)
 {
   return "qdbm " _QDBM_VERSION;
+}
+#elif HAVE_TC
+const char *mutt_hcache_backend (void)
+{
+  return "tokyocabinet " _TC_VERSION;
 }
 #endif

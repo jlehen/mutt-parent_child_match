@@ -88,10 +88,18 @@ AH_TEMPLATE([ICONV_NONTRANS],
 AH_BOTTOM([/* fseeko portability defines */
 #ifdef HAVE_FSEEKO
 # define LOFF_T off_t
-# if SIZEOF_OFF_T == 8
-#  define OFF_T_FMT "%lld"
+# if HAVE_C99_INTTYPES && HAVE_INTTYPES_H
+#  if SIZEOF_OFF_T == 8
+#   define OFF_T_FMT "%" PRId64
+#  else
+#   define OFF_T_FMT "%" PRId32
+#  endif
 # else
-#  define OFF_T_FMT "%ld"
+#  if (SIZEOF_OFF_T == 8) && (SIZEOF_LONG == 4)
+#   define OFF_T_FMT "%lld"
+#  else
+#   define OFF_T_FMT "%ld"
+#  endif
 # endif
 #else
 # define LOFF_T long
@@ -158,7 +166,7 @@ if test x$have_smime != xno ; then
 	SMIMEAUX_TARGET="smime_keys"
 fi
 
-AC_ARG_WITH(mixmaster, AC_HELP_STRING([--with-mixmaster[=PATH]], [Include Mixmaster support]),
+AC_ARG_WITH(mixmaster, AC_HELP_STRING([--with-mixmaster@<:@=PATH@:>@], [Include Mixmaster support]),
   [if test "$withval" != no
    then
      if test -x "$withval"
@@ -184,7 +192,7 @@ if test $ISPELL != no; then
         AC_DEFINE_UNQUOTED(ISPELL,"$ISPELL",[ Where to find ispell on your system. ])
 fi
 
-AC_ARG_WITH(slang, AC_HELP_STRING([--with-slang[=DIR]], [Use S-Lang instead of ncurses]),
+AC_ARG_WITH(slang, AC_HELP_STRING([--with-slang@<:@=DIR@:>@], [Use S-Lang instead of ncurses]),
         [AC_CACHE_CHECK([if this is a BSD system], mutt_cv_bsdish,
                 [AC_TRY_RUN([#include <sys/param.h>
 #include <stdlib.h>
@@ -435,7 +443,7 @@ fi
 
 
 AC_ARG_WITH(homespool,
-  AC_HELP_STRING([--with-homespool[=FILE]], [File in user's directory where new mail is spooled]), with_homespool=${withval})
+  AC_HELP_STRING([--with-homespool@<:@=FILE@:>@], [File in user's directory where new mail is spooled]), with_homespool=${withval})
 if test x$with_homespool != x; then
         if test $with_homespool = yes; then
                 with_homespool=mailbox
@@ -610,7 +618,7 @@ fi
 
 dnl -- imap dependencies --
 
-AC_ARG_WITH(gss, AC_HELP_STRING([--with-gss[=PFX]], [Compile in GSSAPI authentication for IMAP]), 
+AC_ARG_WITH(gss, AC_HELP_STRING([--with-gss@<:@=PFX@:>@], [Compile in GSSAPI authentication for IMAP]), 
     gss_prefix="$withval", gss_prefix="no")
 if test "$gss_prefix" != "no"
 then
@@ -640,7 +648,7 @@ AM_CONDITIONAL(USE_GSS, test x$need_gss = xyes)
 
 dnl -- end imap dependencies --
 
-AC_ARG_WITH(ssl, AC_HELP_STRING([--with-ssl[=PFX]], [Compile in SSL support for POP/IMAP/SMTP using OpenSSL]),
+AC_ARG_WITH(ssl, AC_HELP_STRING([--with-ssl@<:@=PFX@:>@], [Compile in SSL support for POP/IMAP/SMTP using OpenSSL]),
 [       if test "$with_ssl" != "no"
         then
           if test "$need_socket" != "yes"; then
@@ -673,7 +681,7 @@ AC_ARG_WITH(ssl, AC_HELP_STRING([--with-ssl[=PFX]], [Compile in SSL support for 
         fi
 ])
 
-AC_ARG_WITH([gnutls], AC_HELP_STRING([--with-gnutls[=PFX]], [Compile in SSL support for POP/IMAP/SMTP using gnutls]),
+AC_ARG_WITH([gnutls], AC_HELP_STRING([--with-gnutls@<:@=PFX@:>@], [Compile in SSL support for POP/IMAP/SMTP using gnutls]),
     [gnutls_prefix="$withval"], [gnutls_prefix="no"])
 if test "$gnutls_prefix" != "no" && test x"$need_ssl" != xyes
 then
@@ -698,7 +706,7 @@ then
 fi
 AM_CONDITIONAL(USE_SSL, test x$need_ssl = xyes)
 
-AC_ARG_WITH(sasl, AC_HELP_STRING([--with-sasl[=PFX]], [Use Cyrus SASL 2 network security library]),
+AC_ARG_WITH(sasl, AC_HELP_STRING([--with-sasl@<:@=PFX@:>@], [Use Cyrus SASL 2 network security library]),
         [	
         if test "$with_sasl" != "no"
         then
@@ -765,7 +773,7 @@ AC_ARG_ENABLE(warnings, AC_HELP_STRING([--disable-warnings], [Turn off compiler 
 fi])
 
 if test x$GCC = xyes && test $mutt_cv_warnings = yes; then
-        CFLAGS="-Wall -pedantic $CFLAGS"
+  CFLAGS="-Wall -pedantic -Wno-long-long $CFLAGS"
 fi
 
 AC_ARG_ENABLE(nfs-fix, AC_HELP_STRING([--enable-nfs-fix], [Work around an NFS with broken attributes caching]),
@@ -804,14 +812,17 @@ AC_ARG_ENABLE(exact-address, AC_HELP_STRING([--enable-exact-address], [Enable re
         fi])
 
 dnl -- start cache --
-use_qdbm=no
+db_found=no
+db_requested=auto
 AC_ARG_ENABLE(hcache, AC_HELP_STRING([--enable-hcache],
   [Enable header caching]))
+AC_ARG_WITH(tokyocabinet, AC_HELP_STRING([--without-tokyocabinet],
+  [Don't use tokyocabinet even if it is available]))
 AC_ARG_WITH(qdbm, AC_HELP_STRING([--without-qdbm],
   [Don't use qdbm even if it is available]))
 AC_ARG_WITH(gdbm, AC_HELP_STRING([--without-gdbm],
   [Don't use gdbm even if it is available]))
-AC_ARG_WITH(bdb, AC_HELP_STRING([--with-bdb[=DIR]],
+AC_ARG_WITH(bdb, AC_HELP_STRING([--with-bdb@<:@=DIR@:>@],
   [Use BerkeleyDB4 if gdbm is not available]))
 
 if test x$enable_hcache = xyes
@@ -825,11 +836,64 @@ then
 
     need_md5="yes"
 
-    dnl hcachever.sh tool for calculating struct digest
-    AC_CHECK_PROGS([MD5], [md5 md5sum openssl], [none])
+    if test -n "$with_tokyocabinet" && test "$with_tokyocabinet" != "no"
+    then
+      db_requested=tc
+    fi
+    if test -n "$with_qdbm" && test "$with_qdbm" != "no"
+    then
+      if test "$db_requested" != "auto"
+      then
+        AC_MSG_ERROR([more than one header cache engine requested.])
+      else
+        db_requested=qdbm
+      fi
+    fi
+    if test -n "$with_gdbm" && test "$with_gdbm" != "no"
+    then
+      if test "$db_requested" != "auto"
+      then
+        AC_MSG_ERROR([more than one header cache engine requested.])
+      else
+        db_requested=gdbm
+      fi
+    fi
+    if test -n "$with_bdb" && test "$with_bdb" != "no"
+    then
+      if test "$db_requested" != "auto"
+      then
+        AC_MSG_ERROR([more than one header cache engine requested.])
+      else
+        db_requested=bdb
+      fi
+    fi
+    
+    dnl -- Tokyo Cabinet --
+    if test "$with_tokyocabinet" != "no" \
+	    && test "$db_requested" = auto -o "$db_requested" = tc
+    then
+      if test -n "$with_tokyocabinet" && test "$with_tokyocabinet" != "yes"
+      then
+        CPPFLAGS="$CPPFLAGS -I$with_tokyocabinet/include"
+        LDFLAGS="$LDFLAGS -L$with_tokyocabinet/lib"
+      fi
+
+      AC_CHECK_HEADER(tcbdb.h,
+      AC_CHECK_LIB(tokyocabinet, tcbdbopen,
+        [MUTTLIBS="$MUTTLIBS -ltokyocabinet"
+         AC_DEFINE(HAVE_TC, 1, [Tokyo Cabinet Support])
+         db_found=tc],
+        [CPPFLAGS="$OLDCPPFLAGS"
+         LDFLAGS="$OLDLDFLAGS"]))
+      if test "$db_requested" != auto && test "$db_found" != "$db_requested"
+      then
+        AC_MSG_ERROR([Tokyo Cabinet could not be used. Check config.log for details.])
+      fi
+    fi
 
     dnl -- QDBM --
-    if test "$with_qdbm" != "no"
+    if test "$with_qdbm" != "no" && test $db_found = no \
+	    && test "$db_requested" = auto -o "$db_requested" = qdbm
     then
       if test -n "$with_qdbm" && test "$with_qdbm" != "yes"
       then
@@ -850,18 +914,19 @@ then
       AC_CHECK_LIB(qdbm, vlopen,
         [MUTTLIBS="$MUTTLIBS -lqdbm"
          AC_DEFINE(HAVE_QDBM, 1, [QDBM Support])
-         use_qdbm=yes],
+         db_found=qdbm],
         [CPPFLAGS="$OLDCPPFLAGS"
          LDFLAGS="$OLDLDFLAGS"])
       LIBS="$saved_LIBS"
-      if test -n "$with_qdbm" && test "$use_qdbm" != yes
+      if test "$db_requested" != auto && test "$db_found" != "$db_requested"
       then
         AC_MSG_ERROR([QDBM could not be used. Check config.log for details.])
       fi
     fi
 
     dnl -- GDBM --
-    if test x$with_gdbm != xno && test $use_qdbm != yes
+    if test x$with_gdbm != xno && test $db_found = no \
+	    && test "$db_requested" = auto -o "$db_requested" = gdbm
     then
         if test "$with_gdbm" != "yes"
         then
@@ -879,7 +944,9 @@ then
         then
           AC_DEFINE(HAVE_GDBM, 1, [GDBM Support])
           MUTTLIBS="$MUTTLIBS -lgdbm"
-        elif test -n "$with_gdbm"
+          db_found=gdbm
+        fi
+        if test "$db_requested" != auto && test "$db_found" != "$db_requested"
         then
           AC_MSG_ERROR([GDBM could not be used. Check config.log for details.])
         fi
@@ -887,7 +954,7 @@ then
 
     dnl -- BDB --
     ac_bdb_prefix="$with_bdb"
-    if test x$ac_bdb_prefix != xno && test x$ac_cv_gdbmopen != xyes && test $use_qdbm != yes
+    if test x$ac_bdb_prefix != xno && test $db_found = no
     then
         if test x$ac_bdb_prefix = xyes || test x$ac_bdb_prefix = x
         then
@@ -937,14 +1004,15 @@ then
             CPPFLAGS="$OLDCPPFLAGS -I$BDB_INCLUDE_DIR"
             LIBS="$OLDLIBS -L$BDB_LIB_DIR -l$BDB_LIB"
             AC_DEFINE(HAVE_DB4, 1, [Berkeley DB4 Support])
+            db_found=bdb
         else
             AC_MSG_RESULT(no)
         fi
     fi
 
-    if test x$use_qdbm != xyes && test x$ac_cv_gdbmopen != xyes && test x$ac_cv_dbcreate != xyes
+    if test $db_found = no
     then
-        AC_MSG_ERROR([You need QDBM, GDBM or Berkeley DB4 for hcache])
+        AC_MSG_ERROR([You need Tokyo Cabinet, QDBM, GDBM or Berkeley DB4 for hcache])
     fi
 fi
 dnl -- end cache --
@@ -952,7 +1020,9 @@ dnl -- end cache --
 if test "$need_md5" = "yes"
 then
   MUTT_LIB_OBJECTS="$MUTT_LIB_OBJECTS md5.o"
+  MUTT_MD5="mutt_md5"
 fi
+AC_SUBST(MUTT_MD5)
 
 AC_SUBST(MUTTLIBS)
 AC_SUBST(MUTT_LIB_OBJECTS)
@@ -1063,7 +1133,7 @@ fi # libiconv
 
 dnl -- IDN depends on iconv
 
-AC_ARG_WITH(idn, AC_HELP_STRING([--with-idn=[PFX]], [Use GNU libidn for domain names]),
+AC_ARG_WITH(idn, AC_HELP_STRING([--with-idn=@<:@PFX@:>@], [Use GNU libidn for domain names]),
 		 [
 		  if test "$with_idn" != "no" ; then
 		  	if test "$with_idn" != "yes" ; then
@@ -1082,7 +1152,10 @@ if test "x$with_idn" != "xno"; then
       AC_MSG_ERROR([IDN requested but iconv is disabled or unavailable])
     fi
   else
-    AC_CHECK_LIB(idn, stringprep_check_version)
+    AC_SEARCH_LIBS([stringprep_check_version], [idn], [
+      AC_DEFINE([HAVE_LIBIDN], 1, [Define to 1 if you have the `idn' library])
+      MUTT_LIB_OBJECTS="$MUTT_LIB_OBJECTS mutt_idna.o"
+    ])
     AC_CHECK_FUNCS(idna_to_unicode_utf8_from_utf8 idna_to_unicode_8z8z)
     AC_CHECK_FUNCS(idna_to_ascii_from_utf8 idna_to_ascii_8z)
     AC_CHECK_FUNCS(idna_to_ascii_lz idna_to_ascii_from_locale)
@@ -1215,6 +1288,16 @@ then
   fi
 fi
 AC_SUBST(DSLROOT)
+
+AC_ARG_ENABLE(full_doc,
+	      AC_HELP_STRING([--disable-full-doc], [Omit disabled variables]),
+[       if test x$enableval = xno ; then
+                full_doc=no
+        fi
+])
+if test x$full_doc != xno ; then
+  AC_DEFINE(MAKEDOC_FULL,1, [Define if you want complete documentation.])
+fi
 
 AC_OUTPUT(Makefile contrib/Makefile doc/Makefile imap/Makefile
         intl/Makefile m4/Makefile po/Makefile.in

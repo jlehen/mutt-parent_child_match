@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -23,11 +23,9 @@
 #include "mutt.h"
 #include "mutt_curses.h"
 #include "mutt_menu.h"
-#include "attach.h"
 #include "mailbox.h"
 #include "mapping.h"
 #include "sort.h"
-#include "buffy.h"
 #include "mx.h"
 
 #ifdef USE_POP
@@ -403,7 +401,7 @@ static void resort_index (MUTTMENU *menu)
   menu->redraw = REDRAW_INDEX | REDRAW_STATUS;
 }
 
-struct mapping_t IndexHelp[] = {
+static struct mapping_t IndexHelp[] = {
   { N_("Quit"),  OP_QUIT },
   { N_("Del"),   OP_DELETE },
   { N_("Undel"), OP_UNDELETE },
@@ -435,8 +433,7 @@ int mutt_index_menu (void)
   int close = 0; /* did we OP_QUIT or OP_EXIT out of this menu? */
   int attach_msg = option(OPTATTACHMSG);
   
-  menu = mutt_new_menu ();
-  menu->menu = MENU_MAIN;
+  menu = mutt_new_menu (MENU_MAIN);
   menu->offset = 1;
   menu->pagelen = LINES - 3;
   menu->make_entry = index_make_entry;
@@ -451,16 +448,16 @@ int mutt_index_menu (void)
   {
     tag = 0; /* clear the tag-prefix */
 
-    menu->max = Context ? Context->vcount : 0;
-    oldcount = Context ? Context->msgcount : 0;
-
     /* check if we need to resort the index because just about
      * any 'op' below could do mutt_enter_command(), either here or
      * from any new menu launched, and change $sort/$sort_aux
      */
     if (option (OPTNEEDRESORT) && Context && Context->msgcount)
       resort_index (menu);
-    
+
+    menu->max = Context ? Context->vcount : 0;
+    oldcount = Context ? Context->msgcount : 0;
+
     if (option (OPTREDRAWTREE) && Context && Context->msgcount && (Sort & SORT_MASK) == SORT_THREADS)
     {
       mutt_draw_tree (Context);
@@ -517,11 +514,6 @@ int mutt_index_menu (void)
 	set_option (OPTSEARCHINVALID);
       }
     }
-
-#ifdef USE_IMAP
-    imap_keepalive ();
-    imap_disallow_reopen (Context);
-#endif
 
     if (!attach_msg)
     {
@@ -693,6 +685,10 @@ int mutt_index_menu (void)
       
       mutt_curs_set (1);	/* fallback from the pager */
     }
+
+#ifdef USE_IMAP
+    imap_disallow_reopen (Context);
+#endif
 
     switch (op)
     {
@@ -1071,7 +1067,7 @@ int mutt_index_menu (void)
 	if ((op == OP_MAIN_NEXT_UNREAD_MAILBOX) && Context && Context->path)
 	{
 	  strfcpy (buf, Context->path, sizeof (buf));
-	  mutt_pretty_mailbox (buf);
+	  mutt_pretty_mailbox (buf, sizeof (buf));
 	  mutt_buffy (buf, sizeof (buf));
 	  if (!buf[0])
 	  {

@@ -21,15 +21,10 @@
 #endif
 
 #include "mutt.h"
-#include "mapping.h"
 #include "mutt_curses.h"
 #include "mutt_regex.h"
-#include "history.h"
-#include "keymap.h"
 #include "mbyte.h"
 #include "charset.h"
-#include "mutt_crypt.h"
-#include "mutt_idna.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -96,7 +91,7 @@ void mutt_group_add_adrlist (group_t *g, ADDRESS *a)
   *p = q;
 }
 
-int mutt_group_add_rx (group_t *g, const char *s, int flags, BUFFER *err)
+static int mutt_group_add_rx (group_t *g, const char *s, int flags, BUFFER *err)
 {
   return mutt_add_to_rx_list (&g->rs, s, flags, err);
 }

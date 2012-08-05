@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 2000-4,2006 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -147,7 +147,7 @@ int mutt_display_message (HEADER *cur)
 
   res = mutt_copy_message (fpout, Context, cur, cmflags,
        	(option (OPTWEED) ? (CH_WEED | CH_REORDER) : 0) | CH_DECODE | CH_FROM);
-  if ((safe_fclose (&fpout) != 0 && errno != EPIPE) || res == -1)
+  if ((safe_fclose (&fpout) != 0 && errno != EPIPE) || res < 0)
   {
     mutt_error (_("Could not copy message"));
     if (fpfilterout != NULL)
@@ -758,7 +758,7 @@ int mutt_save_message (HEADER *h, int delete,
     }
   }
 
-  mutt_pretty_mailbox (buf);
+  mutt_pretty_mailbox (buf, sizeof (buf));
   if (mutt_enter_fname (prompt, buf, sizeof (buf), redraw, 0) == -1)
     return (-1);
 

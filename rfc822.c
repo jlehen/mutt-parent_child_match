@@ -33,7 +33,7 @@
 #define FREE(x) safe_free(x)
 #define ISSPACE isspace
 #define strfcpy(a,b,c) {if (c) {strncpy(a,b,c);a[c-1]=0;}}
-#define STRING 128
+#define LONG_STRING 1024
 #include "rfc822.h"
 #endif
 
@@ -60,7 +60,7 @@ const char *RFC822Errors[] = {
   "bad address spec"
 };
 
-void rfc822_dequote_comment (char *s)
+static void rfc822_dequote_comment (char *s)
 {
   char *w = s;
 
@@ -256,7 +256,7 @@ parse_route_addr (const char *s,
 		  char *comment, size_t *commentlen, size_t commentmax,
 		  ADDRESS *addr)
 {
-  char token[STRING];
+  char token[LONG_STRING];
   size_t tokenlen = 0;
 
   SKIPWS (s);
@@ -304,7 +304,7 @@ parse_addr_spec (const char *s,
 		 char *comment, size_t *commentlen, size_t commentmax,
 		 ADDRESS *addr)
 {
-  char token[STRING];
+  char token[LONG_STRING];
   size_t tokenlen = 0;
 
   s = parse_address (s, token, &tokenlen, sizeof (token) - 1, comment, commentlen, commentmax, addr);
@@ -339,7 +339,7 @@ ADDRESS *rfc822_parse_adrlist (ADDRESS *top, const char *s)
 {
   int ws_pending, nl;
   const char *begin, *ps;
-  char comment[STRING], phrase[STRING];
+  char comment[LONG_STRING], phrase[LONG_STRING];
   size_t phraselen = 0, commentlen = 0;
   ADDRESS *cur, *last = NULL;
   
@@ -594,8 +594,6 @@ void rfc822_write_address_single (char *buf, size_t buflen, ADDRESS *addr,
       {
 	if (*pc == '"' || *pc == '\\')
 	{
-	  if (!buflen)
-	    goto done;
 	  *pbuf++ = '\\';
 	  buflen--;
 	}

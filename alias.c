@@ -148,9 +148,9 @@ void mutt_expand_aliases_env (ENVELOPE *env)
  * if someone has an address like
  *	From: Michael `/bin/rm -f ~` Elkins <me@mutt.org>
  * and the user creates an alias for this, Mutt could wind up executing
- * the backtics because it writes aliases like
+ * the backticks because it writes aliases like
  *	alias me Michael `/bin/rm -f ~` Elkins <me@mutt.org>
- * To avoid this problem, use a backslash (\) to quote any backtics.  We also
+ * To avoid this problem, use a backslash (\) to quote any backticks.  We also
  * need to quote backslashes as well, since you could defeat the above by
  * doing
  *	From: Michael \`/bin/rm -f ~\` Elkins <me@mutt.org>
@@ -209,6 +209,20 @@ ADDRESS *mutt_get_address (ENVELOPE *env, char **pfxp)
   if (pfxp) *pfxp = pfx;
 
   return adr;
+}
+
+static void recode_buf (char *buf, size_t buflen)
+{
+  char *s;
+
+  if (!ConfigCharset || !*ConfigCharset || !Charset)
+    return;
+  s = safe_strdup (buf);
+  if (!s)
+    return;
+  if (mutt_convert_string (&s, Charset, ConfigCharset, 0) == 0)
+    strfcpy (buf, s, buflen);
+  FREE(&s);
 }
 
 void mutt_create_alias (ENVELOPE *cur, ADDRESS *iadr)
@@ -318,6 +332,8 @@ retry_name:
     return;
   }
 
+  mutt_alias_add_reverse (new);
+  
   if ((t = Aliases))
   {
     while (t->next)
@@ -340,7 +356,7 @@ retry_name:
     {
       if (fseek (rc, -1, SEEK_CUR) < 0)
 	goto fseek_err;
-      if (fread(buf, 1, 1, rc) < 0)
+      if (fread(buf, 1, 1, rc) != 1)
       {
 	mutt_perror (_("Error reading alias file"));
 	return;
@@ -355,9 +371,11 @@ retry_name:
       mutt_quote_filename (buf, sizeof (buf), new->name);
     else
       strfcpy (buf, new->name, sizeof (buf));
+    recode_buf (buf, sizeof (buf));
     fprintf (rc, "alias %s ", buf);
     buf[0] = 0;
     rfc822_write_address (buf, sizeof (buf), new->addr, 0);
+    recode_buf (buf, sizeof (buf));
     write_safe_address (rc, buf);
     fputc ('\n', rc);
     fclose (rc);
@@ -424,23 +442,36 @@ int mutt_check_alias_name (const char *s, char *dest, size_t destlen)
  */
 ADDRESS *alias_reverse_lookup (ADDRESS *a)
 {
-  ALIAS *t = Aliases;
-  ADDRESS *ap;
-
   if (!a || !a->mailbox)
-    return NULL;
+      return NULL;
+  
+  return hash_find (ReverseAlias, a->mailbox);
+}
 
-  for (; t; t = t->next)
+void mutt_alias_add_reverse (ALIAS *t)
+{
+  ADDRESS *ap;
+  if (!t)
+    return;
+  
+  for (ap = t->addr; ap; ap = ap->next)
   {
-    /* cycle through all addresses if this is a group alias */
-    for (ap = t->addr; ap; ap = ap->next)
-    {
-      if (!ap->group && ap->mailbox &&
-	  ascii_strcasecmp (ap->mailbox, a->mailbox) == 0)
-	return ap;
-    }
+    if (!ap->group && ap->mailbox)
+      hash_insert (ReverseAlias, ap->mailbox, ap, 1);
   }
-  return 0;
+}
+
+void mutt_alias_delete_reverse (ALIAS *t)
+{
+  ADDRESS *ap;
+  if (!t)
+    return;
+  
+  for (ap = t->addr; ap; ap = ap->next)
+  {
+    if (!ap->group && ap->mailbox)
+      hash_delete (ReverseAlias, ap->mailbox, ap, NULL);
+  }
 }
 
 /* alias_complete() -- alias completion routine
@@ -566,6 +597,8 @@ static int string_is_address(const char *str, const char *u, const char *d)
 /* returns TRUE if the given address belongs to the user. */
 int mutt_addr_is_user (ADDRESS *addr)
 {
+  const char *fqdn;
+
   /* NULL address is assumed to be the user. */
   if (!addr)
   {
@@ -588,14 +621,16 @@ int mutt_addr_is_user (ADDRESS *addr)
     dprint (5, (debugfile, "mutt_addr_is_user: yes, %s = %s @ %s \n", addr->mailbox, Username, Hostname));
     return 1;
   }
-  if (string_is_address(addr->mailbox, Username, mutt_fqdn(0)))
+  fqdn = mutt_fqdn (0);
+  if (string_is_address(addr->mailbox, Username, fqdn))
   {
-    dprint (5, (debugfile, "mutt_addr_is_user: yes, %s = %s @ %s \n", addr->mailbox, Username, mutt_fqdn (0)));
+    dprint (5, (debugfile, "mutt_addr_is_user: yes, %s = %s @ %s \n", addr->mailbox, Username, NONULL(fqdn)));
     return 1;
   }
-  if (string_is_address(addr->mailbox, Username, mutt_fqdn(1)))
+  fqdn = mutt_fqdn (1);
+  if (string_is_address(addr->mailbox, Username, fqdn))
   {
-    dprint (5, (debugfile, "mutt_addr_is_user: yes, %s = %s @ %s \n", addr->mailbox, Username, mutt_fqdn (1)));
+    dprint (5, (debugfile, "mutt_addr_is_user: yes, %s = %s @ %s \n", addr->mailbox, Username, NONULL(fqdn)));
     return 1;
   }
 

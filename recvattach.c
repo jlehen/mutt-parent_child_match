@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1999-2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1996-2000,2002,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1999-2006 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@
 #include "attach.h"
 #include "mapping.h"
 #include "mx.h"
-#include "copy.h"
 #include "mutt_crypt.h"
 
 #include <ctype.h>
@@ -254,7 +253,7 @@ const char *mutt_attach_fmt (char *dest,
 	  char path[_POSIX_PATH_MAX];
 	  
 	  strfcpy (path, aptr->content->filename, sizeof (path));
-	  mutt_pretty_mailbox (path);
+	  mutt_pretty_mailbox (path, sizeof (path));
 	  mutt_format_s (dest, destlen, prefix, path);
 	}
 	else
@@ -363,7 +362,7 @@ const char *mutt_attach_fmt (char *dest,
   return (src);
 }
 
-void attach_entry (char *b, size_t blen, MUTTMENU *menu, int num)
+static void attach_entry (char *b, size_t blen, MUTTMENU *menu, int num)
 {
   mutt_FormatString (b, blen, 0, NONULL (AttachFormat), mutt_attach_fmt, (unsigned long) (((ATTACHPTR **)menu->data)[num]), M_FORMAT_ARROWCURSOR);
 }
@@ -780,7 +779,7 @@ void mutt_print_attachment_list (FILE *fp, int tag, BODY *top)
     print_attachment_list (fp, tag, top, &state);
 }
 
-void
+static void
 mutt_update_attach_index (BODY *cur, ATTACHPTR ***idxp,
 				      short *idxlen, short *idxmax,
 				      MUTTMENU *menu)
@@ -1005,8 +1004,7 @@ void mutt_view_attachments (HEADER *hdr)
     cur = hdr->content;
   }
 
-  menu = mutt_new_menu ();
-  menu->menu = MENU_ATTACH;
+  menu = mutt_new_menu (MENU_ATTACH);
   menu->title = _("Attachments");
   menu->make_entry = attach_entry;
   menu->tag = mutt_tag_attach;

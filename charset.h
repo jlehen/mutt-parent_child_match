@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1999-2003 Thomas Roessler <roessler@does-not-exist.org>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -55,5 +55,11 @@ char *mutt_get_default_charset ();
  * flag.
  */
 #define M_ICONV_HOOK_FROM 1	/* apply charset-hooks to fromcode */
+
+/* Check if given character set is valid (either officially assigned or
+ * known to local iconv implementation). If strict is non-zero, check
+ * against iconv only. Returns 0 if known and negative otherwise.
+ */
+int mutt_check_charset (const char *s, int strict);
 
 #endif /* _CHARSET_H */

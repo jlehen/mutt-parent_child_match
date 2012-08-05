@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2007 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -26,16 +26,9 @@
 #include "keymap.h"
 #include "mutt_menu.h"
 #include "mapping.h"
-#include "sort.h"
 #include "pager.h"
 #include "attach.h"
 #include "mbyte.h"
-
-#include "mx.h"
-
-#ifdef USE_IMAP
-#include "imap_private.h"
-#endif
 
 #include "mutt_crypt.h"
 
@@ -1106,6 +1099,12 @@ static int format_line (struct line_t **lineInfo, int n, unsigned char *buf,
     if (k == 0)
       k = 1;
 
+    if (Charset_is_utf8 && (wc == 0x200B || wc == 0xFEFF))
+    {
+	dprint (3, (debugfile, "skip zero-width character U+%04X\n", (unsigned short)wc));
+	continue;
+    }
+
     /* Handle backspace */
     special = 0;
     if (IsWPrint (wc))
@@ -1509,7 +1508,7 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
   struct q_class_t *QuoteList = NULL;
   int i, j, ch = 0, rc = -1, hideQuoted = 0, q_level = 0, force_redraw = 0;
   int lines = 0, curline = 0, topline = 0, oldtopline = 0, err, first = 1;
-  int r = -1;
+  int r = -1, wrapped = 0;
   int redraw = REDRAW_FULL;
   FILE *fp = NULL;
   LOFF_T last_pos = 0, last_offset = 0;
@@ -1584,10 +1583,6 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
   {
     mutt_curs_set (0);
 
-#ifdef USE_IMAP
-    imap_keepalive ();
-#endif
-    
     if (redraw & REDRAW_FULL)
     {
       SETCOLOR (MT_COLOR_NORMAL);
@@ -1654,8 +1649,7 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
 	{
 	  /* only allocate the space if/when we need the index.
 	     Initialise the menu as per the main index */
-	  index = mutt_new_menu();
-	  index->menu = MENU_MAIN;
+	  index = mutt_new_menu(MENU_MAIN);
 	  index->make_entry = index_make_entry;
 	  index->color = index_color;
 	  index->max = Context->vcount;
@@ -1969,12 +1963,14 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
       case OP_SEARCH_OPPOSITE:
 	if (SearchCompiled)
 	{
+	  wrapped = 0;
+
 search_next:
 	  if ((!SearchBack && ch==OP_SEARCH_NEXT) ||
 	      (SearchBack &&ch==OP_SEARCH_OPPOSITE))
 	  {
 	    /* searching forward */
-	    for (i = topline + 1; i < lastLine; i++)
+	    for (i = wrapped ? 0 : topline + 1; i < lastLine; i++)
 	    {
 	      if ((!hideQuoted || lineInfo[i].type != MT_COLOR_QUOTED) && 
 		    !lineInfo[i].continuation && lineInfo[i].search_cnt > 0)
@@ -1983,13 +1979,19 @@ search_next:
 
 	    if (i < lastLine)
 	      topline = i;
-	    else
+	    else if (wrapped || !option (OPTWRAPSEARCH))
 	      mutt_error _("Not found.");
+	    else
+	    {
+	      mutt_message _("Search wrapped to top.");
+	      wrapped = 1;
+	      goto search_next;
+	    }
 	  }
 	  else
 	  {
 	    /* searching backward */
-	    for (i = topline - 1; i >= 0; i--)
+	    for (i = wrapped ? lastLine : topline - 1; i >= 0; i--)
 	    {
 	      if ((!hideQuoted || (has_types && 
 		    lineInfo[i].type != MT_COLOR_QUOTED)) && 
@@ -1999,8 +2001,14 @@ search_next:
 
 	    if (i >= 0)
 	      topline = i;
-	    else
+	    else if (wrapped || !option (OPTWRAPSEARCH))
 	      mutt_error _("Not found.");
+	    else
+	    {
+	      mutt_message _("Search wrapped to bottom.");
+	      wrapped = 1;
+	      goto search_next;
+	    }
 	  }
 
 	  if (lineInfo[topline].search_cnt > 0)
@@ -2028,6 +2036,7 @@ search_next:
 	    else
 	      ch = OP_SEARCH_OPPOSITE;
 
+	    wrapped = 0;
 	    goto search_next;
 	  }
 	}
@@ -2657,6 +2666,10 @@ search_next:
 	crypt_extract_keys_from_messages(extra->hdr);
         redraw = REDRAW_FULL;
         break;
+
+      case OP_WHAT_KEY:
+	mutt_what_key ();
+	break;
 
       default:
 	ch = -1;

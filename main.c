@@ -65,7 +65,7 @@ To contact the developers, please mail to <mutt-dev@mutt.org>.\n\
 To report a bug, please visit http://bugs.mutt.org/.\n");
 
 static const char *Notice = N_("\
-Copyright (C) 1996-2008 Michael R. Elkins and others.\n\
+Copyright (C) 1996-2009 Michael R. Elkins and others.\n\
 Mutt comes with ABSOLUTELY NO WARRANTY; for details type `mutt -vv'.\n\
 Mutt is free software, and you are welcome to redistribute it\n\
 under certain conditions; type `mutt -vv' for details.\n");
@@ -73,11 +73,12 @@ under certain conditions; type `mutt -vv' for details.\n");
 static const char *Copyright = N_("\
 Copyright (C) 1996-2007 Michael R. Elkins <me@mutt.org>\n\
 Copyright (C) 1996-2002 Brandon Long <blong@fiction.net>\n\
-Copyright (C) 1997-2007 Thomas Roessler <roessler@does-not-exist.org>\n\
+Copyright (C) 1997-2008 Thomas Roessler <roessler@does-not-exist.org>\n\
 Copyright (C) 1998-2005 Werner Koch <wk@isil.d.shuttle.de>\n\
-Copyright (C) 1999-2008 Brendan Cully <brendan@kublai.com>\n\
+Copyright (C) 1999-2009 Brendan Cully <brendan@kublai.com>\n\
 Copyright (C) 1999-2002 Tommi Komulainen <Tommi.Komulainen@iki.fi>\n\
 Copyright (C) 2000-2002 Edmund Grimley Evans <edmundo@rano.org>\n\
+Copyright (C) 2006-2008 Rocco Rutte <pdmef@gmx.net>\n\
 \n\
 Many others not mentioned here contributed code, fixes,\n\
 and suggestions.\n");
@@ -111,6 +112,7 @@ static void mutt_usage (void)
   puts _(
 "usage: mutt [<options>] [-z] [-f <file> | -yZ]\n\
        mutt [<options>] [-x] [-Hi <file>] [-s <subj>] [-bc <addr>] [-a <file> [...]] [--] <addr> [...]\n\
+       mutt [<options>] [-x] [-s <subj>] [-bc <addr>] [-a <file> [...]] [--] <addr> [...] < message\n\
        mutt [<options>] -p\n\
        mutt [<options>] -A <alias> [...]\n\
        mutt [<options>] -Q <query> [...]\n\
@@ -234,8 +236,6 @@ static void show_version (void)
 	"-DL_STANDALONE  "
 #endif
 
-	"\n"
-	
 #ifdef USE_FCNTL
 	"+USE_FCNTL  "
 #else
@@ -247,7 +247,7 @@ static void show_version (void)
 #else
 	"-USE_FLOCK   "
 #endif
-	);
+    );
   puts (
 #ifdef USE_POP
 	"+USE_POP  "
@@ -266,13 +266,7 @@ static void show_version (void)
 #else
 	"-USE_SMTP  "
 #endif
-
-#ifdef USE_GSS
-	"+USE_GSS  "
-#else
-	"-USE_GSS  "
-#endif
-
+	"\n"
 	
 #ifdef USE_SSL_OPENSSL
 	"+USE_SSL_OPENSSL  "
@@ -290,6 +284,11 @@ static void show_version (void)
 	"+USE_SASL  "
 #else
 	"-USE_SASL  "
+#endif
+#ifdef USE_GSS
+	"+USE_GSS  "
+#else
+	"-USE_GSS  "
 #endif
 
 #if HAVE_GETADDRINFO
@@ -544,7 +543,7 @@ int main (int argc, char **argv)
   int dump_variables = 0;
   extern char *optarg;
   extern int optind;
-  int attach_sep = 0;
+  int double_dash = argc, nargc = 1;
 
   /* sanity check against stupid administrators */
   
@@ -572,16 +571,32 @@ int main (int argc, char **argv)
   memset (Options, 0, sizeof (Options));
   memset (QuadOptions, 0, sizeof (QuadOptions));
 
-  for (i = 1; i < argc; i++)
-    if (!strcmp(argv[i], "--"))
+  for (optind = 1; optind < double_dash; )
+  {
+    /* We're getopt'ing POSIXLY, so we'll be here every time getopt()
+     * encounters a non-option.  That could be a file to attach 
+     * (all non-options between -a and --) or it could be an address
+     * (which gets collapsed to the front of argv).
+     */
+    for (; optind < argc; optind++)
     {
-      attach_sep = i;
-      break;
+      if (argv[optind][0] == '-' && argv[optind][1] != '\0')
+      {
+        if (argv[optind][1] == '-' && argv[optind][2] == '\0')
+          double_dash = optind; /* quit outer loop after getopt */
+        break;                  /* drop through to getopt */
+      }
+
+      /* non-option, either an attachment or address */
+      if (attach)
+        attach = mutt_add_list (attach, argv[optind]);
+      else
+        argv[nargc++] = argv[optind];
     }
 
-  while ((i = getopt (argc, argv, "A:a:b:F:f:c:Dd:e:H:s:i:hm:npQ:RvxyzZ")) != EOF)
-    switch (i)
-    {
+    if ((i = getopt (argc, argv, "+A:a:b:F:f:c:Dd:e:H:s:i:hm:npQ:RvxyzZ")) != EOF)
+      switch (i)
+      {
       case 'A':
         alias_queries = mutt_add_list (alias_queries, optarg);
         break;
@@ -682,7 +697,14 @@ int main (int argc, char **argv)
 
       default:
 	mutt_usage ();
-    }
+      }
+  }
+
+  /* collapse remaining argv */
+  while (optind < argc)
+    argv[nargc++] = argv[optind++];
+  optind = 1;
+  argc = nargc;
 
   switch (version)
   {
@@ -750,11 +772,6 @@ int main (int argc, char **argv)
     }
     return rv;
   }
-
-  /* if an -a option is present, all non-option arguments before -- are considered attachments */
-  if (attach)
-    for (; optind <= attach_sep; optind++)
-      attach = mutt_add_list (attach, argv[optind]);
 
   if (newMagic)
     mx_set_magic (newMagic);

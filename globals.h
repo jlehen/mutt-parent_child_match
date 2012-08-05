@@ -127,17 +127,12 @@ WHERE char *Spoolfile;
 WHERE char *SpamSep;
 #if defined(USE_SSL)
 WHERE char *SslCertFile INITVAL (NULL);
-#endif
-#ifdef USE_SSL_OPENSSL
 WHERE char *SslClientCert INITVAL (NULL);
-WHERE LIST *SslSessionCerts INITVAL (NULL);
-#endif
-#if defined(USE_SSL)
 WHERE char *SslEntropyFile INITVAL (NULL);
-#endif
 #ifdef USE_SSL_GNUTLS
 WHERE short SslDHPrimeBits;
 WHERE char *SslCACertFile INITVAL (NULL);
+#endif
 #endif
 WHERE char *StChars;
 WHERE char *Status;
@@ -153,6 +148,7 @@ WHERE char *LastFolder;
 WHERE const char *ReleaseDate;
 
 WHERE HASH *Groups;
+WHERE HASH *ReverseAlias;
 
 WHERE LIST *AutoViewList INITVAL(0);
 WHERE LIST *AlternativeOrderList INITVAL(0);
@@ -211,6 +207,7 @@ WHERE short ScoreThresholdFlag;
 
 #ifdef USE_IMAP
 WHERE short ImapKeepalive;
+WHERE short ImapPipelineDepth;
 #endif
 
 /* flags for received signals */

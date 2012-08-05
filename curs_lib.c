@@ -72,18 +72,16 @@ void mutt_refresh (void)
    customize this is of course the Mutt way.  */
 void mutt_need_hard_redraw (void)
 {
-  if (!getenv ("DISPLAY"))
-  {
-    keypad (stdscr, TRUE);
-    clearok (stdscr, TRUE);
-    set_option (OPTNEEDREDRAW);
-  }
+  keypad (stdscr, TRUE);
+  clearok (stdscr, TRUE);
+  set_option (OPTNEEDREDRAW);
 }
 
 event_t mutt_getch (void)
 {
   int ch;
   event_t err = {-1, OP_NULL }, ret;
+  event_t timeout = {-2, OP_NULL};
 
   if (!option(OPTUNBUFFEREDINPUT) && UngetCount)
     return (KeyEvent[--UngetCount]);
@@ -110,7 +108,7 @@ event_t mutt_getch (void)
       endwin ();
       exit (1);
     }
-    return err;
+    return timeout;
   }
 
   if ((ch & 0x80) && option (OPTMETAKEY))
@@ -179,6 +177,10 @@ void mutt_edit_file (const char *editor, const char *data)
     mutt_error (_("Error running \"%s\"!"), cmd);
     mutt_sleep (2);
   }
+#if defined (USE_SLANG_CURSES) || defined (HAVE_RESIZETERM)
+  /* the terminal may have been resized while the editor owned it */
+  mutt_resize_screen ();
+#endif
   keypad (stdscr, TRUE);
   clearok (stdscr, TRUE);
 }
@@ -227,7 +229,7 @@ int mutt_yesorno (const char *msg, int def)
     ch = mutt_getch ();
     if (CI_is_return (ch.ch))
       break;
-    if (ch.ch == -1)
+    if (ch.ch < 0)
     {
       def = -1;
       break;
@@ -351,6 +353,9 @@ void mutt_progress_init (progress_t* progress, const char *msg,
 
   if (!progress)
     return;
+  if (option(OPTNOCURSES))
+    return;
+
   memset (progress, 0, sizeof (progress_t));
   progress->inc = inc;
   progress->flags = flags;
@@ -376,7 +381,8 @@ void mutt_progress_init (progress_t* progress, const char *msg,
     dprint (1, (debugfile, "gettimeofday failed: %d\n", errno));
   /* if timestamp is 0 no time-based suppression is done */
   if (TimeInc)
-    progress->timestamp = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    progress->timestamp = ((unsigned int) tv.tv_sec * 1000)
+        + (unsigned int) (tv.tv_usec / 1000);
   mutt_progress_update (progress, 0, 0);
 }
 
@@ -386,6 +392,9 @@ void mutt_progress_update (progress_t* progress, long pos, int percent)
   short update = 0;
   struct timeval tv = { 0, 0 };
   unsigned int now = 0;
+
+  if (option(OPTNOCURSES))
+    return;
 
   if (!progress->inc)
     goto out;
@@ -399,7 +408,8 @@ void mutt_progress_update (progress_t* progress, long pos, int percent)
 
   /* skip refresh if not enough time has passed */
   if (update && progress->timestamp && !gettimeofday (&tv, NULL)) {
-    now = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    now = ((unsigned int) tv.tv_sec * 1000)
+          + (unsigned int) (tv.tv_usec / 1000);
     if (now && now - progress->timestamp < TimeInc)
       update = 0;
   }
@@ -553,7 +563,7 @@ int _mutt_enter_fname (const char *prompt, char *buf, size_t blen, int *redraw, 
   mutt_refresh ();
 
   ch = mutt_getch();
-  if (ch.ch == -1)
+  if (ch.ch < 0)
   {
     CLEARLINE (LINES-1);
     return (-1);
@@ -635,7 +645,7 @@ int mutt_multi_choice (char *prompt, char *letters)
   {
     mutt_refresh ();
     ch  = mutt_getch ();
-    if (ch.ch == -1 || CI_is_return (ch.ch))
+    if (ch.ch < 0 || CI_is_return (ch.ch))
     {
       choice = -1;
       break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2004 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 #include "mime.h"
 #include "mailbox.h"
 #include "copy.h"
-#include "mx.h"
 #include "mutt_crypt.h"
 #include "mutt_idna.h"
 #include "url.h"
@@ -299,7 +298,7 @@ static void process_user_header (ENVELOPE *env)
     }
     else if (ascii_strncasecmp ("message-id:", uh->data, 11) == 0)
     {
-      char *tmp = mutt_extract_message_id (uh->data + 11);
+      char *tmp = mutt_extract_message_id (uh->data + 11, NULL);
       if (rfc822_valid_msgid (tmp) >= 0)
       {
 	FREE(&env->message_id);
@@ -1505,7 +1504,7 @@ ci_send_message (int flags,		/* send mode */
 main_loop:
 
     fcc_error = 0; /* reset value since we may have failed before */
-    mutt_pretty_mailbox (fcc);
+    mutt_pretty_mailbox (fcc, sizeof (fcc));
     i = mutt_compose_menu (msg, fcc, sizeof (fcc), cur);
     if (i == -1)
     {

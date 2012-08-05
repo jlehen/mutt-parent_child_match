@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
- * Copyright (C) 1999-2006 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1999-2009 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -37,6 +37,9 @@
 #define IMAP_CMD_BUFSIZE 512
 
 /* forward declarations */
+static int cmd_start (IMAP_DATA* idata, const char* cmdstr, int flags);
+static int cmd_queue_full (IMAP_DATA* idata);
+static int cmd_queue (IMAP_DATA* idata, const char* cmdstr);
 static IMAP_COMMAND* cmd_new (IMAP_DATA* idata);
 static int cmd_status (const char *s);
 static void cmd_handle_fatal (IMAP_DATA* idata);
@@ -67,47 +70,11 @@ static char *Capabilities[] = {
   NULL
 };
 
-/* imap_cmd_queue: Add command to command queue. Fails if the queue is full. */
-int imap_cmd_queue (IMAP_DATA* idata, const char* cmdstr)
-{
-  IMAP_COMMAND* cmd;
-
-  if (idata->status == IMAP_FATAL)
-  {
-    cmd_handle_fatal (idata);
-    return IMAP_CMD_BAD;
-  }
-
-  if (!(cmd = cmd_new (idata)))
-    return IMAP_CMD_BAD;
-
-  if (mutt_buffer_printf (idata->cmdbuf, "%s%s %s\r\n",
-      idata->state == IMAP_IDLE ? "DONE\r\n" : "", cmd->seq, cmdstr) < 0)
-    return IMAP_CMD_BAD;
-
-  if (idata->state == IMAP_IDLE)
-    idata->state = IMAP_SELECTED;
-
-  return 0;
-}
-
 /* imap_cmd_start: Given an IMAP command, send it to the server.
  *   If cmdstr is NULL, sends queued commands. */
 int imap_cmd_start (IMAP_DATA* idata, const char* cmdstr)
 {
-  int rc;
-
-  if (cmdstr && (rc = imap_cmd_queue (idata, cmdstr)) < 0)
-    return rc;
-
-  /* don't write old or empty commands */
-  if (idata->cmdbuf->dptr == idata->cmdbuf->data)
-    return IMAP_CMD_BAD;
-
-  rc = mutt_socket_write (idata->conn, idata->cmdbuf->data);
-  idata->cmdbuf->dptr = idata->cmdbuf->data;
-
-  return (rc < 0) ? IMAP_CMD_BAD : 0;
+  return cmd_start (idata, cmdstr, 0);
 }
 
 /* imap_cmd_step: Reads server responses from an IMAP command, detects
@@ -190,7 +157,7 @@ int imap_cmd_step (IMAP_DATA* idata)
 	if (!stillrunning)
 	{
 	  /* first command in queue has finished - move queue pointer up */
-	  idata->lastcmd = (idata->lastcmd + 1) % IMAP_PIPELINE_DEPTH;
+	  idata->lastcmd = (idata->lastcmd + 1) % idata->cmdslots;
 	}
 	cmd->state = cmd_status (idata->buf);
 	/* bogus - we don't know which command result to return here. Caller
@@ -201,7 +168,7 @@ int imap_cmd_step (IMAP_DATA* idata)
 	stillrunning++;
     }
 
-    c = (c + 1) % IMAP_PIPELINE_DEPTH;
+    c = (c + 1) % idata->cmdslots;
   }
   while (c != idata->nextcmd);
 
@@ -223,40 +190,59 @@ int imap_code (const char *s)
   return cmd_status (s) == IMAP_CMD_OK;
 }
 
+/* imap_cmd_trailer: extra information after tagged command response if any */
+const char* imap_cmd_trailer (IMAP_DATA* idata)
+{
+  static const char* notrailer = "";
+  const char* s = idata->buf;
+
+  if (!s)
+  {
+    dprint (2, (debugfile, "imap_cmd_trailer: not a tagged response"));
+    return notrailer;
+  }
+
+  s = imap_next_word ((char *)s);
+  if (!s || (ascii_strncasecmp (s, "OK", 2) &&
+	     ascii_strncasecmp (s, "NO", 2) &&
+	     ascii_strncasecmp (s, "BAD", 3)))
+  {
+    dprint (2, (debugfile, "imap_cmd_trailer: not a command completion: %s",
+		idata->buf));
+    return notrailer;
+  }
+
+  s = imap_next_word ((char *)s);
+  if (!s)
+    return notrailer;
+
+  return s;
+}
+
 /* imap_exec: execute a command, and wait for the response from the server.
  * Also, handle untagged responses.
  * Flags:
  *   IMAP_CMD_FAIL_OK: the calling procedure can handle failure. This is used
  *     for checking for a mailbox on append and login
  *   IMAP_CMD_PASS: command contains a password. Suppress logging.
+ *   IMAP_CMD_QUEUE: only queue command, do not execute.
  * Return 0 on success, -1 on Failure, -2 on OK Failure
  */
 int imap_exec (IMAP_DATA* idata, const char* cmdstr, int flags)
 {
   int rc;
 
-  if (idata->status == IMAP_FATAL)
-  {
-    cmd_handle_fatal (idata);
-    return -1;
-  }
-
-  if (cmdstr && (rc = imap_cmd_queue (idata, cmdstr)) < 0)
+  if ((rc = cmd_start (idata, cmdstr, flags)) < 0)
     return rc;
-  
-  /* don't write old or empty commands */
-  if (idata->cmdbuf->dptr == idata->cmdbuf->data)
-    return IMAP_CMD_BAD;
-  
-  rc = mutt_socket_write_d (idata->conn, idata->cmdbuf->data, -1,
-    flags & IMAP_CMD_PASS ? IMAP_LOG_PASS : IMAP_LOG_CMD);
-  idata->cmdbuf->dptr = idata->cmdbuf->data;
 
   if (rc < 0)
   {
     cmd_handle_fatal (idata);
     return -1;
   }
+
+  if (flags & IMAP_CMD_QUEUE)
+    return 0;
 
   do
     rc = imap_cmd_step (idata);
@@ -323,20 +309,55 @@ void imap_cmd_finish (IMAP_DATA* idata)
   idata->status = 0;
 }
 
+/* imap_cmd_idle: Enter the IDLE state. */
+int imap_cmd_idle (IMAP_DATA* idata)
+{
+  int rc;
+
+  imap_cmd_start (idata, "IDLE");
+  do
+    rc = imap_cmd_step (idata);
+  while (rc == IMAP_CMD_CONTINUE);
+
+  if (rc == IMAP_CMD_RESPOND)
+  {
+    /* successfully entered IDLE state */
+    idata->state = IMAP_IDLE;
+    /* queue automatic exit when next command is issued */
+    mutt_buffer_printf (idata->cmdbuf, "DONE\r\n");
+    rc = IMAP_CMD_OK;
+  }
+  if (rc != IMAP_CMD_OK)
+  {
+    dprint (1, (debugfile, "imap_cmd_idle: error starting IDLE\n"));
+    return -1;
+  }
+  
+  return 0;
+}
+
+static int cmd_queue_full (IMAP_DATA* idata)
+{
+  if ((idata->nextcmd + 1) % idata->cmdslots == idata->lastcmd)
+    return 1;
+
+  return 0;
+}
+
 /* sets up a new command control block and adds it to the queue.
  * Returns NULL if the pipeline is full. */
 static IMAP_COMMAND* cmd_new (IMAP_DATA* idata)
 {
   IMAP_COMMAND* cmd;
 
-  if ((idata->nextcmd + 1) % IMAP_PIPELINE_DEPTH == idata->lastcmd)
+  if (cmd_queue_full (idata))
   {
-    dprint (2, (debugfile, "cmd_new: IMAP command queue full\n"));
+    dprint (3, (debugfile, "cmd_new: IMAP command queue full\n"));
     return NULL;
   }
 
   cmd = idata->cmds + idata->nextcmd;
-  idata->nextcmd = (idata->nextcmd + 1) % IMAP_PIPELINE_DEPTH;
+  idata->nextcmd = (idata->nextcmd + 1) % idata->cmdslots;
 
   snprintf (cmd->seq, sizeof (cmd->seq), "a%04u", idata->seqno++);
   if (idata->seqno > 9999)
@@ -345,6 +366,61 @@ static IMAP_COMMAND* cmd_new (IMAP_DATA* idata)
   cmd->state = IMAP_CMD_NEW;
 
   return cmd;
+}
+
+/* queues command. If the queue is full, attempts to drain it. */
+static int cmd_queue (IMAP_DATA* idata, const char* cmdstr)
+{
+  IMAP_COMMAND* cmd;
+  int rc;
+
+  if (cmd_queue_full (idata))
+  {
+    dprint (3, (debugfile, "Draining IMAP command pipeline\n"));
+
+    rc = imap_exec (idata, NULL, IMAP_CMD_FAIL_OK);
+
+    if (rc < 0 && rc != -2)
+      return rc;
+  }
+
+  if (!(cmd = cmd_new (idata)))
+    return IMAP_CMD_BAD;
+
+  if (mutt_buffer_printf (idata->cmdbuf, "%s %s\r\n", cmd->seq, cmdstr) < 0)
+    return IMAP_CMD_BAD;
+
+  return 0;
+}
+
+static int cmd_start (IMAP_DATA* idata, const char* cmdstr, int flags)
+{
+  int rc;
+
+  if (idata->status == IMAP_FATAL)
+  {
+    cmd_handle_fatal (idata);
+    return -1;
+  }
+
+  if (cmdstr && ((rc = cmd_queue (idata, cmdstr)) < 0))
+    return rc;
+
+  if (flags & IMAP_CMD_QUEUE)
+    return 0;
+
+  if (idata->cmdbuf->dptr == idata->cmdbuf->data)
+    return IMAP_CMD_BAD;
+
+  rc = mutt_socket_write_d (idata->conn, idata->cmdbuf->data, -1,
+                            flags & IMAP_CMD_PASS ? IMAP_LOG_PASS : IMAP_LOG_CMD);
+  idata->cmdbuf->dptr = idata->cmdbuf->data;
+
+  /* unidle when command queue is flushed */
+  if (idata->state == IMAP_IDLE)
+    idata->state = IMAP_SELECTED;
+
+  return (rc < 0) ? IMAP_CMD_BAD : 0;
 }
 
 /* parse response line for tagged OK/NO/BAD */
@@ -663,7 +739,7 @@ static void cmd_parse_list (IMAP_DATA* idata, char* s)
   if (list->name[0] == '\0')
   {
     idata->delim = list->delim;
-    dprint (2, (debugfile, "Root delimiter: %c\n", idata->delim));
+    dprint (3, (debugfile, "Root delimiter: %c\n", idata->delim));
   }
 }
 
@@ -692,11 +768,14 @@ static void cmd_parse_lsub (IMAP_DATA* idata, char* s)
   if (!list.name)
     return;
 
-  dprint (2, (debugfile, "Subscribing to %s\n", list.name));
+  dprint (3, (debugfile, "Subscribing to %s\n", list.name));
 
   strfcpy (buf, "mailboxes \"", sizeof (buf));
   mutt_account_tourl (&idata->conn->account, &url);
-  url.path = list.name;
+  /* escape \ and " */
+  imap_quote_string(errstr, sizeof (errstr), list.name);
+  url.path = errstr + 1;
+  url.path[strlen(url.path) - 1] = '\0';
   if (!mutt_strcmp (url.user, ImapUser))
     url.user = NULL;
   url_ciss_tostring (&url, buf + 11, sizeof (buf) - 10, 0);
@@ -818,11 +897,30 @@ static void cmd_parse_status (IMAP_DATA* idata, char* s)
   int count;
   IMAP_STATUS *status;
   unsigned int olduv, oldun;
+  long litlen;
 
   mailbox = imap_next_word (s);
-  s = imap_next_word (mailbox);
-  *(s - 1) = '\0';
-  imap_unmunge_mbox_name (mailbox);
+
+  /* We need a real tokenizer. */
+  if (!imap_get_literal_count (mailbox, &litlen))
+  {
+    if (imap_cmd_step (idata) != IMAP_CMD_CONTINUE)
+    {
+      idata->status = IMAP_FATAL;
+      return;
+    }
+    mailbox = idata->buf;
+    s = mailbox + litlen;
+    *s = '\0';
+    s++;
+    SKIPWS(s);
+  }
+  else
+  {
+    s = imap_next_word (mailbox);
+    *(s - 1) = '\0';
+    imap_unmunge_mbox_name (mailbox);
+  }
 
   status = imap_mboxcache_get (idata, mailbox, 1);
   olduv = status->uidvalidity;
@@ -879,7 +977,7 @@ static void cmd_parse_status (IMAP_DATA* idata, char* s)
     }
     /* dprint (2, (debugfile, "Buffy entry: [%s] mbox: [%s]\n", inc->path, NONULL(mx.mbox))); */
     
-    if (mutt_account_match (&idata->conn->account, &mx.account))
+    if (imap_account_match (&idata->conn->account, &mx.account))
     {
       if (mx.mbox)
       {

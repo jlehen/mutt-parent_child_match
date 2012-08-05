@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1999-2002 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1996-2002,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1999-2005 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -30,9 +30,7 @@
 #include "mailbox.h"
 #include "mx.h"
 #include "copy.h"
-#include "buffy.h"
 #include "sort.h"
-#include "account.h"
 #if USE_HCACHE
 #include "hcache.h"
 #endif
@@ -312,7 +310,7 @@ static void mhs_write_one_sequence (FILE * fp, struct mh_sequences *mhs,
 
 /* XXX - we don't currently remove deleted messages from sequences we don't know.  Should we? */
 
-void mh_update_sequences (CONTEXT * ctx)
+static void mh_update_sequences (CONTEXT * ctx)
 {
   FILE *ofp, *nfp;
 
@@ -978,7 +976,7 @@ static struct maildir *skip_duplicates (struct maildir *p, struct maildir **last
 /* 
  * This function does the second parsing pass
  */
-void maildir_delayed_parsing (CONTEXT * ctx, struct maildir **md,
+static void maildir_delayed_parsing (CONTEXT * ctx, struct maildir **md,
 			      progress_t *progress)
 { 
   struct maildir *p, *last = NULL;
@@ -1175,7 +1173,7 @@ int mh_open_new_message (MESSAGE * msg, CONTEXT * dest, HEADER * hdr)
   return mh_mkstemp (dest, &msg->fp, &msg->path);
 }
 
-int ch_compar (const void *a, const void *b)
+static int ch_compar (const void *a, const void *b)
 {
   return (int)( *((const char *) a) - *((const char *) b));
 }
@@ -1311,8 +1309,11 @@ int maildir_commit_message (CONTEXT * ctx, MESSAGE * msg, HEADER * hdr)
   char full[_POSIX_PATH_MAX];
   char *s;
 
-  if (safe_fclose (&msg->fp) != 0)
+  if (safe_fsync_close (&msg->fp))
+  {
+    mutt_perror (_("Could not flush message to disk"));
     return -1;
+  }
 
   /* extract the subdir */
   s = strrchr (msg->path, '/') + 1;
@@ -1386,8 +1387,11 @@ static int _mh_commit_message (CONTEXT * ctx, MESSAGE * msg, HEADER * hdr,
   char path[_POSIX_PATH_MAX];
   char tmp[16];
 
-  if (safe_fclose (&msg->fp) != 0)
+  if (safe_fsync_close (&msg->fp))
+  {
+    mutt_perror (_("Could not flush message to disk"));
     return -1;
+  }
 
   if ((dirp = opendir (ctx->path)) == NULL)
   {
@@ -1976,7 +1980,7 @@ int mh_check_mailbox (CONTEXT * ctx, int *index_hint)
   
   /* create .mh_sequences when there isn't one. */
   snprintf (buf, sizeof (buf), "%s/.mh_sequences", ctx->path);
-  if ((i = stat (buf, &st_cur) == -1) && errno == ENOENT)
+  if ((i = stat (buf, &st_cur)) == -1 && errno == ENOENT)
   {
     char *tmp;
     FILE *fp = NULL;
@@ -2061,7 +2065,7 @@ int mh_check_mailbox (CONTEXT * ctx, int *index_hint)
  * then again, it's called rarely.
  */
 
-FILE *_maildir_open_find_message (const char *folder, const char *unique,
+static FILE *_maildir_open_find_message (const char *folder, const char *unique,
 				  const char *subfolder)
 {
   char dir[_POSIX_PATH_MAX];

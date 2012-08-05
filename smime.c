@@ -438,10 +438,9 @@ char* smime_ask_for_key (char *prompt, char *mailbox, short public)
     strcat (helpstr, buf);	/* __STRCAT_CHECKED__ */
   
     /* Create the menu */
-    menu = mutt_new_menu();
+    menu = mutt_new_menu(MENU_SMIME);
     menu->max = cur;
     menu->make_entry = smime_entry;
-    menu->menu = MENU_SMIME;
     menu->help = helpstr;
     menu->data = Table;
     menu->title = title;
@@ -531,8 +530,7 @@ char *smime_get_field_from_db (char *mailbox, char *query, short public, short m
 	if (numFields < 2)
 	    continue;
 	if (mailbox && public && 
-	    (!fields[4] ||
-	     *fields[4] == 'i' || *fields[4] == 'e' || *fields[4] == 'r'))
+	    (*fields[4] == 'i' || *fields[4] == 'e' || *fields[4] == 'r'))
 	    continue;
 
 	if (found)
@@ -1386,6 +1384,12 @@ BODY *smime_sign_message (BODY *a )
   pid_t thepid;
   char *intermediates = smime_get_field_from_db(NULL, SmimeDefaultKey, 1, 1);
 
+  if (!SmimeDefaultKey)
+  {
+    mutt_error _("Can't sign: No key specified. Use Sign As.");
+    return NULL;
+  }
+
   if (!intermediates)
   {
     mutt_message(_("Warning: Intermediate certificate not found."));
@@ -2023,12 +2027,17 @@ int smime_send_menu (HEADER *msg, int *redraw)
   case 2: /* (s)ign */
       
     if(!SmimeDefaultKey)
-	mutt_message _("Can't sign: No key specified. Use Sign As.");
-    else
     {
-      msg->security |= SIGN;
-      msg->security &= ~ENCRYPT;
+      *redraw = REDRAW_FULL;
+
+      if ((p = smime_ask_for_key (_("Sign as: "), NULL, 0)))
+        mutt_str_replace (&SmimeDefaultKey, p);
+      else
+        break;
     }
+
+    msg->security |= SIGN;
+    msg->security &= ~ENCRYPT;
     break;
 
   case 4: /* sign (a)s */

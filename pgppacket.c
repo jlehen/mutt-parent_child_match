@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 2001-2,2007 Thomas Roessler <roessler@does-not-exist.org>
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -32,9 +32,7 @@
 /* yuck, we were including this one somewhere below. */
 #include "mutt.h"
 
-#include "sha1.h"
 #include "lib.h"
-#include "pgplib.h"
 #include "pgppacket.h"
 
 #define CHUNKSIZE 1024

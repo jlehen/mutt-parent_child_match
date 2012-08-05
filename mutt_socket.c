@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1998 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1999-2005 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1998,2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1999-2006,2008 Brendan Cully <brendan@kublai.com>
  * Copyright (C) 1999-2000 Tommi Komulainen <Tommi.Komulainen@iki.fi>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -112,6 +112,7 @@ int mutt_socket_read (CONNECTION* conn, char* buf, size_t len)
 int mutt_socket_write_d (CONNECTION *conn, const char *buf, int len, int dbg)
 {
   int rc;
+  int sent = 0;
 
   dprint (dbg, (debugfile,"%d> %s", conn->fd, buf));
 
@@ -123,22 +124,28 @@ int mutt_socket_write_d (CONNECTION *conn, const char *buf, int len, int dbg)
 
   if (len < 0)
     len = mutt_strlen (buf);
-  if ((rc = conn->conn_write (conn, buf, len)) < 0)
+  
+  while (sent < len)
   {
-    dprint (1, (debugfile,
-      "mutt_socket_write: error writing, closing socket\n"));
-    mutt_socket_close (conn);
+    if ((rc = conn->conn_write (conn, buf + sent, len - sent)) < 0)
+    {
+      dprint (1, (debugfile,
+                  "mutt_socket_write: error writing (%s), closing socket\n",
+                  strerror(errno)));
+      mutt_socket_close (conn);
 
-    return -1;
+      return -1;
+    }
+
+    if (rc < len - sent)
+      dprint (3, (debugfile,
+                  "mutt_socket_write: short write (%d of %d bytes)\n", rc,
+                  len - sent));
+    
+    sent += rc;
   }
 
-  if (rc < len)
-  {
-    dprint (1, (debugfile,
-      "mutt_socket_write: ERROR: wrote %d of %d bytes!\n", rc, len));
-  }
-
-  return rc;
+  return sent;
 }
 
 /* poll whether reads would block.
@@ -205,9 +212,8 @@ int mutt_socket_readln_d (char* buf, size_t buflen, CONNECTION* conn, int dbg)
 
   /* strip \r from \r\n termination */
   if (i && buf[i-1] == '\r')
-    buf[--i] = '\0';
-  else
-    buf[i] = '\0';
+    i--;
+  buf[i] = '\0';
 
   dprint (dbg, (debugfile, "%d< %s\n", conn->fd, buf));
   
@@ -468,8 +474,8 @@ int raw_socket_open (CONNECTION* conn)
   host_idna = conn->account.host;
 # endif
 
-  mutt_message (_("Looking up %s..."), conn->account.host);
-
+  if (!option(OPTNOCURSES))
+    mutt_message (_("Looking up %s..."), conn->account.host);
   
   rc = getaddrinfo (host_idna, port, &hints, &res);
 
@@ -484,7 +490,8 @@ int raw_socket_open (CONNECTION* conn)
     return -1;
   }
 
-  mutt_message (_("Connecting to %s..."), conn->account.host); 
+  if (!option(OPTNOCURSES))
+    mutt_message (_("Connecting to %s..."), conn->account.host); 
 
   rc = -1;
   for (cur = res; cur != NULL; cur = cur->ai_next)
@@ -526,23 +533,23 @@ int raw_socket_open (CONNECTION* conn)
   host_idna = conn->account.host;
 # endif
 
-  mutt_message (_("Looking up %s..."), conn->account.host);
+  if (!option(OPTNOCURSES))
+    mutt_message (_("Looking up %s..."), conn->account.host);
 
-  if ((he = gethostbyname (host_idna)) == NULL)
-  {
+  he = gethostbyname (host_idna);
+
 # ifdef HAVE_LIBIDN
     FREE (&host_idna);
 # endif
+
+  if (! he) {
     mutt_error (_("Could not find the host \"%s\""), conn->account.host);
 	
     return -1;
   }
 
-# ifdef HAVE_LIBIDN
-  FREE (&host_idna);
-# endif
-
-  mutt_message (_("Connecting to %s..."), conn->account.host); 
+  if (!option(OPTNOCURSES))
+    mutt_message (_("Connecting to %s..."), conn->account.host); 
 
   rc = -1;
   for (i = 0; he->h_addr_list[i] != NULL; i++)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1999-2004 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it
  *     and/or modify it under the terms of the GNU General Public
@@ -26,12 +26,8 @@
 #include "mutt.h"
 #include "mutt_curses.h"
 #include "mutt_menu.h"
-#include "rfc1524.h"
-#include "mime.h"
-#include "mailbox.h"
 #include "attach.h"
 #include "mapping.h"
-#include "mx.h"
 #include "copy.h"
 #include "mutt_idna.h"
 

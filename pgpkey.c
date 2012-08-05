@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996,1997 Michael R. Elkins <me@mutt.org>
- * Copyright (c) 1998,1999 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1996-7,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (c) 1998-2003 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it
  *     and/or modify it under the terms of the GNU General Public
@@ -522,10 +522,9 @@ static pgp_key_t pgp_select_key (pgp_key_t keys,
   mutt_make_help (buf, sizeof (buf), _("Help"), MENU_PGP, OP_HELP);
   strcat (helpstr, buf);	/* __STRCAT_CHECKED__ */
 
-  menu = mutt_new_menu ();
+  menu = mutt_new_menu (MENU_PGP);
   menu->max = i;
   menu->make_entry = pgp_entry;
-  menu->menu = MENU_PGP;
   menu->help = helpstr;
   menu->data = KeyTable;
 
@@ -818,12 +817,7 @@ pgp_key_t pgp_getkeybyaddr (ADDRESS * a, short abilities, pgp_ring_t keyring)
   ADDRESS *r, *p;
   LIST *hints = NULL;
 
-  int weak    = 0;
-  int invalid = 0;
   int multi   = 0;
-  int this_key_has_strong;
-  int this_key_has_weak;
-  int this_key_has_invalid;
   int match;
 
   pgp_key_t keys, k, kn;
@@ -863,9 +857,6 @@ pgp_key_t pgp_getkeybyaddr (ADDRESS * a, short abilities, pgp_ring_t keyring)
       continue;
     }
 
-    this_key_has_weak    = 0;	/* weak but valid match   */
-    this_key_has_invalid = 0;   /* invalid match          */
-    this_key_has_strong  = 0;	/* strong and valid match */
     match                = 0;   /* any match 		  */
 
     for (q = k->address; q; q = q->next)
@@ -886,23 +877,12 @@ pgp_key_t pgp_getkeybyaddr (ADDRESS * a, short abilities, pgp_ring_t keyring)
 	  if (the_valid_key && the_valid_key != k)
 	    multi             = 1;
 	  the_valid_key       = k;
-	  this_key_has_strong = 1;
 	}
-	else if ((validity & PGP_KV_MATCH) && !(validity & PGP_KV_VALID))
-	  this_key_has_invalid = 1;
-	else if ((validity & PGP_KV_MATCH) 
-		 && (!(validity & PGP_KV_STRONGID) || !(validity & PGP_KV_ADDR)))
-	  this_key_has_weak    = 1;
       }
 
       rfc822_free_address (&r);
     }
 
-    if (match && !this_key_has_strong && this_key_has_invalid)
-      invalid = 1;
-    if (match && !this_key_has_strong && this_key_has_weak)
-      weak = 1;
-    
     if (match)
     {
       *last  = pgp_principal_key (k);
@@ -915,8 +895,7 @@ pgp_key_t pgp_getkeybyaddr (ADDRESS * a, short abilities, pgp_ring_t keyring)
   
   if (matches)
   {
-    if (the_valid_key && !multi /* && !weak 
-	&& !(invalid && option (OPTPGPSHOWUNUSABLE)) */)
+    if (the_valid_key && !multi)
     {
       /*
        * There was precisely one strong match on a valid ID.

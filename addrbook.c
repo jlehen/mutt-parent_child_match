@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -149,10 +149,9 @@ void mutt_alias_menu (char *buf, size_t buflen, ALIAS *aliases)
   /* tell whoever called me to redraw the screen when I return */
   set_option (OPTNEEDREDRAW);
   
-  menu = mutt_new_menu ();
+  menu = mutt_new_menu (MENU_ALIAS);
   menu->make_entry = alias_entry;
   menu->tag = alias_tag;
-  menu->menu = MENU_ALIAS;
   menu->title = _("Aliases");
   menu->help = mutt_compile_help (helpstr, sizeof (helpstr), MENU_ALIAS, AliasHelp);
 
