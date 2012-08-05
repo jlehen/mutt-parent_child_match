@@ -70,7 +70,7 @@ static ADDRESS *mutt_expand_aliases_r (ADDRESS *a, LIST **expn)
           u->data = safe_strdup (a->mailbox);
           u->next = *expn;
           *expn = u;
-	  w = rfc822_cpy_adr (t);
+	  w = rfc822_cpy_adr (t, 0);
 	  w = mutt_expand_aliases_r (w, expn);
 	  if (head)
 	    last->next = w;
@@ -359,6 +359,7 @@ retry_name:
       if (fread(buf, 1, 1, rc) != 1)
       {
 	mutt_perror (_("Error reading alias file"));
+	safe_fclose (&rc);
 	return;
       }
       if (fseek (rc, 0, SEEK_END) < 0)
@@ -378,7 +379,7 @@ retry_name:
     recode_buf (buf, sizeof (buf));
     write_safe_address (rc, buf);
     fputc ('\n', rc);
-    fclose (rc);
+    safe_fclose (&rc);
     mutt_message _("Alias added.");
   }
   else
@@ -388,7 +389,7 @@ retry_name:
   
   fseek_err:
   mutt_perror (_("Error seeking in alias file"));
-  fclose(rc);
+  safe_fclose (&rc);
   return;
 }
 
@@ -487,7 +488,9 @@ int mutt_alias_complete (char *s, size_t buflen)
   char bestname[HUGE_STRING];
   int i;
 
+#ifndef min
 #define min(a,b)        ((a<b)?a:b)
+#endif
 
   if (s[0] != 0) /* avoid empty string as strstr argument */
   {

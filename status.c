@@ -209,17 +209,15 @@ status_format_str (char *buf, size_t buflen, size_t col, char op, const char *sr
 
     case 'r':
     {
-      int i = 0;
+      size_t i = 0;
 
       if (Context)
       {
 	i = option(OPTATTACHMSG) ? 3 : ((Context->readonly ||
-          Context->dontwrite) ? 2 : (Context->changed || (
-#ifdef USE_IMAP
-        /* deleted doesn't necessarily mean changed in IMAP */
-          Context->magic != M_IMAP &&
-#endif
-          Context->deleted)) ? 1 : 0);
+          Context->dontwrite) ? 2 : (Context->changed ||
+          /* deleted doesn't necessarily mean changed in IMAP */
+          (Context->magic != M_IMAP &&
+           Context->deleted)) ? 1 : 0);
       }
       
       if (!StChars)

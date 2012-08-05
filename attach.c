@@ -76,8 +76,8 @@ int mutt_get_tmp_attachment (BODY *a)
   else
     mutt_perror(fpin ? tempfile : a->filename);
   
-  if(fpin)  fclose(fpin);
-  if(fpout) fclose(fpout);
+  if(fpin)  safe_fclose (&fpin);
+  if(fpout) safe_fclose (&fpout);
   
   return a->unlink ? 0 : -1;
 }
@@ -169,15 +169,15 @@ int mutt_compose_attachment (BODY *a)
 	    /* Remove headers by copying out data to another file, then 
 	     * copying the file back */
 	    fseeko (fp, b->offset, 0);
-	    mutt_mktemp (tempfile);
+	    mutt_mktemp (tempfile, sizeof (tempfile));
 	    if ((tfp = safe_fopen (tempfile, "w")) == NULL)
 	    {
 	      mutt_perror _("Failure to open file to strip headers.");
 	      goto bailout;
 	    }
 	    mutt_copy_stream (fp, tfp);
-	    fclose (fp);
-	    fclose (tfp);
+	    safe_fclose (&fp);
+	    safe_fclose (&tfp);
 	    mutt_unlink (a->filename);  
 	    if (mutt_rename_file (tempfile, a->filename) != 0) 
 	    {
@@ -416,7 +416,7 @@ int mutt_view_attachment (FILE *fp, BODY *a, int flag, HEADER *hdr,
   int use_pipe = 0;
   int use_pager = 1;
   char type[STRING];
-  char command[STRING];
+  char command[HUGE_STRING];
   char descrip[STRING];
   char *fname;
   rfc1524_entry *entry = NULL;
@@ -508,7 +508,7 @@ int mutt_view_attachment (FILE *fp, BODY *a, int flag, HEADER *hdr,
       mutt_adv_mktemp (pagerfile, sizeof(pagerfile));
     }
     else
-      mutt_mktemp (pagerfile);
+      mutt_mktemp (pagerfile, sizeof (pagerfile));
   }
     
   if (use_mailcap)
@@ -551,11 +551,11 @@ int mutt_view_attachment (FILE *fp, BODY *a, int flag, HEADER *hdr,
       {
 	if (a->description)
 	  snprintf (descrip, sizeof (descrip),
-		    "---Command: %-20.20s Description: %s",
+		    _("---Command: %-20.20s Description: %s"),
 		    command, a->description);
 	else
 	  snprintf (descrip, sizeof (descrip),
-		    "---Command: %-30.30s Attachment: %s", command, type);
+		    _("---Command: %-30.30s Attachment: %s"), command, type);
       }
 
       if ((mutt_wait_filter (thepid) || (entry->needsterminal &&
@@ -601,10 +601,10 @@ int mutt_view_attachment (FILE *fp, BODY *a, int flag, HEADER *hdr,
     if (a->description)
       strfcpy (descrip, a->description, sizeof (descrip));
     else if (a->filename)
-      snprintf (descrip, sizeof (descrip), "---Attachment: %s : %s",
+      snprintf (descrip, sizeof (descrip), _("---Attachment: %s: %s"),
 	  a->filename, type);
     else
-      snprintf (descrip, sizeof (descrip), "---Attachment: %s", type);
+      snprintf (descrip, sizeof (descrip), _("---Attachment: %s"), type);
   }
   
   /* We only reach this point if there have been no errors */
@@ -798,21 +798,25 @@ int mutt_save_attachment (FILE *fp, BODY *m, char *path, int flags, HEADER *hdr)
     else
     {
       /* In recv mode, extract from folder and decode */
-      
+
       STATE s;
-      
+
       memset (&s, 0, sizeof (s));
+      s.flags |= M_CHARCONV;
+
       if ((s.fpout = mutt_save_attachment_open (path, flags)) == NULL)
       {
 	mutt_perror ("fopen");
+	mutt_sleep (2);
 	return (-1);
       }
       fseeko ((s.fpin = fp), m->offset, 0);
       mutt_decode_attachment (m, &s);
-      
+
       if (fclose (s.fpout) != 0)
       {
 	mutt_perror ("fclose");
+	mutt_sleep (2);
 	return (-1);
       }
     }
@@ -884,7 +888,7 @@ int mutt_decode_save_attachment (FILE *fp, BODY *m, char *path,
     if (stat (m->filename, &st) == -1)
     {
       mutt_perror ("stat");
-      fclose (s.fpout);
+      safe_fclose (&s.fpout);
       return (-1);
     }
 
@@ -915,7 +919,7 @@ int mutt_decode_save_attachment (FILE *fp, BODY *m, char *path,
 
   mutt_body_handler (m, &s);
 
-  fclose (s.fpout);
+  safe_fclose (&s.fpout);
   if (fp == NULL)
   {
     m->length = 0;
@@ -926,7 +930,7 @@ int mutt_decode_save_attachment (FILE *fp, BODY *m, char *path,
       m->parts = saved_parts;
       m->hdr = saved_hdr;
     }
-    fclose (s.fpin);
+    safe_fclose (&s.fpin);
   }
 
   return (0);
@@ -934,7 +938,7 @@ int mutt_decode_save_attachment (FILE *fp, BODY *m, char *path,
 
 /* Ok, the difference between send and receive:
  * recv: BODY->filename is a suggested name, and Context|HEADER points
- *       to the attachment in mailbox which is encooded
+ *       to the attachment in mailbox which is encoded
  * send: BODY->filename points to the un-encoded file which contains the 
  *       attachment
  */
@@ -1039,7 +1043,7 @@ int mutt_print_attachment (FILE *fp, BODY *a)
     ifp = NULL;
     fpout = NULL;
     
-    mutt_mktemp (newfile);
+    mutt_mktemp (newfile, sizeof (newfile));
     if (mutt_decode_save_attachment (fp, a, newfile, M_PRINTING, 0) == 0)
     {
       

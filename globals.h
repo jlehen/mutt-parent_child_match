@@ -113,6 +113,7 @@ WHERE char *PrintCmd;
 WHERE char *QueryCmd;
 WHERE char *QueryFormat;
 WHERE char *Realname;
+WHERE short SearchContext;
 WHERE char *SendCharset;
 WHERE char *Sendmail;
 WHERE char *Shell;
@@ -199,6 +200,7 @@ WHERE short SleepTime INITVAL (1);
 WHERE short TimeInc;
 WHERE short Timeout;
 WHERE short Wrap;
+WHERE short WrapHeaders;
 WHERE short WriteInc;
 
 WHERE short ScoreThresholdDelete;

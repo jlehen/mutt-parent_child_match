@@ -47,6 +47,7 @@
 
 #define smtp_err_read -2
 #define smtp_err_write -3
+#define smtp_err_code -4
 
 #define SMTP_PORT 25
 #define SMTPS_PORT 465
@@ -75,6 +76,21 @@ static int smtp_open (CONNECTION* conn);
 static int Esmtp = 0;
 static char* AuthMechs = NULL;
 static unsigned char Capabilities[(CAPMAX + 7)/ 8];
+
+static int smtp_code (char *buf, size_t len, int *n)
+{
+  char code[4];
+
+  if (len < 4)
+    return -1;
+  code[0] = buf[0];
+  code[1] = buf[1];
+  code[2] = buf[2];
+  code[3] = 0;
+  if (mutt_atoi (code, n) < 0)
+    return -1;
+  return 0;
+}
 
 /* Reads a command response from the SMTP server.
  * Returns:
@@ -107,7 +123,9 @@ smtp_get_resp (CONNECTION * conn)
     else if (!ascii_strncasecmp ("STARTTLS", buf + 4, 8))
       mutt_bit_set (Capabilities, STARTTLS);
 
-    n = atoi (buf);
+    if (smtp_code (buf, n, &n) < 0)
+      return smtp_err_code;
+
   } while (buf[3] == '-');
 
   if (smtp_success (n) || n == smtp_continue)
@@ -125,6 +143,12 @@ smtp_rcpt_to (CONNECTION * conn, const ADDRESS * a)
 
   while (a)
   {
+    /* weed out group mailboxes, since those are for display only */
+    if (!a->mailbox || a->group)
+    {
+      a = a->next;
+      continue;
+    }
     if (mutt_bit_isset (Capabilities, DSN) && DsnNotify)
       snprintf (buf, sizeof (buf), "RCPT TO:<%s> NOTIFY=%s\r\n",
                 a->mailbox, DsnNotify);
@@ -147,8 +171,8 @@ smtp_data (CONNECTION * conn, const char *msgfile)
   FILE *fp = 0;
   progress_t progress;
   struct stat st;
-  int r;
-  size_t buflen;
+  int r, term = 0;
+  size_t buflen = 0;
 
   fp = fopen (msgfile, "r");
   if (!fp)
@@ -164,18 +188,19 @@ smtp_data (CONNECTION * conn, const char *msgfile)
   snprintf (buf, sizeof (buf), "DATA\r\n");
   if (mutt_socket_write (conn, buf) == -1)
   {
-    fclose (fp);
+    safe_fclose (&fp);
     return smtp_err_write;
   }
   if ((r = smtp_get_resp (conn)))
   {
-    fclose (fp);
+    safe_fclose (&fp);
     return r;
   }
 
   while (fgets (buf, sizeof (buf) - 1, fp))
   {
     buflen = mutt_strlen (buf);
+    term = buf[buflen-1] == '\n';
     if (buflen && buf[buflen-1] == '\n'
 	&& (buflen == 1 || buf[buflen - 2] != '\r'))
       snprintf (buf + buflen - 1, sizeof (buf) - buflen + 1, "\r\n");
@@ -183,19 +208,24 @@ smtp_data (CONNECTION * conn, const char *msgfile)
     {
       if (mutt_socket_write_d (conn, ".", -1, M_SOCK_LOG_FULL) == -1)
       {
-        fclose (fp);
+        safe_fclose (&fp);
         return smtp_err_write;
       }
     }
     if (mutt_socket_write_d (conn, buf, -1, M_SOCK_LOG_FULL) == -1)
     {
-      fclose (fp);
+      safe_fclose (&fp);
       return smtp_err_write;
     }
-
     mutt_progress_update (&progress, ftell (fp), -1);
   }
-  fclose (fp);
+  if (!term && buflen &&
+      mutt_socket_write_d (conn, "\r\n", -1, M_SOCK_LOG_FULL) == -1)
+  {
+    safe_fclose (&fp);
+    return smtp_err_write;
+  }
+  safe_fclose (&fp);
 
   /* terminate the message body */
   if (mutt_socket_write (conn, ".\r\n") == -1)
@@ -284,6 +314,8 @@ mutt_smtp_send (const ADDRESS* from, const ADDRESS* to, const ADDRESS* cc,
     mutt_error (_("SMTP session failed: read error"));
   else if (ret == smtp_err_write)
     mutt_error (_("SMTP session failed: write error"));
+  else if (ret == smtp_err_code)
+    mutt_error (_("Invalid server response"));
 
   return ret;
 }
@@ -534,9 +566,10 @@ static int smtp_auth_sasl (CONNECTION* conn, const char* mechlist)
   do {
     if (mutt_socket_write (conn, buf) < 0)
       goto fail;
-    if (mutt_socket_readln (buf, sizeof (buf), conn) < 0)
+    if ((rc = mutt_socket_readln (buf, sizeof (buf), conn)) < 0)
       goto fail;
-    rc = atoi(buf);
+    if (smtp_code (buf, rc, &rc) < 0)
+      goto fail;
 
     if (rc != smtp_ready)
       break;
@@ -564,7 +597,7 @@ static int smtp_auth_sasl (CONNECTION* conn, const char* mechlist)
       }
     }
     strfcpy (buf + len, "\r\n", sizeof (buf) - len);
-  } while (rc == smtp_ready);
+  } while (rc == smtp_ready && saslrc != SASL_FAIL);
 
   if (smtp_success (rc))
   {

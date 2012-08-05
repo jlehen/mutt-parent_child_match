@@ -68,7 +68,7 @@ void mutt_read_histfile (void)
   if ((f = fopen (HistFile, "r")) == NULL)
     return;
 
-  while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line)) != NULL)
+  while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line, 0)) != NULL)
   {
     read = 0;
     if (sscanf (linebuf, "%d:%n", &hclass, &read) < 1 || read == 0 ||
@@ -90,7 +90,7 @@ void mutt_read_histfile (void)
     }
   }
 
-  fclose (f);
+  safe_fclose (&f);
   FREE (&linebuf);
 }
 
@@ -107,7 +107,7 @@ static void shrink_histfile (void)
     return;
 
   line = 0;
-  while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line)) != NULL)
+  while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line, 0)) != NULL)
   {
     if (sscanf (linebuf, "%d", &hclass) < 1 || hclass < 0)
     {
@@ -123,7 +123,7 @@ static void shrink_histfile (void)
   for(hclass = HC_FIRST; hclass < HC_LAST; hclass++)
     if (n[hclass] > SaveHist)
     {
-      mutt_mktemp (tmpfname);
+      mutt_mktemp (tmpfname, sizeof (tmpfname));
       if ((tmp = safe_fopen (tmpfname, "w+")) == NULL)
         mutt_perror (tmpfname);
       break;
@@ -133,7 +133,7 @@ static void shrink_histfile (void)
   {
     rewind (f);
     line = 0;
-    while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line)) != NULL)
+    while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line, 0)) != NULL)
     {
       if (sscanf (linebuf, "%d", &hclass) < 1 || hclass < 0)
       {
@@ -149,7 +149,7 @@ static void shrink_histfile (void)
   }
 
 cleanup:
-  fclose (f);
+  safe_fclose (&f);
   FREE (&linebuf);
   if (tmp != NULL)
   {
@@ -158,9 +158,9 @@ cleanup:
     {
       rewind (tmp);
       mutt_copy_stream (tmp, f);
-      fclose (f);
+      safe_fclose (&f);
     }
-    fclose (tmp);
+    safe_fclose (&tmp);
     unlink (tmpfname);
   }
 }
@@ -196,7 +196,7 @@ static void save_history (history_class_t hclass, const char *s)
   }
   fputs ("|\n", f);
 
-  fclose (f);
+  safe_fclose (&f);
   FREE (&tmp);
 
   if (--n < 0)

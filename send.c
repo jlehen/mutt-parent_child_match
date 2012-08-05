@@ -59,7 +59,7 @@ static void append_signature (FILE *f)
     if (option (OPTSIGDASHES))
       fputs ("\n-- \n", f);
     mutt_copy_stream (tmpfp, f);
-    fclose (tmpfp);
+    safe_fclose (&tmpfp);
     if (thepid != -1)
       mutt_wait_filter (thepid);
   }
@@ -309,7 +309,8 @@ static void process_user_header (ENVELOPE *env)
     else if (ascii_strncasecmp ("to:", uh->data, 3) != 0 &&
 	     ascii_strncasecmp ("cc:", uh->data, 3) != 0 &&
 	     ascii_strncasecmp ("bcc:", uh->data, 4) != 0 &&
-	     ascii_strncasecmp ("subject:", uh->data, 8) != 0)
+	     ascii_strncasecmp ("subject:", uh->data, 8) != 0 &&
+	     ascii_strncasecmp ("return-path:", uh->data, 12) != 0)
     {
       if (last)
       {
@@ -387,6 +388,10 @@ static int include_forward (CONTEXT *ctx, HEADER *cur, FILE *out)
   if (option (OPTFORWQUOTE))
     cmflags |= M_CM_PREFIX;
 
+  /* wrapping headers for forwarding is considered a display
+   * rather than send action */
+  chflags |= CH_DISPLAY;
+
   mutt_copy_message (out, ctx, cur, cmflags, chflags);
   mutt_forward_trailer (out);
   return 0;
@@ -451,7 +456,7 @@ static int default_to (ADDRESS **to, ENVELOPE *env, int flags, int hmfupto)
 
   if (flags && env->mail_followup_to && hmfupto == M_YES) 
   {
-    rfc822_append (to, env->mail_followup_to);
+    rfc822_append (to, env->mail_followup_to, 1);
     return 0;
   }
 
@@ -464,7 +469,7 @@ static int default_to (ADDRESS **to, ENVELOPE *env, int flags, int hmfupto)
   if (!option(OPTREPLYSELF) && mutt_addr_is_user (env->from))
   {
     /* mail is from the user, assume replying to recipients */
-    rfc822_append (to, env->to);
+    rfc822_append (to, env->to, 1);
   }
   else if (env->reply_to)
   {
@@ -482,7 +487,7 @@ static int default_to (ADDRESS **to, ENVELOPE *env, int flags, int hmfupto)
        * in his From header.
        * 
        */
-      rfc822_append (to, env->from);
+      rfc822_append (to, env->from, 0);
     }
     else if (!(mutt_addrcmp (env->from, env->reply_to) && 
 	       !env->reply_to->next) &&
@@ -499,11 +504,11 @@ static int default_to (ADDRESS **to, ENVELOPE *env, int flags, int hmfupto)
       switch (query_quadoption (OPT_REPLYTO, prompt))
       {
       case M_YES:
-	rfc822_append (to, env->reply_to);
+	rfc822_append (to, env->reply_to, 0);
 	break;
 
       case M_NO:
-	rfc822_append (to, env->from);
+	rfc822_append (to, env->from, 0);
 	break;
 
       default:
@@ -511,10 +516,10 @@ static int default_to (ADDRESS **to, ENVELOPE *env, int flags, int hmfupto)
       }
     }
     else
-      rfc822_append (to, env->reply_to);
+      rfc822_append (to, env->reply_to, 0);
   }
   else
-    rfc822_append (to, env->from);
+    rfc822_append (to, env->from, 0);
 
   return (0);
 }
@@ -538,7 +543,7 @@ int mutt_fetch_recips (ENVELOPE *out, ENVELOPE *in, int flags)
   if (flags & SENDLISTREPLY)
   {
     tmp = find_mailing_lists (in->to, in->cc);
-    rfc822_append (&out->to, tmp);
+    rfc822_append (&out->to, tmp, 0);
     rfc822_free_address (&tmp);
 
     if (in->mail_followup_to && hmfupto == M_YES &&
@@ -553,8 +558,8 @@ int mutt_fetch_recips (ENVELOPE *out, ENVELOPE *in, int flags)
     if ((flags & SENDGROUPREPLY) && (!in->mail_followup_to || hmfupto != M_YES))
     {
       /* if(!mutt_addr_is_user(in->to)) */
-      rfc822_append (&out->cc, in->to);
-      rfc822_append (&out->cc, in->cc);
+      rfc822_append (&out->cc, in->to, 1);
+      rfc822_append (&out->cc, in->cc, 1);
     }
   }
   return 0;
@@ -675,6 +680,12 @@ mutt_make_reference_headers (ENVELOPE *curenv, ENVELOPE *env, CONTEXT *ctx)
   }
   else
     mutt_add_to_reference_headers (env, curenv, NULL, NULL);
+
+  /* if there's more than entry in In-Reply-To (i.e. message has
+     multiple parents), don't generate a References: header as it's
+     discouraged by RfC2822, sect. 3.6.4 */
+  if (ctx->tagged > 0 && env->in_reply_to && env->in_reply_to->next)
+    mutt_free_list (&env->references);
 }
 
 static int
@@ -863,8 +874,8 @@ void mutt_set_followup_to (ENVELOPE *e)
        * mail-followup-to header
        */
 
-      t = rfc822_append (&e->mail_followup_to, e->to);
-      rfc822_append (&t, e->cc);
+      t = rfc822_append (&e->mail_followup_to, e->to, 0);
+      rfc822_append (&t, e->cc, 1);
     }
 
     /* remove ourselves from the mail-followup-to header */
@@ -880,9 +891,9 @@ void mutt_set_followup_to (ENVELOPE *e)
     if (e->mail_followup_to && !mutt_is_list_recipient (0, e->to, e->cc))
     {
       if (e->reply_to)
-	from = rfc822_cpy_adr (e->reply_to);
+	from = rfc822_cpy_adr (e->reply_to, 0);
       else if (e->from)
-	from = rfc822_cpy_adr (e->from);
+	from = rfc822_cpy_adr (e->from, 0);
       else
 	from = mutt_default_from ();
       
@@ -928,10 +939,11 @@ static ADDRESS *set_reverse_name (ENVELOPE *env)
   if (tmp)
   {
     tmp = rfc822_cpy_adr_real (tmp);
+    /* when $reverse_realname is not set, clear the personal name so that it
+     * may be set vi a reply- or send-hook.
+     */
     if (!option (OPTREVREAL))
       FREE (&tmp->personal);
-    if (!tmp->personal)
-      tmp->personal = safe_strdup (Realname);
   }
   return (tmp);
 }
@@ -973,7 +985,7 @@ static int send_message (HEADER *msg)
 #endif
   
   /* Write out the message in MIME form. */
-  mutt_mktemp (tempfile);
+  mutt_mktemp (tempfile, sizeof (tempfile));
   if ((tempfp = safe_fopen (tempfile, "w")) == NULL)
     return (-1);
 
@@ -997,7 +1009,7 @@ static int send_message (HEADER *msg)
 
   if ((mutt_write_mime_body (msg->content, tempfp) == -1))
   {
-    fclose(tempfp);
+    safe_fclose (&tempfp);
     unlink (tempfile);
     return (-1);
   }
@@ -1080,6 +1092,25 @@ int mutt_resend_message (FILE *fp, CONTEXT *ctx, HEADER *cur)
     return -1;
   
   return ci_send_message (SENDRESEND, msg, NULL, ctx, cur);
+}
+
+static int is_reply (HEADER *reply, HEADER *orig)
+{
+  return mutt_find_list (orig->env->references, reply->env->message_id) ||
+         mutt_find_list (orig->env->in_reply_to, reply->env->message_id);
+}
+
+static int has_recips (ADDRESS *a)
+{
+  int c = 0;
+
+  for ( ; a; a = a->next)
+  {
+    if (!a->mailbox || a->group)
+      continue;
+    c++;
+  }
+  return c;
 }
 
 int
@@ -1180,7 +1211,7 @@ ci_send_message (int flags,		/* send mode */
     
     if (!tempfile)
     {
-      mutt_mktemp (buffer);
+      mutt_mktemp (buffer, sizeof (buffer));
       tempfp = safe_fopen (buffer, "w+");
       msg->content->filename = safe_strdup (buffer);
     }
@@ -1216,24 +1247,7 @@ ci_send_message (int flags,		/* send mode */
     msg->env->from = set_reverse_name (cur->env);
   }
 
-  if (!msg->env->from && option (OPTUSEFROM) && !(flags & (SENDPOSTPONED|SENDRESEND)))
-  {
-    msg->env->from = mutt_default_from ();
-    if (!(flags & SENDBATCH))
-      killfrom = 1;	/* $use_from will be re-checked after send-hooks */
-  }
-
-  if (flags & SENDBATCH) 
-  {
-    mutt_copy_stream (stdin, tempfp);
-    if (option (OPTHDRS))
-    {
-      process_user_recips (msg->env);
-      process_user_header (msg->env);
-    }
-    mutt_expand_aliases_env (msg->env);
-  }
-  else if (! (flags & (SENDPOSTPONED|SENDRESEND)))
+  if (! (flags & (SENDPOSTPONED|SENDRESEND)))
   {
     if ((flags & (SENDREPLY | SENDFORWARD)) && ctx &&
 	envelope_defaults (msg->env, ctx, cur, flags) == -1)
@@ -1248,7 +1262,7 @@ ci_send_message (int flags,		/* send mode */
     if (flags & SENDREPLY)
       mutt_fix_reply_recipients (msg->env);
 
-    if (! (flags & SENDMAILX) &&
+    if (! (flags & (SENDMAILX|SENDBATCH)) &&
 	! (option (OPTAUTOEDIT) && option (OPTEDITHDRS)) &&
 	! ((flags & SENDREPLY) && option (OPTFASTREPLY)))
     {
@@ -1304,8 +1318,11 @@ ci_send_message (int flags,		/* send mode */
     if (option (OPTHDRS))
       process_user_header (msg->env);
 
+    if (flags & SENDBATCH)
+       mutt_copy_stream (stdin, tempfp);
 
-    if (option (OPTSIGONTOP) && (! (flags & (SENDMAILX | SENDKEY)) && Editor && mutt_strcmp (Editor, "builtin") != 0))
+    if (option (OPTSIGONTOP) && ! (flags & (SENDMAILX|SENDKEY|SENDBATCH))
+	&& Editor && mutt_strcmp (Editor, "builtin") != 0)
       append_signature (tempfp);
 
     /* include replies/forwarded messages, unless we are given a template */
@@ -1313,75 +1330,9 @@ ci_send_message (int flags,		/* send mode */
 	&& generate_body (tempfp, msg, flags, ctx, cur) == -1)
       goto cleanup;
 
-    if (!option (OPTSIGONTOP) && (! (flags & (SENDMAILX | SENDKEY)) && Editor && mutt_strcmp (Editor, "builtin") != 0))
+    if (!option (OPTSIGONTOP) && ! (flags & (SENDMAILX|SENDKEY|SENDBATCH))
+	&& Editor && mutt_strcmp (Editor, "builtin") != 0)
       append_signature (tempfp);
-
-    /* 
-     * this wants to be done _after_ generate_body, so message-hooks
-     * can take effect.
-     */
-
-    if (WithCrypto && !(flags & SENDMAILX))
-    {
-      if (option (OPTCRYPTAUTOSIGN))
-	msg->security |= SIGN;
-      if (option (OPTCRYPTAUTOENCRYPT))
-	msg->security |= ENCRYPT;
-      if (option (OPTCRYPTREPLYENCRYPT) && cur && (cur->security & ENCRYPT))
-	msg->security |= ENCRYPT;
-      if (option (OPTCRYPTREPLYSIGN) && cur && (cur->security & SIGN))
-	msg->security |= SIGN;
-      if (option (OPTCRYPTREPLYSIGNENCRYPTED) && cur && (cur->security & ENCRYPT))
-	msg->security |= SIGN;
-      if (WithCrypto & APPLICATION_PGP && (msg->security & (ENCRYPT | SIGN)))
-      {
-	if (option (OPTPGPAUTOINLINE))
-	  msg->security |= INLINE;
-	if (option (OPTPGPREPLYINLINE) && cur && (cur->security & INLINE))
-	  msg->security |= INLINE;
-      }
-    }
-
-    if (WithCrypto && msg->security)
-    {
-      /* 
-       * When reypling / forwarding, use the original message's
-       * crypto system.  According to the documentation,
-       * smime_is_default should be disregarded here.
-       * 
-       * Problem: At least with forwarding, this doesn't really
-       * make much sense. Should we have an option to completely
-       * disable individual mechanisms at run-time?
-       */
-      if (cur)
-      {
-	if ((WithCrypto & APPLICATION_PGP) && option (OPTCRYPTAUTOPGP) 
-	    && (cur->security & APPLICATION_PGP))
-	  msg->security |= APPLICATION_PGP;
-	else if ((WithCrypto & APPLICATION_SMIME) && option (OPTCRYPTAUTOSMIME)
-		 && (cur->security & APPLICATION_SMIME))
-	  msg->security |= APPLICATION_SMIME;
-      }
-      
-      /*
-       * No crypto mechanism selected? Use availability + smime_is_default
-       * for the decision. 
-       */
-      if (!(msg->security & (APPLICATION_SMIME | APPLICATION_PGP)))
-      {
-	if ((WithCrypto & APPLICATION_SMIME) && option (OPTCRYPTAUTOSMIME) 
-	    && option (OPTSMIMEISDEFAULT))
-	  msg->security |= APPLICATION_SMIME;
-	else if ((WithCrypto & APPLICATION_PGP) && option (OPTCRYPTAUTOPGP))
-	  msg->security |= APPLICATION_PGP;
-	else if ((WithCrypto & APPLICATION_SMIME) && option (OPTCRYPTAUTOSMIME))
-	  msg->security |= APPLICATION_SMIME;
-      }
-    }
-    
-    /* No permissible mechanisms found.  Don't sign or encrypt. */
-    if (!(msg->security & (APPLICATION_SMIME|APPLICATION_PGP)))
-      msg->security = 0;
   }
   
   /* 
@@ -1417,7 +1368,7 @@ ci_send_message (int flags,		/* send mode */
      * don't want to do this when:
      * 1) we are sending a key/cert
      * 2) we are forwarding a message and the user doesn't want to edit it.
-     *    This is controled by the quadoption $forward_edit.  However, if
+     *    This is controlled by the quadoption $forward_edit.  However, if
      *    both $edit_headers and $autoedit are set, we want to ignore the
      *    setting of $forward_edit because the user probably needs to add the
      *    recipients.
@@ -1474,6 +1425,80 @@ ci_send_message (int flags,		/* send mode */
       else
 	mutt_perror (msg->content->filename);
     }
+  }
+
+  /* 
+   * Set the message security unless:
+   * 1) crypto support is not enabled (WithCrypto==0)
+   * 2) pgp: header field was present during message editing with $edit_headers (msg->security != 0)
+   * 3) we are resending a message
+   * 4) we are recalling a postponed message (don't override the user's saved settings)
+   * 5) we are in mailx mode
+   * 6) we are in batch mode
+   *
+   * This is done after allowing the user to edit the message so that security
+   * settings can be configured with send2-hook and $edit_headers.
+   */
+  if (WithCrypto && (msg->security == 0) && !(flags & (SENDBATCH | SENDMAILX | SENDPOSTPONED | SENDRESEND)))
+  {
+    if (option (OPTCRYPTAUTOSIGN))
+      msg->security |= SIGN;
+    if (option (OPTCRYPTAUTOENCRYPT))
+      msg->security |= ENCRYPT;
+    if (option (OPTCRYPTREPLYENCRYPT) && cur && (cur->security & ENCRYPT))
+      msg->security |= ENCRYPT;
+    if (option (OPTCRYPTREPLYSIGN) && cur && (cur->security & SIGN))
+      msg->security |= SIGN;
+    if (option (OPTCRYPTREPLYSIGNENCRYPTED) && cur && (cur->security & ENCRYPT))
+      msg->security |= SIGN;
+    if (WithCrypto & APPLICATION_PGP && (msg->security & (ENCRYPT | SIGN)))
+    {
+      if (option (OPTPGPAUTOINLINE))
+	msg->security |= INLINE;
+      if (option (OPTPGPREPLYINLINE) && cur && (cur->security & INLINE))
+	msg->security |= INLINE;
+    }
+
+    if (msg->security)
+    {
+      /* 
+       * When replying / forwarding, use the original message's
+       * crypto system.  According to the documentation,
+       * smime_is_default should be disregarded here.
+       * 
+       * Problem: At least with forwarding, this doesn't really
+       * make much sense. Should we have an option to completely
+       * disable individual mechanisms at run-time?
+       */
+      if (cur)
+      {
+	if ((WithCrypto & APPLICATION_PGP) && option (OPTCRYPTAUTOPGP) 
+	    && (cur->security & APPLICATION_PGP))
+	  msg->security |= APPLICATION_PGP;
+	else if ((WithCrypto & APPLICATION_SMIME) && option (OPTCRYPTAUTOSMIME)
+	    && (cur->security & APPLICATION_SMIME))
+	  msg->security |= APPLICATION_SMIME;
+      }
+
+      /*
+       * No crypto mechanism selected? Use availability + smime_is_default
+       * for the decision. 
+       */
+      if (!(msg->security & (APPLICATION_SMIME | APPLICATION_PGP)))
+      {
+	if ((WithCrypto & APPLICATION_SMIME) && option (OPTCRYPTAUTOSMIME) 
+	    && option (OPTSMIMEISDEFAULT))
+	  msg->security |= APPLICATION_SMIME;
+	else if ((WithCrypto & APPLICATION_PGP) && option (OPTCRYPTAUTOPGP))
+	  msg->security |= APPLICATION_PGP;
+	else if ((WithCrypto & APPLICATION_SMIME) && option (OPTCRYPTAUTOSMIME))
+	  msg->security |= APPLICATION_SMIME;
+      }
+    }
+
+    /* No permissible mechanisms found.  Don't sign or encrypt. */
+    if (!(msg->security & (APPLICATION_SMIME|APPLICATION_PGP)))
+      msg->security = 0;
   }
 
   /* specify a default fcc.  if we are in batchmode, only save a copy of
@@ -1541,7 +1566,8 @@ main_loop:
     }
   }
 
-  if (!msg->env->to && !msg->env->cc && !msg->env->bcc)
+  if (!has_recips (msg->env->to) && !has_recips (msg->env->cc) &&
+      !has_recips (msg->env->bcc))
   {
     if (! (flags & SENDBATCH))
     {
@@ -1665,7 +1691,8 @@ main_loop:
       msg->content = clear_content;
 
     /* check to see if the user wants copies of all attachments */
-    if (!option (OPTFCCATTACH) && msg->content->type == TYPEMULTIPART)
+    if (query_quadoption (OPT_FCCATTACH, _("Save attachments in Fcc?")) != M_YES &&
+	msg->content->type == TYPEMULTIPART)
     {
       if (WithCrypto
           && (mutt_strcmp (msg->content->subtype, "encrypted") == 0 ||
@@ -1747,7 +1774,7 @@ full_fcc:
    * the send failed as well so we give the user a chance to fix the
    * error.
    */
-  if (fcc_error || (i = send_message (msg)) == -1)
+  if (fcc_error || (i = send_message (msg)) < 0)
   {
     if (!(flags & SENDBATCH))
     {
@@ -1786,15 +1813,18 @@ full_fcc:
   if (WithCrypto && free_clear_content)
     mutt_free_body (&clear_content);
 
+  /* set 'replied' flag only if the user didn't change/remove
+     In-Reply-To: and References: headers during edit */
   if (flags & SENDREPLY)
   {
     if (cur && ctx)
-      mutt_set_flag (ctx, cur, M_REPLIED, 1);
+      mutt_set_flag (ctx, cur, M_REPLIED, is_reply (cur, msg));
     else if (!(flags & SENDPOSTPONED) && ctx && ctx->tagged)
     {
       for (i = 0; i < ctx->vcount; i++)
 	if (ctx->hdrs[ctx->v2r[i]]->tagged)
-	  mutt_set_flag (ctx, ctx->hdrs[ctx->v2r[i]], M_REPLIED, 1);
+	  mutt_set_flag (ctx, ctx->hdrs[ctx->v2r[i]], M_REPLIED,
+			 is_reply (ctx->hdrs[ctx->v2r[i]], msg));
     }
   }
 

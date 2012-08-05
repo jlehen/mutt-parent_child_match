@@ -78,7 +78,7 @@ Copyright (C) 1998-2005 Werner Koch <wk@isil.d.shuttle.de>\n\
 Copyright (C) 1999-2009 Brendan Cully <brendan@kublai.com>\n\
 Copyright (C) 1999-2002 Tommi Komulainen <Tommi.Komulainen@iki.fi>\n\
 Copyright (C) 2000-2002 Edmund Grimley Evans <edmundo@rano.org>\n\
-Copyright (C) 2006-2008 Rocco Rutte <pdmef@gmx.net>\n\
+Copyright (C) 2006-2009 Rocco Rutte <pdmef@gmx.net>\n\
 \n\
 Many others not mentioned here contributed code, fixes,\n\
 and suggestions.\n");
@@ -111,8 +111,8 @@ static void mutt_usage (void)
 
   puts _(
 "usage: mutt [<options>] [-z] [-f <file> | -yZ]\n\
-       mutt [<options>] [-x] [-Hi <file>] [-s <subj>] [-bc <addr>] [-a <file> [...]] [--] <addr> [...]\n\
-       mutt [<options>] [-x] [-s <subj>] [-bc <addr>] [-a <file> [...]] [--] <addr> [...] < message\n\
+       mutt [<options>] [-x] [-Hi <file>] [-s <subj>] [-bc <addr>] [-a <file> [...] --] <addr> [...]\n\
+       mutt [<options>] [-x] [-s <subj>] [-bc <addr>] [-a <file> [...] --] <addr> [...] < message\n\
        mutt [<options>] -p\n\
        mutt [<options>] -A <alias> [...]\n\
        mutt [<options>] -Q <query> [...]\n\
@@ -122,7 +122,8 @@ static void mutt_usage (void)
   puts _("\
 options:\n\
   -A <alias>\texpand the given alias\n\
-  -a <file>\tattach a file to the message\n\
+  -a <file> [...] --\tattach file(s) to the message\n\
+\t\tthe list of files must be terminated with the \"--\" sequence\n\
   -b <address>\tspecify a blind carbon-copy (BCC) address\n\
   -c <address>\tspecify a carbon-copy (CC) address\n\
   -D\t\tprint the value of all variables to stdout");
@@ -149,8 +150,6 @@ options:\n\
   -z\t\texit immediately if there are no messages in the mailbox\n\
   -Z\t\topen the first folder with new message, exit immediately if none\n\
   -h\t\tthis help message");
-  puts _("  --\t\ttreat remaining arguments as addr even if starting with a dash\n\
-\t\twhen using -a with multiple filenames using -- is mandatory");
 
   exit (0);
 }
@@ -515,6 +514,7 @@ static void start_curses (void)
 #if HAVE_META
   meta (stdscr, TRUE);
 #endif
+init_extended_keys();
 }
 
 #define M_IGNORE  (1<<0)	/* -z */
@@ -631,7 +631,11 @@ int main (int argc, char **argv)
 
       case 'd':
 #ifdef DEBUG
-	debuglevel = atoi (optarg);
+	if (mutt_atoi (optarg, &debuglevel) < 0 || debuglevel <= 0)
+	{
+	  fprintf (stderr, _("Error: value '%s' is invalid for -d.\n"), optarg);
+	  return 1;
+	}
 	printf (_("Debugging at level %d.\n"), debuglevel);
 #else
 	printf _("DEBUG was not defined during compilation.  Ignored.\n");
@@ -741,6 +745,9 @@ int main (int argc, char **argv)
   /* Initialize crypto backends.  */
   crypt_init ();
 
+  if (newMagic)
+    mx_set_magic (newMagic);
+
   if (queries)
   {
     for (; optind < argc; optind++)
@@ -772,9 +779,6 @@ int main (int argc, char **argv)
     }
     return rv;
   }
-
-  if (newMagic)
-    mx_set_magic (newMagic);
 
   if (!option (OPTNOCURSES))
   {
@@ -892,7 +896,7 @@ int main (int argc, char **argv)
       else
 	fin = NULL;
 
-      mutt_mktemp (buf);
+      mutt_mktemp (buf, sizeof (buf));
       tempfile = safe_strdup (buf);
 
       if (draftFile)
@@ -909,7 +913,7 @@ int main (int argc, char **argv)
 	  if (!option (OPTNOCURSES))
 	    mutt_endwin (NULL);
 	  perror (tempfile);
-	  fclose (fin);
+	  safe_fclose (&fin);
 	  FREE (&tempfile);
 	  exit (1);
 	}
@@ -917,9 +921,9 @@ int main (int argc, char **argv)
 	  mutt_copy_stream (fin, fout);
 	else if (bodytext)
 	  fputs (bodytext, fout);
-	fclose (fout);
+	safe_fclose (&fout);
 	if (fin && fin != stdin)
-	  fclose (fin);
+	  safe_fclose (&fin);
       }
     }
 

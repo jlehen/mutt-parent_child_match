@@ -177,13 +177,13 @@ void mutt_free_body (BODY **p)
 
     if (b->parameter)
       mutt_free_parameter (&b->parameter);
-    if (b->unlink && b->filename)
+    if (b->filename)
     {
-      dprint (1, (debugfile, "mutt_free_body: Unlinking %s.\n", b->filename));
-      unlink (b->filename);
+      if (b->unlink)
+	unlink (b->filename);
+      dprint (1, (debugfile, "mutt_free_body: %sunlinking %s.\n",
+	    b->unlink ? "" : "not ", b->filename));
     }
-    else if (b->filename) 
-      dprint (1, (debugfile, "mutt_free_body: Not unlinking %s.\n", b->filename));
 
     FREE (&b->filename);
     FREE (&b->content);
@@ -250,6 +250,57 @@ LIST *mutt_add_list_n (LIST *head, const void *data, size_t len)
     memcpy (tmp->data, data, len);
   tmp->next = NULL;
   return head;
+}
+
+LIST *mutt_find_list (LIST *l, const char *data)
+{
+  LIST *p = l;
+
+  while (p)
+  {
+    if (data == p->data)
+      return p;
+    if (data && p->data && mutt_strcmp (p->data, data) == 0)
+      return p;
+    p = p->next;
+  }
+  return NULL;
+}
+
+int mutt_remove_from_rx_list (RX_LIST **l, const char *str)
+{
+  RX_LIST *p, *last = NULL;
+  int rv = -1;
+
+  if (mutt_strcmp ("*", str) == 0)
+  {
+    mutt_free_rx_list (l);    /* ``unCMD *'' means delete all current entries */
+    rv = 0;
+  }
+  else
+  {
+    p = *l;
+    last = NULL;
+    while (p)
+    {
+      if (ascii_strcasecmp (str, p->rx->pattern) == 0)
+      {
+	mutt_free_regexp (&p->rx);
+	if (last)
+	  last->next = p->next;
+	else
+	  (*l) = p->next;
+	FREE (&p);
+	rv = 0;
+      }
+      else
+      {
+	last = p;
+	p = p->next;
+      }
+    }
+  }
+  return (rv);
 }
 
 void mutt_free_list (LIST **list)
@@ -607,11 +658,8 @@ int mutt_needs_mailcap (BODY *m)
   switch (m->type)
   {
     case TYPETEXT:
-
-      if (!ascii_strcasecmp ("plain", m->subtype) ||
-	  !ascii_strcasecmp ("rfc822-headers", m->subtype) ||
-	  !ascii_strcasecmp ("enriched", m->subtype))
-	return 0;
+      /* we can display any text, overridable by auto_view */
+      return 0;
       break;
 
     case TYPEAPPLICATION:
@@ -731,11 +779,16 @@ void mutt_merge_envelopes(ENVELOPE* base, ENVELOPE** extra)
   mutt_free_envelope(extra);
 }
 
-void _mutt_mktemp (char *s, const char *src, int line)
+void _mutt_mktemp (char *s, size_t slen, const char *src, int line)
 {
-  snprintf (s, _POSIX_PATH_MAX, "%s/mutt-%s-%d-%d-%d", NONULL (Tempdir), NONULL(Hostname), (int) getuid(), (int) getpid (), Counter++);
+  size_t n = snprintf (s, slen, "%s/mutt-%s-%d-%d-%ld%ld", NONULL (Tempdir), NONULL (Hostname),
+      (int) getuid (), (int) getpid (), random (), random ());
+  if (n >= slen)
+    dprint (1, (debugfile, "%s:%d: ERROR: insufficient buffer space to hold temporary filename! slen=%zu but need %zu\n",
+	    src, line, slen, n));
   dprint (3, (debugfile, "%s:%d: mutt_mktemp returns \"%s\".\n", src, line, s));
-  unlink (s);
+  if (unlink (s) && errno != ENOENT)
+    dprint (1, (debugfile, "%s:%d: ERROR: unlink(\"%s\"): %s (errno %d)\n", src, line, s, strerror (errno), errno));
 }
 
 void mutt_free_alias (ALIAS **p)
@@ -759,7 +812,7 @@ void mutt_pretty_mailbox (char *s, size_t buflen)
   char *p = s, *q = s;
   size_t len;
   url_scheme_t scheme;
-  char tmp[_POSIX_PATH_MAX];
+  char tmp[PATH_MAX];
 
   scheme = url_check_scheme (s);
 
@@ -1090,35 +1143,51 @@ void mutt_FormatString (char *dest,		/* output buffer */
       col -= wlen;	/* reset to passed in value */
       wptr = dest;      /* reset write ptr */
       wlen = (flags & M_FORMAT_ARROWCURSOR && option (OPTARROWCURSOR)) ? 3 : 0;
-      if ((pid = mutt_create_filter(command->data, NULL, &filter, NULL)))
+      if ((pid = mutt_create_filter(command->data, NULL, &filter, NULL)) != -1)
       {
-        n = fread(dest, 1, destlen /* already decremented */, filter);
-        fclose(filter);
-        dest[n] = '\0';
-        while (dest[n-1] == '\n' || dest[n-1] == '\r')
-          dest[--n] = '\0';
-        dprint(3, (debugfile, "fmtpipe < %s\n", dest));
+	int rc;
 
-        if (pid != -1)
-          mutt_wait_filter(pid);
-  
-        /* If the result ends with '%', this indicates that the filter
-         * generated %-tokens that mutt can expand.  Eliminate the '%'
-         * marker and recycle the string through mutt_FormatString().
-         * To literally end with "%", use "%%". */
-        if (dest[--n] == '%')
-        {
-          dest[n] = '\0';               /* remove '%' */
-          if (dest[--n] != '%')
-          {
-            recycler = safe_strdup(dest);
-            if (recycler)
-            {
-              mutt_FormatString(dest, destlen++, col, recycler, callback, data, flags);
-              FREE(&recycler);
-            }
-          }
-        }
+        n = fread(dest, 1, destlen /* already decremented */, filter);
+        safe_fclose (&filter);
+	rc = mutt_wait_filter(pid);
+	if (rc != 0)
+	  dprint(1, (debugfile, "format pipe command exited code %d\n", rc));
+	if (n > 0) {
+	  dest[n] = 0;
+	  while ((n > 0) && (dest[n-1] == '\n' || dest[n-1] == '\r'))
+	    dest[--n] = '\0';
+	  dprint(3, (debugfile, "fmtpipe < %s\n", dest));
+
+	  /* If the result ends with '%', this indicates that the filter
+	   * generated %-tokens that mutt can expand.  Eliminate the '%'
+	   * marker and recycle the string through mutt_FormatString().
+	   * To literally end with "%", use "%%". */
+	  if ((n > 0) && dest[n-1] == '%')
+	  {
+	    --n;
+	    dest[n] = '\0';               /* remove '%' */
+	    if ((n > 0) && dest[n-1] != '%')
+	    {
+	      recycler = safe_strdup(dest);
+	      if (recycler)
+	      {
+		/* destlen is decremented at the start of this function
+		 * to save space for the terminal nul char.  We can add
+		 * it back for the recursive call since the expansion of
+		 * format pipes does not try to append a nul itself.
+		 */
+		mutt_FormatString(dest, destlen+1, col, recycler, callback, data, flags);
+		FREE(&recycler);
+	      }
+	    }
+	  }
+	}
+	else
+	{
+	  /* read error */
+	  dprint(1, (debugfile, "error reading from fmtpipe: %s (errno=%d)\n", strerror(errno), errno));
+	  *wptr = 0;
+	}
       }
       else
       {
@@ -1243,12 +1312,13 @@ void mutt_FormatString (char *dest,		/* output buffer */
 	  }
 	  else if (soft && pad < 0)
 	  {
+	    int offset = (flags & M_FORMAT_ARROWCURSOR && option (OPTARROWCURSOR)) ? 3 : 0;
 	    /* \0-terminate dest for length computation in mutt_wstr_trunc() */
 	    *wptr = 0;
 	    /* make sure right part is at most as wide as display */
-	    len = mutt_wstr_trunc (buf, destlen, COLS, &wid);
+	    len = mutt_wstr_trunc (buf, destlen, COLS-offset, &wid);
 	    /* truncate left so that right part fits completely in */
-	    wlen = mutt_wstr_trunc (dest, destlen - len, col + pad, &col);
+	    wlen = mutt_wstr_trunc (dest, destlen - len, col + pad*pw -offset, &col);
 	    wptr = dest + wlen;
 	  }
 	  if (len + wlen > destlen)
@@ -1391,7 +1461,7 @@ void mutt_FormatString (char *dest,		/* output buffer */
 
 /* This function allows the user to specify a command to read stdout from in
    place of a normal file.  If the last character in the string is a pipe (|),
-   then we assume it is a commmand to run instead of a normal file. */
+   then we assume it is a command to run instead of a normal file. */
 FILE *mutt_open_read (const char *path, pid_t *thepid)
 {
   FILE *f;
@@ -1463,10 +1533,7 @@ int mutt_save_confirm (const char *s, struct stat *st)
       return 1;
     }
   }
-  else
-#ifdef USE_IMAP
-  if (magic != M_IMAP)
-#endif /* execute the block unconditionally if we don't use imap */
+  else if (magic != M_IMAP)
   {
     st->st_mtime = 0;
     st->st_atime = 0;
@@ -1537,6 +1604,31 @@ void state_attach_puts (const char *t, STATE *s)
   }
 }
 
+int state_putwc (wchar_t wc, STATE *s)
+{
+  char mb[MB_LEN_MAX] = "";
+  int rc;
+
+  if ((rc = wcrtomb (mb, wc, NULL)) < 0)
+    return rc;
+  if (fputs (mb, s->fpout) == EOF)
+    return -1;
+  return 0;
+}
+
+int state_putws (const wchar_t *ws, STATE *s)
+{
+  const wchar_t *p = ws;
+
+  while (p && *p != L'\0')
+  {
+    if (state_putwc (*p, s) < 0)
+      return -1;
+    p++;
+  }
+  return 0;
+}
+
 void mutt_display_sanitize (char *s)
 {
   for (; *s; s++)
@@ -1604,6 +1696,9 @@ int mutt_buffer_printf (BUFFER* buf, const char* fmt, ...)
   
   va_start (ap, fmt);
   va_copy (ap_retry, ap);
+
+  if (!buf->dptr)
+    buf->dptr = buf->data;
 
   doff = buf->dptr - buf->data;
   blen = buf->dsize - doff;
@@ -1786,16 +1881,21 @@ int mutt_match_rx_list (const char *s, RX_LIST *l)
   return 0;
 }
 
-int mutt_match_spam_list (const char *s, SPAM_LIST *l, char *text, int x)
+/* Match a string against the patterns defined by the 'spam' command and output
+ * the expanded format into `text` when there is a match.  If textsize<=0, the
+ * match is performed but the format is not expanded and no assumptions are made
+ * about the value of `text` so it may be NULL.
+ *
+ * Returns 1 if the argument `s` matches a pattern in the spam list, otherwise
+ * 0. */
+int mutt_match_spam_list (const char *s, SPAM_LIST *l, char *text, int textsize)
 {
   static regmatch_t *pmatch = NULL;
   static int nmatch = 0;
-  int i, n, tlen;
+  int tlen = 0;
   char *p;
 
-  if (!s)  return 0;
-
-  tlen = 0;
+  if (!s) return 0;
 
   for (; l; l = l->next)
   {
@@ -1813,23 +1913,42 @@ int mutt_match_spam_list (const char *s, SPAM_LIST *l, char *text, int x)
       dprint (5, (debugfile, "mutt_match_spam_list: %d subs\n", (int)l->rx->rx->re_nsub));
 
       /* Copy template into text, with substitutions. */
-      for (p = l->template; *p;)
+      for (p = l->template; *p && tlen < textsize - 1;)
       {
+	/* backreference to pattern match substring, eg. %1, %2, etc) */
 	if (*p == '%')
 	{
-	  n = atoi(++p);			/* find pmatch index */
-	  while (isdigit((unsigned char)*p))
-	    ++p;				/* skip subst token */
-	  for (i = pmatch[n].rm_so; (i < pmatch[n].rm_eo) && (tlen < x); i++)
-	    text[tlen++] = s[i];
+	  char *e; /* used as pointer to end of integer backreference in strtol() call */
+	  int n;
+
+	  ++p; /* skip over % char */
+	  n = strtol(p, &e, 10);
+	  /* Ensure that the integer conversion succeeded (e!=p) and bounds check.  The upper bound check
+	   * should not strictly be necessary since add_to_spam_list() finds the largest value, and
+	   * the static array above is always large enough based on that value. */
+	  if (e != p && n >= 0 && n <= l->nmatch && pmatch[n].rm_so != -1) {
+	    /* copy as much of the substring match as will fit in the output buffer, saving space for
+	     * the terminating nul char */
+	    int idx;
+	    for (idx = pmatch[n].rm_so; (idx < pmatch[n].rm_eo) && (tlen < textsize - 1); ++idx)
+	      text[tlen++] = s[idx];
+	  }
+	  p = e; /* skip over the parsed integer */
 	}
 	else
 	{
 	  text[tlen++] = *p++;
 	}
       }
-      text[tlen] = '\0';
-      dprint (5, (debugfile, "mutt_match_spam_list: \"%s\"\n", text));
+      /* tlen should always be less than textsize except when textsize<=0
+       * because the bounds checks in the above code leave room for the
+       * terminal nul char.   This should avoid returning an unterminated
+       * string to the caller.  When textsize<=0 we make no assumption about
+       * the validity of the text pointer. */
+      if (tlen < textsize) {
+	text[tlen] = '\0';
+	dprint (5, (debugfile, "mutt_match_spam_list: \"%s\"\n", text));
+      }
       return 1;
     }
   }
@@ -1837,3 +1956,10 @@ int mutt_match_spam_list (const char *s, SPAM_LIST *l, char *text, int x)
   return 0;
 }
 
+void mutt_encode_path (char *dest, size_t dlen, const char *src)
+{
+  char *p = safe_strdup (src);
+  int rc = mutt_convert_string (&p, Charset, "utf-8", 0);
+  strfcpy (dest, rc == 0 ? p : src, dlen);
+  FREE (&p);
+}

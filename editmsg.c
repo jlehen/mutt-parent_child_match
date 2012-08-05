@@ -64,7 +64,7 @@ static int edit_one_message (CONTEXT *ctx, HEADER *cur)
   struct stat sb;
   time_t mtime = 0;
   
-  mutt_mktemp (tmp);
+  mutt_mktemp (tmp, sizeof (tmp));
 
   omagic = DefaultMagic;
   DefaultMagic = M_MBOX;
@@ -191,7 +191,7 @@ static int edit_one_message (CONTEXT *ctx, HEADER *cur)
   mx_close_mailbox (&tmpctx, NULL);
   
   bail:
-  if (fp) fclose (fp);
+  if (fp) safe_fclose (&fp);
 
   if (rc >= 0)
     unlink (tmp);

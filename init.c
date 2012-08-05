@@ -31,6 +31,7 @@
 #include "charset.h"
 #include "mutt_crypt.h"
 #include "mutt_idna.h"
+#include "group.h"
 
 #if defined(USE_SSL)
 #include "mutt_ssl.h"
@@ -49,6 +50,7 @@
 #include <sys/utsname.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 
 #define CHECK_PAGER \
   if ((CurrentMenu == MENU_PAGER) && (idx >= 0) &&	\
@@ -253,8 +255,8 @@ int mutt_extract_token (BUFFER *dest, BUFFER *tok, int flags)
 
       /* read line */
       memset (&expn, 0, sizeof (expn));
-      expn.data = mutt_read_line (NULL, &expn.dsize, fp, &line);
-      fclose (fp);
+      expn.data = mutt_read_line (NULL, &expn.dsize, fp, &line, 0);
+      safe_fclose (&fp);
       mutt_wait_filter (pid);
 
       /* if we got output, make a new string consiting of the shell ouptput
@@ -599,42 +601,6 @@ static void remove_from_list (LIST **l, const char *str)
   }
 }
 
-static int remove_from_rx_list (RX_LIST **l, const char *str)
-{
-  RX_LIST *p, *last = NULL;
-  int rv = -1;
-
-  if (mutt_strcmp ("*", str) == 0)
-  {
-    mutt_free_rx_list (l);    /* ``unCMD *'' means delete all current entries */
-    rv = 0;
-  }
-  else
-  {
-    p = *l;
-    last = NULL;
-    while (p)
-    {
-      if (ascii_strcasecmp (str, p->rx->pattern) == 0)
-      {
-	mutt_free_regexp (&p->rx);
-	if (last)
-	  last->next = p->next;
-	else
-	  (*l) = p->next;
-	FREE (&p);
-	rv = 0;
-      }
-      else
-      {
-	last = p;
-	p = p->next;
-      }
-    }
-  }
-  return (rv);
-}
-
 static int parse_unignore (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
 {
   do
@@ -700,7 +666,7 @@ static int parse_alternates (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER 
     if (parse_group_context (&gc, buf, s, data, err) == -1)
       goto bail;
 
-    remove_from_rx_list (&UnAlternates, buf->data);
+    mutt_remove_from_rx_list (&UnAlternates, buf->data);
 
     if (mutt_add_to_rx_list (&Alternates, buf->data, REG_ICASE, err) != 0)
       goto bail;
@@ -724,7 +690,7 @@ static int parse_unalternates (BUFFER *buf, BUFFER *s, unsigned long data, BUFFE
   do
   {
     mutt_extract_token (buf, s, 0);
-    remove_from_rx_list (&Alternates, buf->data);
+    mutt_remove_from_rx_list (&Alternates, buf->data);
 
     if (mutt_strcmp (buf->data, "*") &&
 	mutt_add_to_rx_list (&UnAlternates, buf->data, REG_ICASE, err) != 0)
@@ -774,7 +740,7 @@ static int parse_spam_list (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *
     /* If not, try to remove from the nospam list. */
     else
     {
-      remove_from_rx_list(&NoSpamList, buf->data);
+      mutt_remove_from_rx_list(&NoSpamList, buf->data);
     }
 
     return 0;
@@ -841,7 +807,7 @@ static int parse_lists (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
     if (parse_group_context (&gc, buf, s, data, err) == -1)
       goto bail;
     
-    remove_from_rx_list (&UnMailLists, buf->data);
+    mutt_remove_from_rx_list (&UnMailLists, buf->data);
     
     if (mutt_add_to_rx_list (&MailLists, buf->data, REG_ICASE, err) != 0)
       goto bail;
@@ -869,57 +835,67 @@ static int parse_group (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
   group_state_t state = NONE;
   ADDRESS *addr = NULL;
   char *estr = NULL;
-  
-  do 
+
+  do
   {
     mutt_extract_token (buf, s, 0);
     if (parse_group_context (&gc, buf, s, data, err) == -1)
       goto bail;
-    
+
+    if (data == M_UNGROUP && !mutt_strcasecmp (buf->data, "*"))
+    {
+      if (mutt_group_context_clear (&gc) < 0)
+	goto bail;
+      goto out;
+    }
+
     if (!mutt_strcasecmp (buf->data, "-rx"))
       state = RX;
     else if (!mutt_strcasecmp (buf->data, "-addr"))
       state = ADDR;
-    else 
+    else
     {
-      switch (state) 
+      switch (state)
       {
 	case NONE:
-	  strfcpy (err->data, _("Missing -rx or -addr."), err->dsize);
+	  snprintf (err->data, err->dsize, _("%sgroup: missing -rx or -addr."),
+		   data == M_UNGROUP ? "un" : "");
 	  goto bail;
-	
+
 	case RX:
-	  if (mutt_group_context_add_rx (gc, buf->data, REG_ICASE, err) != 0)
+	  if (data == M_GROUP &&
+	      mutt_group_context_add_rx (gc, buf->data, REG_ICASE, err) != 0)
+	    goto bail;
+	  else if (data == M_UNGROUP &&
+		   mutt_group_context_remove_rx (gc, buf->data) < 0)
 	    goto bail;
 	  break;
-	
+
 	case ADDR:
 	  if ((addr = mutt_parse_adrlist (NULL, buf->data)) == NULL)
 	    goto bail;
-	  if (mutt_addrlist_to_idna (addr, &estr)) 
-	  {
-	    snprintf (err->data, err->dsize, _("Warning: Bad IDN '%s'.\n"),
-		      estr);
+	  if (mutt_addrlist_to_idna (addr, &estr))
+	  { 
+	    snprintf (err->data, err->dsize, _("%sgroup: warning: bad IDN '%s'.\n"),
+		      data == 1 ? "un" : "", estr);
 	    goto bail;
 	  }
-	  mutt_group_context_add_adrlist (gc, addr);
+	  if (data == M_GROUP)
+	    mutt_group_context_add_adrlist (gc, addr);
+	  else if (data == M_UNGROUP)
+	    mutt_group_context_remove_adrlist (gc, addr);
 	  rfc822_free_address (&addr);
 	  break;
       }
     }
   } while (MoreArgs (s));
 
+out:
   mutt_group_context_destroy (&gc);
   return 0;
 
-  bail:
+bail:
   mutt_group_context_destroy (&gc);
-  return -1;
-}
-
-static int parse_ungroup (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
-{
-  strfcpy (err->data, "not implemented", err->dsize);
   return -1;
 }
 
@@ -941,6 +917,7 @@ static int parse_attach_list (BUFFER *buf, BUFFER *s, LIST **ldata, BUFFER *err)
   char *p;
   char *tmpminor;
   int len;
+  int ret;
 
   /* Find the last item in the list that data points to. */
   lastp = NULL;
@@ -990,9 +967,17 @@ static int parse_attach_list (BUFFER *buf, BUFFER *s, LIST **ldata, BUFFER *err)
     tmpminor[len+2] = '\0';
 
     a->major_int = mutt_check_mime_type(a->major);
-    regcomp(&a->minor_rx, tmpminor, REG_ICASE|REG_EXTENDED);
+    ret = REGCOMP(&a->minor_rx, tmpminor, REG_ICASE);
 
     FREE(&tmpminor);
+
+    if (ret)
+    {
+      regerror(ret, &a->minor_rx, err->data, err->dsize);
+      FREE(&a->major);
+      FREE(&a);
+      return -1;
+    }
 
     dprint(5, (debugfile, "parse_attach_list: added %s/%s [%d]\n",
 		a->major, a->minor, a->major_int));
@@ -1193,8 +1178,8 @@ static int parse_unlists (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *er
   do
   {
     mutt_extract_token (buf, s, 0);
-    remove_from_rx_list (&SubscribedLists, buf->data);
-    remove_from_rx_list (&MailLists, buf->data);
+    mutt_remove_from_rx_list (&SubscribedLists, buf->data);
+    mutt_remove_from_rx_list (&MailLists, buf->data);
     
     if (mutt_strcmp (buf->data, "*") && 
 	mutt_add_to_rx_list (&UnMailLists, buf->data, REG_ICASE, err) != 0)
@@ -1216,8 +1201,8 @@ static int parse_subscribe (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *
     if (parse_group_context (&gc, buf, s, data, err) == -1)
       goto bail;
     
-    remove_from_rx_list (&UnMailLists, buf->data);
-    remove_from_rx_list (&UnSubscribedLists, buf->data);
+    mutt_remove_from_rx_list (&UnMailLists, buf->data);
+    mutt_remove_from_rx_list (&UnSubscribedLists, buf->data);
 
     if (mutt_add_to_rx_list (&MailLists, buf->data, REG_ICASE, err) != 0)
       goto bail;
@@ -1241,7 +1226,7 @@ static int parse_unsubscribe (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER
   do
   {
     mutt_extract_token (buf, s, 0);
-    remove_from_rx_list (&SubscribedLists, buf->data);
+    mutt_remove_from_rx_list (&SubscribedLists, buf->data);
     
     if (mutt_strcmp (buf->data, "*") &&
 	mutt_add_to_rx_list (&UnSubscribedLists, buf->data, REG_ICASE, err) != 0)
@@ -1546,25 +1531,22 @@ static void mutt_restore_default (struct option_t *p)
   switch (p->type & DT_MASK)
   {
     case DT_STR:
-      if (p->init)
-	mutt_str_replace ((char **) p->data, (char *) p->init); 
+      mutt_str_replace ((char **) p->data, (char *) p->init); 
       break;
     case DT_PATH:
+      FREE((char **) p->data);		/* __FREE_CHECKED__ */
       if (p->init)
       {
 	char path[_POSIX_PATH_MAX];
-
 	strfcpy (path, (char *) p->init, sizeof (path));
 	mutt_expand_path (path, sizeof (path));
-	mutt_str_replace ((char **) p->data, path);
+	*((char **) p->data) = safe_strdup (path);
       }
       break;
     case DT_ADDR:
+      rfc822_free_address ((ADDRESS **) p->data);
       if (p->init)
-      {
-	rfc822_free_address ((ADDRESS **) p->data);
 	*((ADDRESS **) p->data) = rfc822_parse_adrlist (NULL, (char *) p->init);
-      }
       break;
     case DT_BOOL:
       if (p->init)
@@ -1610,7 +1592,6 @@ static void mutt_restore_default (struct option_t *p)
 	    fprintf (stderr, _("mutt_restore_default(%s): error in regexp: %s\n"),
 		     p->option, pp->pattern);
 	    FREE (&pp->pattern);
-	    regfree (pp->rx);
 	    FREE (&pp->rx);
 	  }
 	}
@@ -1920,8 +1901,10 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
         }
         else if (DTYPE (MuttVars[idx].type) == DT_STR)
         {
-	  if (strstr (MuttVars[idx].option, "charset") &&
-	      check_charset (&MuttVars[idx], tmp->data) < 0)
+	  if ((strstr (MuttVars[idx].option, "charset") &&
+	       check_charset (&MuttVars[idx], tmp->data) < 0) |
+	      /* $charset can't be empty, others can */
+	      (strcmp(MuttVars[idx].option, "charset") == 0 && ! *tmp->data))
 	  {
 	    snprintf (err->data, err->dsize, _("Invalid value for option %s: \"%s\""),
 		      MuttVars[idx].option, tmp->data);
@@ -1988,7 +1971,6 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
 	if ((e = REGCOMP (rx, p, flags)) != 0)
 	{
 	  regerror (e, rx, err->data, err->dsize);
-	  regfree (rx);
 	  FREE (&rx);
 	  break;
 	}
@@ -2069,8 +2051,8 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
     else if (DTYPE(MuttVars[idx].type) == DT_NUM)
     {
       short *ptr = (short *) MuttVars[idx].data;
-      int val;
-      char *t;
+      short val;
+      int rc;
 
       if (query || *s->dptr != '=')
       {
@@ -2088,16 +2070,17 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
       s->dptr++;
 
       mutt_extract_token (tmp, s, 0);
-      val = strtol (tmp->data, &t, 0);
+      rc = mutt_atos (tmp->data, (short *) &val);
 
-      if (!*tmp->data || *t || (short) val != val)
+      if (rc < 0 || !*tmp->data)
       {
-	snprintf (err->data, err->dsize, _("%s: invalid value"), tmp->data);
+	snprintf (err->data, err->dsize, _("%s: invalid value (%s)"), tmp->data,
+		  rc == -1 ? _("format error") : _("number overflow"));
 	r = -1;
 	break;
       }
       else
-	*ptr = (short) val;
+	*ptr = val;
 
       /* these ones need a sanity check */
       if (mutt_strcmp (MuttVars[idx].option, "history") == 0)
@@ -2268,7 +2251,7 @@ static int source_rc (const char *rcfile, BUFFER *err)
   }
 
   memset (&token, 0, sizeof (token));
-  while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line)) != NULL)
+  while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line, M_CONT)) != NULL)
   {
     conv=ConfigCharset && (*ConfigCharset) && Charset;
     if (conv) 
@@ -2299,7 +2282,7 @@ static int source_rc (const char *rcfile, BUFFER *err)
   }
   FREE (&token.data);
   FREE (&linebuf);
-  fclose (f);
+  safe_fclose (&f);
   if (pid != -1)
     mutt_wait_filter (pid);
   if (rc)
@@ -2845,8 +2828,8 @@ static void start_debug (void)
   {
     t = time (0);
     setbuf (debugfile, NULL); /* don't buffer the debugging output! */
-    fprintf (debugfile, "Mutt %s started at %s.\nDebugging at level %d.\n\n",
-	     MUTT_VERSION, asctime (localtime (&t)), debuglevel);
+    dprint(1,(debugfile,"Mutt/%s (%s) debugging at level %d\n",
+	      MUTT_VERSION, ReleaseDate, debuglevel));
   }
 }
 #endif
@@ -2873,6 +2856,23 @@ static int mutt_execute_commands (LIST *p)
   return 0;
 }
 
+static void mutt_srandom (void)
+{
+  struct timeval tv;
+  unsigned seed;
+
+  gettimeofday(&tv, NULL);
+  /* POSIX.1-2008 states that seed is 'unsigned' without specifying its width.
+   * Use as many of the lower order bits from the current time of day as the seed.
+   * If the upper bound is truncated, that is fine.
+   *
+   * tv_sec is integral of type integer or float.  Cast to 'long long' before
+   * bitshift in case it is a float.
+   */
+  seed = ((LONGLONG) tv.tv_sec << 20) | tv.tv_usec;
+  srandom(seed);
+}
+
 void mutt_init (int skip_sys_rc, LIST *commands)
 {
   struct passwd *pw;
@@ -2885,10 +2885,11 @@ void mutt_init (int skip_sys_rc, LIST *commands)
   err.data = error;
   err.dsize = sizeof (error);
 
-  Groups = hash_create (1031);
-  ReverseAlias = hash_create (1031);
+  Groups = hash_create (1031, 0);
+  ReverseAlias = hash_create (1031, 1);
   
   mutt_menu_init ();
+  mutt_srandom ();
 
   /* 
    * XXX - use something even more difficult to predict?

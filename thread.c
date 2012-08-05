@@ -416,7 +416,7 @@ static THREAD *find_subject (CONTEXT *ctx, THREAD *cur)
 {
   struct hash_elem *ptr;
   THREAD *tmp, *last = NULL;
-  int hash;
+  unsigned int hash;
   LIST *subjects = NULL, *oldlist;
   time_t date = 0;  
 
@@ -424,8 +424,8 @@ static THREAD *find_subject (CONTEXT *ctx, THREAD *cur)
 
   while (subjects)
   {
-    hash = hash_string ((unsigned char *) subjects->data,
-			ctx->subj_hash->nelem);
+    hash = ctx->subj_hash->hash_string ((unsigned char *) subjects->data,
+					ctx->subj_hash->nelem);
     for (ptr = ctx->subj_hash->table[hash]; ptr; ptr = ptr->next)
     {
       tmp = ((HEADER *) ptr->data)->thread;
@@ -766,7 +766,7 @@ void mutt_sort_threads (CONTEXT *ctx, int init)
     init = 1;
 
   if (init)
-    ctx->thread_hash = hash_create (ctx->msgcount * 2);
+    ctx->thread_hash = hash_create (ctx->msgcount * 2, 0);
 
   /* we want a quick way to see if things are actually attached to the top of the
    * thread tree or if they're just dangling, so we attach everything to a top
@@ -1016,6 +1016,9 @@ static HEADER *find_virtual (THREAD *cur, int reverse)
   }
 }
 
+/* dir => true when moving forward, false when moving in reverse
+ * subthreads => false when moving to next thread, true when moving to next subthread
+ */
 int _mutt_aside_thread (HEADER *hdr, short dir, short subthreads)
 {
   THREAD *cur;
@@ -1319,7 +1322,7 @@ HASH *mutt_make_id_hash (CONTEXT *ctx)
   HEADER *hdr;
   HASH *hash;
 
-  hash = hash_create (ctx->msgcount * 2);
+  hash = hash_create (ctx->msgcount * 2, 0);
 
   for (i = 0; i < ctx->msgcount; i++)
   {
@@ -1337,7 +1340,7 @@ HASH *mutt_make_subj_hash (CONTEXT *ctx)
   HEADER *hdr;
   HASH *hash;
 
-  hash = hash_create (ctx->msgcount * 2);
+  hash = hash_create (ctx->msgcount * 2, 0);
 
   for (i = 0; i < ctx->msgcount; i++)
   {

@@ -173,9 +173,9 @@ static void qp_decode_line (char *dest, char *src, size_t *l,
 			    int last)
 {
   char *d, *s;
-  char c;
+  char c = 0;
 
-  int kind;
+  int kind = -1;
   int soft = 0;
 
   /* decode the line */
@@ -191,7 +191,15 @@ static void qp_decode_line (char *dest, char *src, size_t *l,
   }
 
   if (!soft && last == '\n')
-    *d++ = '\n';
+  {
+    /* neither \r nor \n as part of line-terminating CRLF
+     * may be qp-encoded, so remove \r and \n-terminate;
+     * see RfC2045, sect. 6.7, (1): General 8bit representation */
+    if (kind == 0 && c == '\r')
+      *(d-1) = '\n';
+    else
+      *d++ = '\n';
+  }
   
   *d = '\0';
   *l = d - dest;
@@ -427,23 +435,23 @@ enum { RICH_PARAM=0, RICH_BOLD, RICH_UNDERLINE, RICH_ITALIC, RICH_NOFILL,
   RICH_FLUSHRIGHT, RICH_COLOR, RICH_LAST_TAG };
 
 static struct {
-  const char *tag_name;
+  const wchar_t *tag_name;
   int index;
 } EnrichedTags[] = {
-  { "param",		RICH_PARAM },
-  { "bold",		RICH_BOLD },
-  { "italic",		RICH_ITALIC },
-  { "underline",	RICH_UNDERLINE },
-  { "nofill",		RICH_NOFILL },
-  { "excerpt",		RICH_EXCERPT },
-  { "indent",		RICH_INDENT },
-  { "indentright",	RICH_INDENT_RIGHT },
-  { "center",		RICH_CENTER },
-  { "flushleft",	RICH_FLUSHLEFT },
-  { "flushright",	RICH_FLUSHRIGHT },
-  { "flushboth",	RICH_FLUSHLEFT },
-  { "color",		RICH_COLOR },
-  { "x-color",		RICH_COLOR },
+  { L"param",		RICH_PARAM },
+  { L"bold",		RICH_BOLD },
+  { L"italic",		RICH_ITALIC },
+  { L"underline",	RICH_UNDERLINE },
+  { L"nofill",		RICH_NOFILL },
+  { L"excerpt",		RICH_EXCERPT },
+  { L"indent",		RICH_INDENT },
+  { L"indentright",	RICH_INDENT_RIGHT },
+  { L"center",		RICH_CENTER },
+  { L"flushleft",	RICH_FLUSHLEFT },
+  { L"flushright",	RICH_FLUSHRIGHT },
+  { L"flushboth",	RICH_FLUSHLEFT },
+  { L"color",		RICH_COLOR },
+  { L"x-color",		RICH_COLOR },
   { NULL,		-1 }
 };
 
@@ -465,27 +473,6 @@ struct enriched_state
   int WrapMargin;
   STATE *s;
 };
-
-static int enriched_cmp (const char *a, const wchar_t *b)
-{
-  register const char *p = a;
-  register const wchar_t *q = b;
-  int i;
-
-  if (!a && !b)
-    return 0;
-  if (!a && b)
-    return -1;
-  if (a && !b)
-    return 1;
-
-  for ( ; *p || *q; p++, q++)
-  {
-    if ((i = ascii_tolower (*p)) - ascii_tolower (((char) *q) & 0x7f))
-      return i;
-  }
-  return 0;
-}
 
 static void enriched_wrap (struct enriched_state *stte)
 {
@@ -618,8 +605,9 @@ static void enriched_flush (struct enriched_state *stte, int wrap)
     stte->word_len = 0;
     stte->buff_used = 0;
   }
-  if (wrap) 
+  if (wrap)
     enriched_wrap(stte);
+  fflush (stte->s->fpout);
 }
 
 
@@ -716,7 +704,7 @@ static void enriched_set_flags (const wchar_t *tag, struct enriched_state *stte)
     tagptr++;
   
   for (i = 0, j = -1; EnrichedTags[i].tag_name; i++)
-    if (enriched_cmp (EnrichedTags[i].tag_name, tagptr) == 0)
+    if (wcscasecmp (EnrichedTags[i].tag_name, tagptr) == 0)
     {
       j = EnrichedTags[i].index;
       break;
@@ -734,35 +722,35 @@ static void enriched_set_flags (const wchar_t *tag, struct enriched_state *stte)
       if ((stte->s->flags & M_DISPLAY) && j == RICH_PARAM && stte->tag_level[RICH_COLOR])
       {
 	stte->param[stte->param_used] = (wchar_t) '\0';
-	if (!enriched_cmp("black", stte->param))
+	if (!wcscasecmp(L"black", stte->param))
 	{
 	  enriched_puts("\033[30m", stte);
 	}
-	else if (!enriched_cmp("red", stte->param))
+	else if (!wcscasecmp(L"red", stte->param))
 	{
 	  enriched_puts("\033[31m", stte);
 	}
-	else if (!enriched_cmp("green", stte->param))
+	else if (!wcscasecmp(L"green", stte->param))
 	{
 	  enriched_puts("\033[32m", stte);
 	}
-	else if (!enriched_cmp("yellow", stte->param))
+	else if (!wcscasecmp(L"yellow", stte->param))
 	{
 	  enriched_puts("\033[33m", stte);
 	}
-	else if (!enriched_cmp("blue", stte->param))
+	else if (!wcscasecmp(L"blue", stte->param))
 	{
 	  enriched_puts("\033[34m", stte);
 	}
-	else if (!enriched_cmp("magenta", stte->param))
+	else if (!wcscasecmp(L"magenta", stte->param))
 	{
 	  enriched_puts("\033[35m", stte);
 	}
-	else if (!enriched_cmp("cyan", stte->param))
+	else if (!wcscasecmp(L"cyan", stte->param))
 	{
 	  enriched_puts("\033[36m", stte);
 	}
-	else if (!enriched_cmp("white", stte->param))
+	else if (!wcscasecmp(L"white", stte->param))
 	{
 	  enriched_puts("\033[37m", stte);
 	}
@@ -819,7 +807,7 @@ static int text_enriched_handler (BODY *a, STATE *s)
   {
     if (state != ST_EOF)
     {
-      if (!bytes || (wc = fgetwc (s->fpin)) == EOF)
+      if (!bytes || (wc = fgetwc (s->fpin)) == WEOF)
 	state = ST_EOF;
       else
 	bytes--;
@@ -1101,7 +1089,8 @@ static int message_handler (BODY *a, STATE *s)
   {
     mutt_copy_hdr (s->fpin, s->fpout, off_start, b->parts->offset,
 	(((s->flags & M_WEED) || ((s->flags & (M_DISPLAY|M_PRINTING)) && option (OPTWEED))) ? (CH_WEED | CH_REORDER) : 0) |
-	(s->prefix ? CH_PREFIX : 0) | CH_DECODE | CH_FROM, s->prefix);
+	(s->prefix ? CH_PREFIX : 0) | CH_DECODE | CH_FROM |
+	((s->flags & M_DISPLAY) ? CH_DISPLAY : 0), s->prefix);
 
     if (s->prefix)
       state_puts (s->prefix, s);
@@ -1206,15 +1195,7 @@ static int multipart_handler (BODY *a, STATE *s)
       else
 	state_putc ('\n', s);
     }
-    else
-    {
-      if (p->description && mutt_can_decode (p))
-	state_printf (s, "Content-Description: %s\n", p->description);
 
-      if (p->form_name)
-	state_printf(s, "%s: \n", p->form_name);
-
-    }
     rc = mutt_body_handler (p, s);
     state_putc ('\n', s);
     
@@ -1444,7 +1425,7 @@ static int external_body_handler (BODY *b, STATE *s)
 
       mutt_copy_hdr(s->fpin, s->fpout, ftello (s->fpin), b->parts->offset,
 		    (option (OPTWEED) ? (CH_WEED | CH_REORDER) : 0) |
-		    CH_DECODE, NULL);
+		    CH_DECODE | CH_DISPLAY, NULL);
     }
   }
   else
@@ -1461,7 +1442,7 @@ static int external_body_handler (BODY *b, STATE *s)
 		    access_type);
       mutt_copy_hdr (s->fpin, s->fpout, ftello (s->fpin), b->parts->offset,
 		     (option (OPTWEED) ? (CH_WEED | CH_REORDER) : 0) |
-		     CH_DECODE , NULL);
+		     CH_DECODE | CH_DISPLAY, NULL);
     }
   }
   
@@ -1505,6 +1486,33 @@ void mutt_decode_attachment (BODY *b, STATE *s)
     iconv_close (cd);
 }
 
+/* when generating format=flowed ($text_flowed is set) from format=fixed,
+ * strip all trailing spaces to improve interoperability;
+ * if $text_flowed is unset, simply verbatim copy input
+ */
+static int text_plain_handler (BODY *b, STATE *s)
+{
+  char *buf = NULL;
+  size_t l = 0, sz = 0;
+
+  while ((buf = mutt_read_line (buf, &sz, s->fpin, NULL, 0)))
+  {
+    if (mutt_strcmp (buf, "-- ") != 0 && option (OPTTEXTFLOWED))
+    {
+      l = mutt_strlen (buf);
+      while (l > 0 && buf[l-1] == ' ')
+	buf[--l] = 0;
+    }
+    if (s->prefix)
+      state_puts (s->prefix, s);
+    state_puts (buf, s);
+    state_putc ('\n', s);
+  }
+
+  FREE (&buf);
+  return 0;
+}
+
 int mutt_body_handler (BODY *b, STATE *s)
 {
   int decode = 0;
@@ -1545,7 +1553,7 @@ int mutt_body_handler (BODY *b, STATE *s)
       else if (ascii_strcasecmp ("flowed", mutt_get_parameter ("format", b->parameter)) == 0)
 	handler = rfc3676_handler;
       else
-	plaintext = 1;
+	handler = text_plain_handler;
     }
     else if (ascii_strcasecmp ("enriched", b->subtype) == 0)
       handler = text_enriched_handler;
@@ -1612,8 +1620,11 @@ int mutt_body_handler (BODY *b, STATE *s)
       handler = crypt_smime_application_smime_handler;
   }
 
-
-  if (plaintext || handler)
+  /* only respect disposition == attachment if we're not
+     displaying from the attachment menu (i.e. pager) */
+  if ((!option (OPTHONORDISP) || (b->disposition != DISPATTACH ||
+				  option(OPTVIEWATTACH))) &&
+       (plaintext || handler))
   {
     fseeko (s->fpin, b->offset, 0);
 
@@ -1633,7 +1644,7 @@ int mutt_body_handler (BODY *b, STATE *s)
       {
 	/* decode to a tempfile, saving the original destination */
 	fp = s->fpout;
-	mutt_mktemp (tempfile);
+	mutt_mktemp (tempfile, sizeof (tempfile));
 	if ((s->fpout = safe_fopen (tempfile, "w")) == NULL)
 	{
 	  mutt_error _("Unable to open temporary file!");
@@ -1663,7 +1674,7 @@ int mutt_body_handler (BODY *b, STATE *s)
       {
 	b->length = ftello (s->fpout);
 	b->offset = 0;
-	fclose (s->fpout);
+	safe_fclose (&s->fpout);
 
 	/* restore final destination and substitute the tempfile for input */
 	s->fpout = fp;
@@ -1694,16 +1705,24 @@ int mutt_body_handler (BODY *b, STATE *s)
 	b->offset = tmpoffset;
 
 	/* restore the original source stream */
-	fclose (s->fpin);
+	safe_fclose (&s->fpin);
 	s->fpin = fp;
       }
     }
     s->flags |= M_FIRSTDONE;
   }
-  else if (s->flags & M_DISPLAY)
+  /* print hint to use attachment menu for disposition == attachment
+     if we're not already being called from there */
+  else if ((s->flags & M_DISPLAY) || (b->disposition == DISPATTACH &&
+				      !option (OPTVIEWATTACH) &&
+				      option (OPTHONORDISP) &&
+				      (plaintext || handler)))
   {
     state_mark_attach (s);
-    state_printf (s, _("[-- %s/%s is unsupported "), TYPE (b), b->subtype);
+    if (option (OPTHONORDISP) && b->disposition == DISPATTACH)
+      fputs (_("[-- This is an attachment "), s->fpout);
+    else
+      state_printf (s, _("[-- %s/%s is unsupported "), TYPE (b), b->subtype);
     if (!option (OPTVIEWATTACH))
     {
       if (km_expand_key (type, sizeof(type),

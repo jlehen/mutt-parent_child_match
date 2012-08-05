@@ -35,6 +35,12 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <signal.h>
+/* On OS X 10.5.x, wide char functions are inlined by default breaking
+ * --without-wc-funcs compilation
+ */
+#ifdef __APPLE_CC__
+#define _DONT_USE_CTYPE_INLINE_
+#endif
 #ifdef HAVE_WCHAR_H
 # include <wchar.h>
 #endif
@@ -258,6 +264,7 @@ enum
   OPT_COPY,
   OPT_DELETE,
   OPT_FORWEDIT,
+  OPT_FCCATTACH,
   OPT_INCLUDE,
   OPT_MFUPTO,
   OPT_MIMEFWD,
@@ -331,7 +338,6 @@ enum
   OPTENCODEFROM,
   OPTENVFROM,
   OPTFASTREPLY,
-  OPTFCCATTACH,
   OPTFCCCLEAR,
   OPTFOLLOWUPTO,
   OPTFORCENAME,
@@ -352,6 +358,7 @@ enum
   OPTHIDETHREADSUBJECT,
   OPTHIDETOPLIMITED,
   OPTHIDETOPMISSING,
+  OPTHONORDISP,
   OPTIGNORELWS,
   OPTIGNORELISTREPLYTO,
 #ifdef USE_IMAP
@@ -370,11 +377,14 @@ enum
   OPTSSLV3,
   OPTTLSV1,
   OPTSSLFORCETLS,
+  OPTSSLVERIFYDATES,
+  OPTSSLVERIFYHOST,
 #endif /* defined(USE_SSL) */
   OPTIMPLICITAUTOVIEW,
   OPTINCLUDEONLYFIRST,
   OPTKEEPFLAGGED,
   OPTMAILCAPSANITIZE,
+  OPTMAILCHECKRECENT,
   OPTMAILDIRTRASH,
   OPTMARKERS,
   OPTMARKOLD,
@@ -544,6 +554,8 @@ int mutt_matches_ignore (const char *, LIST *);
 /* add an element to a list */
 LIST *mutt_add_list (LIST *, const char *);
 LIST *mutt_add_list_n (LIST*, const void *, size_t);
+LIST *mutt_find_list (LIST *, const char *);
+int mutt_remove_from_rx_list (RX_LIST **l, const char *str);
 
 void mutt_init (int, LIST *);
 
@@ -683,6 +695,9 @@ typedef struct body
 
 } BODY;
 
+/* #3279: AIX defines conflicting struct thread */
+typedef struct mutt_thread THREAD;
+
 typedef struct header
 {
   unsigned int security : 11;  /* bit 0-6: flags, bit 7,8: application.
@@ -743,7 +758,7 @@ typedef struct header
   char *path;
   
   char *tree;           	/* character string to print thread tree */
-  struct thread *thread;
+  THREAD *thread;
 
   /* Number of qualifying attachments in message, if attach_valid */
   short attach_total;
@@ -763,7 +778,7 @@ typedef struct header
   char *maildir_flags;		/* unknown maildir flags */
 } HEADER;
 
-typedef struct thread
+struct mutt_thread
 {
   unsigned int fake_thread : 1;
   unsigned int duplicate_thread : 1;
@@ -773,13 +788,13 @@ typedef struct thread
   unsigned int deep : 1;
   unsigned int subtree_visible : 2;
   unsigned int next_subtree_visible : 1;
-  struct thread *parent;
-  struct thread *child;
-  struct thread *next;
-  struct thread *prev;
+  THREAD *parent;
+  THREAD *child;
+  THREAD *next;
+  THREAD *prev;
   HEADER *message;
   HEADER *sort_key;
-} THREAD;
+};
 
 
 /* flag to mutt_pattern_comp() */
@@ -809,6 +824,7 @@ typedef struct pattern_t
   unsigned int alladdr : 1;
   unsigned int stringmatch : 1;
   unsigned int groupmatch : 1;
+  unsigned int ign_case : 1;		/* ignore case for local stringmatch searches */
   int min;
   int max;
   struct pattern_t *next;
@@ -917,13 +933,13 @@ typedef struct
 #define state_reset_prefix(s) ((s)->flags &= ~M_PENDINGPREFIX)
 #define state_puts(x,y) fputs(x,(y)->fpout)
 #define state_putc(x,y) fputc(x,(y)->fpout)
-#define state_putws(x,y) fputws(x,(y)->fpout)
-#define state_putwc(x,y) fputwc(x,(y)->fpout)
 
 void state_mark_attach (STATE *);
 void state_attach_puts (const char *, STATE *);
 void state_prefix_putc (char, STATE *);
 int  state_printf(STATE *, const char *, ...);
+int state_putwc (wchar_t, STATE *);
+int state_putws (const wchar_t *, STATE *);
 
 /* for attachment counter */
 typedef struct

@@ -178,7 +178,7 @@ static pop_auth_res_t pop_auth_apop (POP_DATA *pop_data, const char *method)
   unsigned char digest[16];
   char hash[33];
   char buf[LONG_STRING];
-  int i;
+  size_t i;
 
   if (!pop_data->timestamp)
     return POP_A_UNAVAIL;
@@ -283,7 +283,7 @@ static pop_auth_t pop_authenticators[] = {
 #endif
   { pop_auth_apop, "apop" },
   { pop_auth_user, "user" },
-  { NULL }
+  { NULL,	   NULL }
 };
 
 /*

@@ -4,8 +4,39 @@ mutt. Please read this file carefully when upgrading your installation.
 The keys used are:
   !: modified feature, -: deleted feature, +: new feature
 
+hg tip:
+
+  ! $thorough_search defaults to yes
+  + imap-logout-all closes all open IMAP connections
+  ! header/body cache paths are always UTF-8
+  + $wrap_headers to control outgoing message's header length
+  + all text/* parts can be displayed inline without mailcap
+  + send-hooks now run in batch mode; previously only send2-hooks ran.
+
+1.5.20 (2009-06-14):
+
+  ! mbox/mmdf new mail flag is kept when leaving folders with new mail
+  ! $fcc_attach is a quadoption now
+  + $honor_disposition to honor Content-Disposition headers
+  + $search_context specifies number of context lines for search results
+    in pager/page-based menus
+  ! ssl_use_sslv2 defaults to no
+  + uncolor works for header + body objects, too
+  + the "flagged" and "replied" flags are enabled/supported for
+    POP when built with header caching
+  ! browser correctly displays maildir's mtime
+  + <set-flag> and <clear-flag> work in the pager, too
+  + ~x pattern also matches against In-Reply-To
+  + lower case patterns for string searches perform case-insensitive
+    search as regex patterns do (except IMAP)
+  + $ssl_verify_dates controls whether mutt checks the validity period of
+    SSL certificates
+  + $ssl_verify_host controls whether mutt will accept certificates whose
+    host names do not match the host name in the folder URL.
+
 1.5.19 (2009-01-05):
 
+  ! command-line arguments: -a now mandates -- at end of file list
   + support for SSL certificate chains
   + <what-key> function works in pager, too
   + support for tokyocabinet (qdbm successor)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2009 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -256,7 +256,7 @@ static void format_line (FILE *f, int ismacro,
 	n = get_wrapped_width (t3, n);
       }
 
-      print_macro (f, n, &t3);
+      n = print_macro (f, n, &t3);
 
       if (*t3)
       {
@@ -340,7 +340,7 @@ void mutt_help (int menu)
   FILE *f;
   struct binding_t *funcs;
 
-  mutt_mktemp (t);
+  mutt_mktemp (t, sizeof (t));
 
   funcs = km_get_table (menu);
   desc = mutt_getnamebyvalue (menu, Menus);
@@ -367,7 +367,7 @@ void mutt_help (int menu)
     if (menu != MENU_PAGER)
       dump_unbound (f, OpGeneric, Keymaps[MENU_GENERIC], Keymaps[menu]);
   
-    fclose (f);
+    safe_fclose (&f);
   
     snprintf (buf, sizeof (buf), _("Help for %s"), desc);
   }

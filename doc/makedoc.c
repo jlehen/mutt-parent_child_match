@@ -117,8 +117,8 @@ static void print_confline (const char *, int, const char *, FILE *);
 static void handle_confline (char *, FILE *);
 static void makedoc (FILE *, FILE *);
 static void pretty_default (char *, size_t, const char *, int);
-static int sgml_fputc (int, FILE *, int);
-static int sgml_fputs (const char *, FILE *, int);
+static int sgml_fputc (int, FILE *);
+static int sgml_fputs (const char *, FILE *);
 static int sgml_id_fputs (const char *, FILE *);
 
 int main (int argc, char *argv[])
@@ -576,6 +576,8 @@ static void man_print_strval (const char *v, FILE *out)
       fputs ("\\(rq", out);
     else if (*v == '\\')
       fputs ("\\\\", out);
+    else if (*v == '-')
+      fputs ("\\-", out);
     else
       fputc (*v, out);
   }
@@ -589,14 +591,14 @@ static void sgml_print_strval (const char *v, FILE *out)
     if (*v <  ' ' || *v & 0x80)
     {
       char_to_escape (buff, (unsigned int) *v);
-      sgml_fputs (buff, out, 1);
+      sgml_fputs (buff, out);
       continue;
     }
-    sgml_fputc ((unsigned int) *v, out, 1);
+    sgml_fputc ((unsigned int) *v, out);
   }
 }
 
-static int sgml_fputc (int c, FILE *out, int full)
+static int sgml_fputc (int c, FILE *out)
 {
   switch (c)
   {
@@ -604,25 +606,14 @@ static int sgml_fputc (int c, FILE *out, int full)
     case '<': return fputs ("&lt;", out);
     case '>': return fputs ("&gt;", out);
     case '&': return fputs ("&amp;", out);
-    /* map to entities, fall-through to raw if !full */
-    case '$': if (full) return fputs ("&dollar;", out);
-    case '_': if (full) return fputs ("&lowbar;", out);
-    case '%': if (full) return fputs ("&percnt;", out);
-    case '\\': if (full) return fputs ("&bsol;", out);
-    case '"': if (full) return fputs ("&quot;", out);
-    case '[': if (full) return fputs ("&lsqb;", out);
-    case ']': if (full) return fputs ("&rsqb;", out);
-    case '~': if (full) return fputs ("&tilde;", out);
-    case '|': if (full) return fputs ("&verbar;", out);
-    case '^': if (full) return fputs ("&circ;", out);
     default:  return fputc (c, out);
   }
 }
 
-static int sgml_fputs (const char *s, FILE *out, int full)
+static int sgml_fputs (const char *s, FILE *out)
 {
   for (; *s; s++)
-    if (sgml_fputc ((unsigned int) *s, out, full) == EOF)
+    if (sgml_fputc ((unsigned int) *s, out) == EOF)
       return EOF;
 
   return 0;
@@ -697,8 +688,11 @@ static void print_confline (const char *varname, int type, const char *val, FILE
 	man_print_strval (val, out);
 	fputs ("\\(rq\n", out);
       }
-      else
-	fprintf (out, "Default: %s\n", val);
+      else {
+	fputs ("Default: ", out);
+	man_print_strval (val, out);
+	fputs ("\n", out);
+      }
 
       fputs (".fi", out);
 
@@ -711,7 +705,7 @@ static void print_confline (const char *varname, int type, const char *val, FILE
       fputs ("\n<sect2 id=\"", out);
       sgml_id_fputs(varname, out);
       fputs ("\">\n<title>", out);
-      sgml_fputs (varname, out, 1);
+      sgml_fputs (varname, out);
       fprintf (out, "</title>\n<literallayout>Type: %s", type2human (type));
 
       
@@ -1040,6 +1034,8 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 		fputs ("\\(rq", out);
 	      else if (*str == '\\')
 		fputs ("\\\\", out);
+              else if (*str == '-')
+                fputs ("\\-", out);
 	      else if (!strncmp (str, "``", 2))
 	      {
 		fputs ("\\(lq", out);
@@ -1143,7 +1139,7 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	}
 	case SP_END_TAB:
 	{
-	  fputs ("\n</screen>", out);
+	  fputs ("</screen>", out);
 	  docstat &= ~D_TAB;
 	  docstat |= D_NL;
 	  break;
@@ -1155,34 +1151,36 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	    fputs ("\n</para>\n", out);
 	    docstat &= ~D_PA;
 	  }
-	  fputs ("\n<variablelist>\n", out);
+	  fputs ("\n<informaltable>\n<tgroup cols=\"2\">\n<tbody>\n", out);
 	  docstat |= D_DL;
 	  break;
 	}
 	case SP_DT:
 	{
-	  fputs ("<varlistentry><term>", out);
+	  fputs ("<row><entry>", out);
 	  break;
 	}
 	case SP_DD:
 	{
 	  docstat |= D_DD;
 	  if (docstat & D_DL)
-	    fputs("</term>\n", out);
-	  fputs ("<listitem><para>", out);
+	    fputs("</entry><entry>", out);
+	  else
+	    fputs ("<listitem><para>", out);
 	  break;
 	}
         case SP_END_DD:
         {
-	  docstat &= ~D_DD;
-	  fputs ("</para></listitem>", out);
 	  if (docstat & D_DL)
-	    fputs("</varlistentry>\n", out);
+	    fputs ("</entry></row>\n", out);
+	  else
+	    fputs ("</para></listitem>", out);
+	  docstat &= ~D_DD;
 	  break;
         }
 	case SP_END_DL:
 	{
-	  fputs ("</para></listitem></varlistentry></variablelist>\n", out);
+	  fputs ("</entry></row></tbody></tgroup></informaltable>\n", out);
 	  docstat &= ~(D_DD|D_DL);
 	  break;
 	}
@@ -1211,7 +1209,7 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	case SP_STR:
 	{
 	  if (docstat & D_TAB)
-	    sgml_fputs (str, out, 0);
+	    sgml_fputs (str, out);
 	  else
 	  {
 	    while (*str)
@@ -1229,7 +1227,7 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 		  str++;
 	        }
 	        else
-		  sgml_fputc (*str, out, 1);
+		  sgml_fputc (*str, out);
 	      }
 	    }
 	  }
@@ -1262,8 +1260,8 @@ void print_ref (FILE *out, int output_dollar, const char *ref)
     sgml_id_fputs (ref, out);
     fputs ("\">", out);
     if (output_dollar)
-      fputs ("&dollar;", out);
-    sgml_fputs (ref, out, 1);
+      fputc ('$', out);
+    sgml_fputs (ref, out);
     fputs ("</link>", out);
     break;
 

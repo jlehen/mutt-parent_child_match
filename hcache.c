@@ -45,6 +45,7 @@
 #include "mx.h"
 #include "lib.h"
 #include "md5.h"
+#include "rfc822.h"
 
 #if HAVE_QDBM
 static struct header_cache
@@ -85,7 +86,7 @@ static void mutt_hcache_dbt_empty_init(DBT * dbt);
 typedef union
 {
   struct timeval timeval;
-  unsigned long uid_validity;
+  unsigned int uidvalidity;
 } validate;
 
 static void *
@@ -231,7 +232,7 @@ restore_address(ADDRESS ** a, const unsigned char *d, int *off, int convert)
 
   while (counter)
   {
-    *a = safe_malloc(sizeof (ADDRESS));
+    *a = rfc822_new_address();
 #ifdef EXACT_ADDRESS
     restore_char(&(*a)->val, d, off, convert);
 #endif
@@ -588,7 +589,7 @@ mutt_hcache_per_folder(const char *path, const char *folder,
  * db_store */
 static void *
 mutt_hcache_dump(header_cache_t *h, HEADER * header, int *off,
-		 unsigned long uid_validity)
+		 unsigned int uidvalidity)
 {
   unsigned char *d = NULL;
   HEADER nh;
@@ -597,8 +598,8 @@ mutt_hcache_dump(header_cache_t *h, HEADER * header, int *off,
   *off = 0;
   d = lazy_malloc(sizeof (validate));
 
-  if (uid_validity)
-    memcpy(d, &uid_validity, sizeof (unsigned long));
+  if (uidvalidity)
+    memcpy(d, &uidvalidity, sizeof (uidvalidity));
   else
   {
     struct timeval now;
@@ -623,6 +624,7 @@ mutt_hcache_dump(header_cache_t *h, HEADER * header, int *off,
   nh.limited = 0;
   nh.num_hidden = 0;
   nh.recipient = 0;
+  nh.pair = 0;
   nh.attach_valid = 0;
   nh.path = NULL;
   nh.tree = NULL;
@@ -757,7 +759,7 @@ mutt_hcache_fetch_raw (header_cache_t *h, const char *filename,
 
 int
 mutt_hcache_store(header_cache_t *h, const char *filename, HEADER * header,
-		  unsigned long uid_validity,
+		  unsigned int uidvalidity,
 		  size_t(*keylen) (const char *fn))
 {
   char* data;
@@ -767,7 +769,7 @@ mutt_hcache_store(header_cache_t *h, const char *filename, HEADER * header,
   if (!h)
     return -1;
   
-  data = mutt_hcache_dump(h, header, &dlen, uid_validity);
+  data = mutt_hcache_dump(h, header, &dlen, uidvalidity);
   ret = mutt_hcache_store_raw (h, filename, data, dlen, keylen);
   
   FREE(&data);
@@ -828,19 +830,23 @@ mutt_hcache_store_raw (header_cache_t* h, const char* filename, void* data,
 #endif
 }
 
-static char* get_foldername(const char *folder) {
+static char* get_foldername(const char *folder)
+{
   char *p = NULL;
+  char path[_POSIX_PATH_MAX];
   struct stat st;
+
+  mutt_encode_path (path, sizeof (path), folder);
 
   /* if the folder is local, canonify the path to avoid
    * to ensure equivalent paths share the hcache */
-  if (stat (folder, &st) == 0)
+  if (stat (path, &st) == 0)
   {
-    p = safe_malloc (_POSIX_PATH_MAX+1);
-    if (!realpath (folder, p))
-      mutt_str_replace (&p, folder);
+    p = safe_malloc (PATH_MAX+1);
+    if (!realpath (path, p))
+      mutt_str_replace (&p, path);
   } else
-    p = safe_strdup (folder);
+    p = safe_strdup (path);
 
   return p;
 }
@@ -940,7 +946,10 @@ mutt_hcache_delete(header_cache_t *h, const char *filename,
 static int
 hcache_open_gdbm (struct header_cache* h, const char* path)
 {
-  int pagesize = atoi(HeaderCachePageSize) ? atoi(HeaderCachePageSize) : 16384;
+  int pagesize;
+
+  if (mutt_atoi (HeaderCachePageSize, &pagesize) < 0 || pagesize <= 0)
+    pagesize = 16384;
 
   h->db = gdbm_open((char *) path, pagesize, GDBM_WRCREAT, 00600, NULL);
   if (h->db)
@@ -1008,7 +1017,10 @@ hcache_open_db4 (struct header_cache* h, const char* path)
   struct stat sb;
   int ret;
   u_int32_t createflags = DB_CREATE;
-  int pagesize = atoi (HeaderCachePageSize);
+  int pagesize;
+
+  if (mutt_atoi (HeaderCachePageSize, &pagesize) < 0 || pagesize <= 0)
+    pagesize = 16384;
 
   snprintf (h->lockfile, _POSIX_PATH_MAX, "%s-lock-hack", path);
 

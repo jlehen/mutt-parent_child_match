@@ -139,6 +139,34 @@ void mutt_attach_bounce (FILE * fp, HEADER * hdr,
   /* one or more messages? */
   p = (cur || count_tagged (idx, idxlen) == 1);
 
+  /* RfC 5322 mandates a From: header, so warn before bouncing
+   * messages without one */
+  if (cur)
+  {
+    if (!cur->hdr->env->from)
+    {
+      mutt_error _("Warning: message contains no From: header");
+      mutt_sleep (2);
+      mutt_clear_error ();
+    }
+  }
+  else
+  {
+    for (i = 0; i < idxlen; i++)
+    {
+      if (idx[i]->content->tagged)
+      {
+	if (!idx[i]->content->hdr->env->from)
+	{
+	  mutt_error _("Warning: message contains no From: header");
+	  mutt_sleep (2);
+	  mutt_clear_error ();
+	  break;
+	}
+      }
+    }
+  }
+
   if (p)
     strfcpy (prompt, _("Bounce message to: "), sizeof (prompt));
   else
@@ -407,7 +435,7 @@ static void attach_forward_bodies (FILE * fp, HEADER * hdr,
   tmphdr->env = mutt_new_envelope ();
   mutt_make_forward_subject (tmphdr->env, Context, parent);
 
-  mutt_mktemp (tmpbody);
+  mutt_mktemp (tmpbody, sizeof (tmpbody));
   if ((tmpfp = safe_fopen (tmpbody, "w")) == NULL)
   {
     mutt_error (_("Can't open temporary file %s."), tmpbody);
@@ -509,13 +537,13 @@ _("Can't decode all tagged attachments.  MIME-forward the others?"))) == -1)
     }
 
     if (mime_fwd_any && 
-	(last = copy_problematic_attachments (fp, last, idx, idxlen, mime_fwd_all)) == NULL)
+	copy_problematic_attachments (fp, last, idx, idxlen, mime_fwd_all) == NULL)
       goto bail;
   }
   
   mutt_forward_trailer (tmpfp);
   
-  fclose (tmpfp);
+  safe_fclose (&tmpfp);
   tmpfp = NULL;
 
   /* now that we have the template, send it. */
@@ -526,7 +554,7 @@ _("Can't decode all tagged attachments.  MIME-forward the others?"))) == -1)
   
   if (tmpfp)
   {
-    fclose (tmpfp);
+    safe_fclose (&tmpfp);
     mutt_unlink (tmpbody);
   }
 
@@ -585,7 +613,7 @@ static void attach_forward_msgs (FILE * fp, HEADER * hdr,
     
     /* no MIME encapsulation */
     
-    mutt_mktemp (tmpbody);
+    mutt_mktemp (tmpbody, sizeof (tmpbody));
     if (!(tmpfp = safe_fopen (tmpbody, "w")))
     {
       mutt_error (_("Can't create %s."), tmpbody);
@@ -631,7 +659,7 @@ static void attach_forward_msgs (FILE * fp, HEADER * hdr,
 	}
       }
     }
-    fclose (tmpfp);
+    safe_fclose (&tmpfp);
   }
   else if (rc == M_YES)	/* do MIME encapsulation - we don't need to do much here */
   {
@@ -835,7 +863,7 @@ void mutt_attach_reply (FILE * fp, HEADER * hdr,
     return;
   }
   
-  mutt_mktemp (tmpbody);
+  mutt_mktemp (tmpbody, sizeof (tmpbody));
   if ((tmpfp = safe_fopen (tmpbody, "w")) == NULL)
   {
     mutt_error (_("Can't create %s."), tmpbody);
@@ -907,14 +935,15 @@ void mutt_attach_reply (FILE * fp, HEADER * hdr,
 	copy_problematic_attachments (fp, &tmphdr->content, idx, idxlen, 0) == NULL)
     {
       mutt_free_header (&tmphdr);
-      fclose (tmpfp);
+      safe_fclose (&tmpfp);
       return;
     }
   }
 
-  fclose (tmpfp);
+  safe_fclose (&tmpfp);
   
-  if (ci_send_message (flags, tmphdr, tmpbody, NULL, parent) == 0)
+  if (ci_send_message (flags, tmphdr, tmpbody, NULL,
+			  parent ? parent : (cur ? cur->hdr : NULL)) == 0)
     mutt_set_flag (Context, hdr, M_REPLIED, 1);
 }
 

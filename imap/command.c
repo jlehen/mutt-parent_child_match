@@ -233,9 +233,6 @@ int imap_exec (IMAP_DATA* idata, const char* cmdstr, int flags)
   int rc;
 
   if ((rc = cmd_start (idata, cmdstr, flags)) < 0)
-    return rc;
-
-  if (rc < 0)
   {
     cmd_handle_fatal (idata);
     return -1;
@@ -993,14 +990,19 @@ static void cmd_parse_status (IMAP_DATA* idata, char* s)
         dprint (3, (debugfile, "Found %s in buffy list (OV: %d ON: %d U: %d)\n",
                     mailbox, olduv, oldun, status->unseen));
         
-        if (olduv && olduv == status->uidvalidity)
-        {
-          if (oldun < status->uidnext)
-            inc->new = status->unseen;
-        }
-        else if (!olduv && !oldun)
-	  /* first check per session, use recent. might need a flag for this. */
-	  inc->new = status->recent;
+	if (option(OPTMAILCHECKRECENT))
+	{
+	  if (olduv && olduv == status->uidvalidity)
+	  {
+	    if (oldun < status->uidnext)
+	      inc->new = status->unseen;
+	  }
+	  else if (!olduv && !oldun)
+	    /* first check per session, use recent. might need a flag for this. */
+	    inc->new = status->recent;
+	  else
+	    inc->new = status->unseen;
+	}
 	else
           inc->new = status->unseen;
 

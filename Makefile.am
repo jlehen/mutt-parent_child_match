@@ -13,7 +13,11 @@ SUBDIRS = m4 po intl doc contrib $(IMAP_SUBDIR)
 
 bin_SCRIPTS = muttbug flea @SMIMEAUX_TARGET@
 
-BUILT_SOURCES = keymap_defs.h patchlist.c reldate.h hcversion.h
+if BUILD_HCACHE
+HCVERSION = hcversion.h
+endif
+
+BUILT_SOURCES = keymap_defs.h patchlist.c reldate.h $(HCVERSION)
 
 bin_PROGRAMS = mutt @DOTLOCK_TARGET@ @PGPAUX_TARGET@
 mutt_SOURCES = \
@@ -29,7 +33,7 @@ mutt_SOURCES = \
 	score.c send.c sendlib.c signal.c sort.c \
 	status.c system.c thread.c charset.c history.c lib.c \
 	muttlib.c editmsg.c mbyte.c \
-	url.c ascii.c crypt-mod.c crypt-mod.h
+	url.c ascii.c crypt-mod.c crypt-mod.h safe_asprintf.c
 
 nodist_mutt_SOURCES = $(BUILT_SOURCES)
 
@@ -66,7 +70,7 @@ EXTRA_DIST = COPYRIGHT GPL OPS OPS.PGP OPS.CRYPT OPS.SMIME TODO UPDATING \
 	rfc2231.h rfc822.h rfc3676.h sha1.h sort.h mime.types VERSION prepare \
 	_regex.h OPS.MIX README.SECURITY remailer.c remailer.h browser.h \
 	mbyte.h lib.h extlib.c pgpewrap.c smime_keys.pl pgplib.h \
-	README.SSL smime.h \
+	README.SSL smime.h group.h \
 	muttbug pgppacket.h depcomp ascii.h BEWARE PATCHES patchlist.sh \
 	ChangeLog mkchangelog.sh mutt_idna.h \
 	snprintf.c regex.c crypt-gpgme.h hcachever.sh.in

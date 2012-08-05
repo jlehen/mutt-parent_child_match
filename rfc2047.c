@@ -119,7 +119,7 @@ int convert_nonmime_string (char **ps)
     }
   }
   mutt_convert_string (ps,
-      (const char *)mutt_get_default_charset (AssumedCharset),
+      (const char *)mutt_get_default_charset (),
       Charset, M_ICONV_HOOK_FROM);
   return -1;
 }
@@ -629,12 +629,23 @@ static int rfc2047_decode_word (char *d, const char *s, size_t len)
   const char *t, *t1;
   int enc = 0, count = 0;
   char *charset = NULL;
+  int rv = -1;
 
   pd = d0 = safe_malloc (strlen (s));
 
   for (pp = s; (pp1 = strchr (pp, '?')); pp = pp1 + 1)
   {
     count++;
+
+    /* hack for non-compliant MUAs that allow unquoted question marks in encoded-text */
+    if (count == 4)
+    {
+      while (pp1 && *(pp1 + 1) != '=')
+	pp1 = strchr(pp1 + 1, '?');
+      if (!pp1)
+	  goto error_out_0;
+    }
+
     switch (count)
     {
       case 2:
@@ -642,9 +653,7 @@ static int rfc2047_decode_word (char *d, const char *s, size_t len)
 	t = pp1;
         if ((t1 = memchr (pp, '*', t - pp)))
 	  t = t1;
-	charset = safe_malloc (t - pp + 1);
-	memcpy (charset, pp, t - pp);
-	charset[t-pp] = '\0';
+	charset = mutt_substrdup (pp, t);
 	break;
       case 3:
 	if (toupper ((unsigned char) *pp) == 'Q')
@@ -652,11 +661,7 @@ static int rfc2047_decode_word (char *d, const char *s, size_t len)
 	else if (toupper ((unsigned char) *pp) == 'B')
 	  enc = ENCBASE64;
 	else
-	{
-	  FREE (&charset);
-	  FREE (&d0);
-	  return (-1);
-	}
+	  goto error_out_0;
 	break;
       case 4:
 	if (enc == ENCQUOTEDPRINTABLE)
@@ -709,9 +714,11 @@ static int rfc2047_decode_word (char *d, const char *s, size_t len)
     mutt_convert_string (&d0, charset, Charset, M_ICONV_HOOK_FROM);
   mutt_filter_unprintable (&d0);
   strfcpy (d, d0, len);
+  rv = 0;
+error_out_0:
   FREE (&charset);
   FREE (&d0);
-  return (0);
+  return rv;
 }
 
 /*
@@ -733,7 +740,8 @@ static const char *find_encoded_word (const char *s, const char **x)
       ;
     if (q[0] != '?' || !strchr ("BbQq", q[1]) || q[2] != '?')
       continue;
-    for (q = q + 3; 0x20 < *q && *q < 0x7f && *q != '?'; q++)
+    /* non-strict check since many MUAs will not encode spaces and question marks */
+    for (q = q + 3; 0x20 <= *q && *q < 0x7f && (*q != '?' || q[1] != '='); q++)
       ;
     if (q[0] != '?' || q[1] != '=')
     {
@@ -877,7 +885,11 @@ void rfc2047_decode (char **pd)
       }
     }
 
-    rfc2047_decode_word (d, p, dlen);
+    if (rfc2047_decode_word (d, p, dlen) == -1)
+    {
+      /* could not decode word, fall back to displaying the raw string */
+      strfcpy(d, p, dlen);
+    }
     found_encoded = 1;
     s = q;
     n = mutt_strlen (d);

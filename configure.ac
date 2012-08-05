@@ -109,6 +109,7 @@ AH_BOTTOM([/* fseeko portability defines */
 #endif
 ])
 MUTT_C99_INTTYPES
+AC_TYPE_LONG_LONG_INT
 
 ac_aux_path_sendmail=/usr/sbin:/usr/lib
 AC_PATH_PROG(SENDMAIL, sendmail, /usr/sbin/sendmail, $PATH:$ac_aux_path_sendmail)
@@ -343,7 +344,8 @@ AC_CHECK_TYPE(ssize_t, int)
 
 AC_CHECK_FUNCS(fgetpos memmove setegid srand48 strerror)
 
-AC_REPLACE_FUNCS([setenv strcasecmp strdup strsep strtok_r])
+AC_REPLACE_FUNCS([setenv strcasecmp strdup strsep strtok_r wcscasecmp])
+AC_REPLACE_FUNCS([strcasestr mkdtemp])
 
 AC_CHECK_FUNC(getopt)
 if test $ac_cv_func_getopt = yes; then
@@ -540,8 +542,10 @@ AC_ARG_WITH(docdir, AC_HELP_STRING([--with-docdir=PATH], [Specify where to put t
         [mutt_cv_docdir=$withval],
         [mutt_cv_docdir='${datarootdir}/doc/mutt'])
 AC_MSG_RESULT($mutt_cv_docdir)
-
-docdir=$mutt_cv_docdir
+if test -z "$docdir" -o -n "$with_docdir"
+then
+  docdir=$mutt_cv_docdir
+fi
 AC_SUBST(docdir)
 
 if test x$mutt_cv_setgid = xyes; then
@@ -648,7 +652,7 @@ AM_CONDITIONAL(USE_GSS, test x$need_gss = xyes)
 
 dnl -- end imap dependencies --
 
-AC_ARG_WITH(ssl, AC_HELP_STRING([--with-ssl@<:@=PFX@:>@], [Compile in SSL support for POP/IMAP/SMTP using OpenSSL]),
+AC_ARG_WITH(ssl, AC_HELP_STRING([--with-ssl@<:@=PFX@:>@], [Enable TLS support using OpenSSL]),
 [       if test "$with_ssl" != "no"
         then
           if test "$need_socket" != "yes"; then
@@ -681,7 +685,7 @@ AC_ARG_WITH(ssl, AC_HELP_STRING([--with-ssl@<:@=PFX@:>@], [Compile in SSL suppor
         fi
 ])
 
-AC_ARG_WITH([gnutls], AC_HELP_STRING([--with-gnutls@<:@=PFX@:>@], [Compile in SSL support for POP/IMAP/SMTP using gnutls]),
+AC_ARG_WITH([gnutls], AC_HELP_STRING([--with-gnutls@<:@=PFX@:>@], [enable TLS support using gnutls]),
     [gnutls_prefix="$withval"], [gnutls_prefix="no"])
 if test "$gnutls_prefix" != "no" && test x"$need_ssl" != xyes
 then
@@ -689,24 +693,33 @@ then
   then
     AC_MSG_WARN([SSL support is only useful with POP, IMAP or SMTP support])
   else
-    MUTT_AM_PATH_GNUTLS([$gnutls_prefix],
-      [dnl GNUTLS found
-      CPPFLAGS="$CPPFLAGS $LIBGNUTLS_CFLAGS"
-      MUTTLIBS="$MUTTLIBS $LIBGNUTLS_LIBS"
+    if test "$gnutls_prefix" != "yes"
+    then
+      LDFLAGS="$LDFLAGS -L$gnutls_prefix/lib"
+      CPPFLAGS="$CPPFLAGS -I$gnutls_prefix/include"
+    fi
+    saved_LIBS="$LIBS"
 
-      AC_DEFINE(USE_SSL,1,[ Define if you want support for SSL. ])
-      AC_DEFINE(USE_SSL_GNUTLS,1,[ Define if you want support for SSL via GNUTLS. ])
+    AC_CHECK_LIB(gnutls, gnutls_check_version,
+      [dnl GNUTLS found
+      AC_CHECK_DECLS([GNUTLS_VERIFY_DISABLE_TIME_CHECKS], [], [],
+                    [[#include <gnutls/x509.h>]])
+
+      LIBS="$saved_LIBS"
+      MUTTLIBS="$MUTTLIBS -lgnutls"
+
+      AC_DEFINE(USE_SSL, 1, [ Define if you want support for SSL. ])
+      AC_DEFINE(USE_SSL_GNUTLS, 1, [ Define if you want support for SSL via GNUTLS. ])
 
       MUTT_LIB_OBJECTS="$MUTT_LIB_OBJECTS mutt_ssl_gnutls.o"
       need_ssl=yes],
-      [dnl GNUTLS not found
-        AC_MSG_ERROR([could not find libgnutls])
-      ])
+      [AC_MSG_ERROR([could not find libgnutls])])
   fi
 fi
+
 AM_CONDITIONAL(USE_SSL, test x$need_ssl = xyes)
 
-AC_ARG_WITH(sasl, AC_HELP_STRING([--with-sasl@<:@=PFX@:>@], [Use Cyrus SASL 2 network security library]),
+AC_ARG_WITH(sasl, AC_HELP_STRING([--with-sasl@<:@=PFX@:>@], [Use SASL network security library]),
         [	
         if test "$with_sasl" != "no"
         then
@@ -722,15 +735,19 @@ AC_ARG_WITH(sasl, AC_HELP_STRING([--with-sasl@<:@=PFX@:>@], [Use Cyrus SASL 2 ne
           fi
 
           saved_LIBS="$LIBS"
+          LIBS=
 
-          AC_CHECK_LIB(sasl2, sasl_client_init,,
-            AC_MSG_ERROR([could not find libsasl2]),)
+          # OpenSolaris provides a SASL2 interface in libsasl
+          sasl_libs="sasl2 sasl"
+          AC_SEARCH_LIBS(sasl_encode64, [$sasl_libs],,
+                  AC_MSG_ERROR([could not find sasl lib]),)
 
+          MUTTLIBS="$MUTTLIBS $LIBS"
           MUTT_LIB_OBJECTS="$MUTT_LIB_OBJECTS mutt_sasl.o"
-          MUTTLIBS="$MUTTLIBS -lsasl2"
           LIBS="$saved_LIBS"
+
           AC_DEFINE(USE_SASL,1,
-                  [ Define if want to use the Cyrus SASL library for POP/IMAP authentication. ])
+                  [ Define if want to use the SASL library for POP/IMAP authentication. ])
           need_sasl=yes
         fi
         ])
@@ -825,6 +842,7 @@ AC_ARG_WITH(gdbm, AC_HELP_STRING([--without-gdbm],
 AC_ARG_WITH(bdb, AC_HELP_STRING([--with-bdb@<:@=DIR@:>@],
   [Use BerkeleyDB4 if gdbm is not available]))
 
+db_found=no
 if test x$enable_hcache = xyes
 then
     AC_DEFINE(USE_HCACHE, 1, [Enable header caching])
@@ -1017,10 +1035,15 @@ then
 fi
 dnl -- end cache --
 
+AM_CONDITIONAL(BUILD_HCACHE, test x$db_found != xno)
+
 if test "$need_md5" = "yes"
 then
   MUTT_LIB_OBJECTS="$MUTT_LIB_OBJECTS md5.o"
-  MUTT_MD5="mutt_md5"
+fi
+
+if test x$db_found != xno ; then
+  MUTT_MD5="mutt_md5$EXEEXT"
 fi
 AC_SUBST(MUTT_MD5)
 
@@ -1199,7 +1222,7 @@ if test "$mutt_cv_wint_t" = no; then
 fi
 
 AC_CHECK_HEADERS(wctype.h)
-AC_CHECK_FUNCS(iswalnum iswalpha  iswcntrl iswdigit)
+AC_CHECK_FUNCS(iswalnum iswalpha iswblank iswcntrl iswdigit)
 AC_CHECK_FUNCS(iswgraph iswlower iswprint iswpunct iswspace iswupper)
 AC_CHECK_FUNCS(iswxdigit towupper towlower)
 
@@ -1227,14 +1250,14 @@ if test "$wc_funcs" != yes && test "$wc_funcs" != no; then
         AC_CACHE_CHECK([for wchar_t functions], mutt_cv_wc_funcs,
                 mutt_cv_wc_funcs=no
                 AC_TRY_LINK([
-#define _XOPEN_SOURCE 1
+#define _XOPEN_SOURCE 600
 #include <stddef.h>
 #include <stdlib.h>
-#ifdef HAVE_WCTYPE_H
-#include <wctype.h>
-#endif
 #ifdef HAVE_WCHAR_H
 #include <wchar.h>
+#endif
+#ifdef HAVE_WCTYPE_H
+#include <wctype.h>
 #endif],
                         [mbrtowc(0, 0, 0, 0); wctomb(0, 0); wcwidth(0);
         iswprint(0); iswspace(0); towlower(0); towupper(0); iswalnum(0)],

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2007,2009 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2005 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -140,20 +140,25 @@ static short mhs_unset (struct mh_sequences *mhs, int i, short f)
 
 #endif
 
-static void mh_read_token (char *t, int *first, int *last)
+static int mh_read_token (char *t, int *first, int *last)
 {
   char *p;
   if ((p = strchr (t, '-')))
   {
     *p++ = '\0';
-    *first = atoi (t);
-    *last = atoi (p);
+    if (mutt_atoi (t, first) < 0 || mutt_atoi (p, last) < 0)
+      return -1;
   }
   else
-    *first = *last = atoi (t);
+  {
+    if (mutt_atoi (t, first) < 0)
+      return -1;
+    *last = *first;
+  }
+  return 0;
 }
 
-static void mh_read_sequences (struct mh_sequences *mhs, const char *path)
+static int mh_read_sequences (struct mh_sequences *mhs, const char *path)
 {
   FILE *fp;
   int line = 1;
@@ -162,15 +167,15 @@ static void mh_read_sequences (struct mh_sequences *mhs, const char *path)
   size_t sz = 0;
 
   short f;
-  int first, last;
+  int first, last, rc = 0;
 
   char pathname[_POSIX_PATH_MAX];
   snprintf (pathname, sizeof (pathname), "%s/.mh_sequences", path);
 
   if (!(fp = fopen (pathname, "r")))
-    return;
+    return 0; /* yes, ask callers to silently ignore the error */
 
-  while ((buff = mutt_read_line (buff, &sz, fp, &line)))
+  while ((buff = mutt_read_line (buff, &sz, fp, &line, 0)))
   {
     if (!(t = strtok (buff, " \t:")))
       continue;
@@ -186,14 +191,23 @@ static void mh_read_sequences (struct mh_sequences *mhs, const char *path)
 
     while ((t = strtok (NULL, " \t:")))
     {
-      mh_read_token (t, &first, &last);
+      if (mh_read_token (t, &first, &last) < 0)
+      {
+	mhs_free_sequences (mhs);
+	rc = -1;
+	goto out;
+      }
       for (; first <= last; first++)
 	mhs_set (mhs, first, f);
     }
   }
 
+  rc = 0;
+
+out:
   FREE (&buff);
   safe_fclose (&fp);
+  return rc;
 }
 
 static inline mode_t mh_umask (CONTEXT* ctx)
@@ -219,7 +233,8 @@ int mh_buffy (const char *path)
   struct mh_sequences mhs;
   memset (&mhs, 0, sizeof (mhs));
 
-  mh_read_sequences (&mhs, path);
+  if (mh_read_sequences (&mhs, path) < 0)
+    return 0;
   for (i = 0; !r && i <= mhs.max; i++)
     if (mhs_check (&mhs, i) & MH_SEQ_UNSEEN)
       r = 1;
@@ -350,7 +365,7 @@ static void mh_update_sequences (CONTEXT * ctx)
   /* first, copy unknown sequences */
   if ((ofp = fopen (sequences, "r")))
   {
-    while ((buff = mutt_read_line (buff, &s, ofp, &l)))
+    while ((buff = mutt_read_line (buff, &s, ofp, &l, 0)))
     {
       if (!mutt_strncmp (buff, seq_unseen, mutt_strlen (seq_unseen)))
 	continue;
@@ -375,7 +390,8 @@ static void mh_update_sequences (CONTEXT * ctx)
     else
       p = ctx->hdrs[l]->path;
 
-    i = atoi (p);
+    if (mutt_atoi (p, &i) < 0)
+      continue;
 
     if (!ctx->hdrs[l]->read)
     {
@@ -448,7 +464,7 @@ static void mh_sequences_add_one (CONTEXT * ctx, int n, short unseen,
   snprintf (sequences, sizeof (sequences), "%s/.mh_sequences", ctx->path);
   if ((ofp = fopen (sequences, "r")))
   {
-    while ((buff = mutt_read_line (buff, &sz, ofp, &line)))
+    while ((buff = mutt_read_line (buff, &sz, ofp, &line, 0)))
     {
       if (unseen && !strncmp (buff, seq_unseen, mutt_strlen (seq_unseen)))
       {
@@ -503,7 +519,8 @@ static void mh_update_maildir (struct maildir *md, struct mh_sequences *mhs)
     else
       p = md->h->path;
 
-    i = atoi (p);
+    if (mutt_atoi (p, &i) < 0)
+      continue;
     f = mhs_check (mhs, i);
 
     md->h->read = (f & MH_SEQ_UNSEEN) ? 0 : 1;
@@ -637,13 +654,13 @@ static HEADER *maildir_parse_message (int magic, const char *fname,
     h->env = mutt_read_rfc822_header (f, h, 0, 0);
 
     fstat (fileno (f), &st);
-    fclose (f);
+    safe_fclose (&f);
 
     if (!h->received)
       h->received = h->date_sent;
 
-    if (h->content->length <= 0)
-      h->content->length = st.st_size - h->content->offset;
+    /* always update the length since we have fresh information available. */
+    h->content->length = st.st_size - h->content->offset;
 
     h->index = -1;
 
@@ -1027,13 +1044,14 @@ static void maildir_delayed_parsing (CONTEXT * ctx, struct maildir **md,
     if (!ctx->quiet && progress)
       mutt_progress_update (progress, count, -1);
 
+    DO_SORT();
+
     snprintf (fn, sizeof (fn), "%s/%s", ctx->path, p->h->path);
 
 #if USE_HCACHE
     if (option(OPTHCACHEVERIFY))
     {
-      DO_SORT();
-      ret = stat(fn, &lastchanged);
+       ret = stat(fn, &lastchanged);
     }
     else
     {
@@ -1057,7 +1075,6 @@ static void maildir_delayed_parsing (CONTEXT * ctx, struct maildir **md,
     {
 #endif /* USE_HCACHE */
 
-    DO_SORT();
     if (maildir_parse_message (ctx->magic, fn, p->h->old, p->h))
     {
       p->header_parsed = 1;
@@ -1139,7 +1156,8 @@ int mh_read_dir (CONTEXT * ctx, const char *subdir)
 
   if (ctx->magic == M_MH)
   {
-    mh_read_sequences (&mhs, ctx->path);
+    if (mh_read_sequences (&mhs, ctx->path) < 0)
+      return -1;
     mh_update_maildir (md, &mhs);
     mhs_free_sequences (&mhs);
   }
@@ -1148,7 +1166,7 @@ int mh_read_dir (CONTEXT * ctx, const char *subdir)
 
   if (!data->mh_umask)
     data->mh_umask = mh_umask (ctx);
-  
+
   return 0;
 }
 
@@ -1242,8 +1260,8 @@ int maildir_open_new_message (MESSAGE * msg, CONTEXT * dest, HEADER * hdr)
   omask = umask (mh_umask (dest));
   FOREVER
   {
-    snprintf (path, _POSIX_PATH_MAX, "%s/tmp/%s.%ld.%u_%d.%s%s",
-	      dest->path, subdir, time (NULL), (unsigned int)getpid (),
+    snprintf (path, _POSIX_PATH_MAX, "%s/tmp/%s.%lld.%u_%d.%s%s",
+	      dest->path, subdir, (long long)time (NULL), (unsigned int)getpid (),
 	      Counter++, NONULL (Hostname), suffix);
 
     dprint (2, (debugfile, "maildir_open_new_message (): Trying %s.\n",
@@ -1328,8 +1346,8 @@ int maildir_commit_message (CONTEXT * ctx, MESSAGE * msg, HEADER * hdr)
   /* construct a new file name. */
   FOREVER
   {
-    snprintf (path, _POSIX_PATH_MAX, "%s/%ld.%u_%d.%s%s", subdir,
-	      time (NULL), (unsigned int)getpid (), Counter++, 
+    snprintf (path, _POSIX_PATH_MAX, "%s/%lld.%u_%d.%s%s", subdir,
+	      (long long)time (NULL), (unsigned int)getpid (), Counter++,
 	      NONULL (Hostname), suffix);
     snprintf (full, _POSIX_PATH_MAX, "%s/%s", ctx->path, path);
 
@@ -1690,6 +1708,18 @@ int mh_sync_mailbox (CONTEXT * ctx, int *index_hint)
 	  goto err;
       }
     }
+
+#if USE_HCACHE
+    if (ctx->hdrs[i]->changed)
+    {
+      if (ctx->magic == M_MAILDIR)
+	mutt_hcache_store (hc, ctx->hdrs[i]->path + 3, ctx->hdrs[i],
+			   0, &maildir_hcache_keylen);
+      else if (ctx->magic == M_MH)
+	mutt_hcache_store (hc, ctx->hdrs[i]->path, ctx->hdrs[i], 0, strlen);
+    }
+#endif
+
   }
 
 #if USE_HCACHE
@@ -1870,7 +1900,7 @@ int maildir_check_mailbox (CONTEXT * ctx, int *index_hint)
    * of each message we scanned.  This is used in the loop over the
    * existing messages below to do some correlation.
    */
-  fnames = hash_create (1031);
+  fnames = hash_create (1031, 0);
 
   for (p = md; p; p = p->next)
   {
@@ -2014,12 +2044,13 @@ int mh_check_mailbox (CONTEXT * ctx, int *index_hint)
   maildir_parse_dir (ctx, &last, NULL, NULL, NULL);
   maildir_delayed_parsing (ctx, &md, NULL);
 
-  mh_read_sequences (&mhs, ctx->path);
+  if (mh_read_sequences (&mhs, ctx->path) < 0)
+    return -1;
   mh_update_maildir (md, &mhs);
   mhs_free_sequences (&mhs);
 
   /* check for modifications and adjust flags */
-  fnames = hash_create (1031);
+  fnames = hash_create (1031, 0);
 
   for (p = md; p; p = p->next)
     hash_insert (fnames, p->h->path, p, 0);
@@ -2212,4 +2243,51 @@ int mh_check_empty (const char *path)
   closedir (dp);
   
   return r;
+}
+
+int mx_is_maildir (const char *path)
+{
+  char tmp[_POSIX_PATH_MAX];
+  struct stat st;
+
+  snprintf (tmp, sizeof (tmp), "%s/cur", path);
+  if (stat (tmp, &st) == 0 && S_ISDIR (st.st_mode))
+    return 1;
+  return 0;
+}
+
+int mx_is_mh (const char *path)
+{
+  char tmp[_POSIX_PATH_MAX];
+
+  snprintf (tmp, sizeof (tmp), "%s/.mh_sequences", path);
+  if (access (tmp, F_OK) == 0)
+    return 1;
+
+  snprintf (tmp, sizeof (tmp), "%s/.xmhcache", path);
+  if (access (tmp, F_OK) == 0)
+    return 1;
+
+  snprintf (tmp, sizeof (tmp), "%s/.mew_cache", path);
+  if (access (tmp, F_OK) == 0)
+    return 1;
+
+  snprintf (tmp, sizeof (tmp), "%s/.mew-cache", path);
+  if (access (tmp, F_OK) == 0)
+    return 1;
+
+  snprintf (tmp, sizeof (tmp), "%s/.sylpheed_cache", path);
+  if (access (tmp, F_OK) == 0)
+    return 1;
+
+  /*
+   * ok, this isn't an mh folder, but mh mode can be used to read
+   * Usenet news from the spool. ;-)
+   */
+
+  snprintf (tmp, sizeof (tmp), "%s/.overview", path);
+  if (access (tmp, F_OK) == 0)
+    return 1;
+
+  return 0;
 }

@@ -538,7 +538,7 @@ int crypt_write_signed(BODY *a, STATE *s, const char *tempfile)
     fputc (c, fp);
     
   }
-  fclose (fp);
+  safe_fclose (&fp);
 
   return 0;
 }
@@ -593,7 +593,7 @@ void crypt_extract_keys_from_messages (HEADER * h)
   if (!WithCrypto)
     return;
 
-  mutt_mktemp (tempfname);
+  mutt_mktemp (tempfname, sizeof (tempfname));
   if (!(fpout = safe_fopen (tempfname, "w")))
   {
     mutt_perror (tempfname);
@@ -613,7 +613,7 @@ void crypt_extract_keys_from_messages (HEADER * h)
 	if (Context->hdrs[Context->v2r[i]]->security & ENCRYPT &&
 	    !crypt_valid_passphrase (Context->hdrs[Context->v2r[i]]->security))
 	{
-	  fclose (fpout);
+	  safe_fclose (&fpout);
 	  break;
 	}
 
@@ -695,7 +695,7 @@ void crypt_extract_keys_from_messages (HEADER * h)
     }
   }
       
-  fclose (fpout);
+  safe_fclose (&fpout);
   if (isendwin())
     mutt_any_key_to_continue (NULL);
 
@@ -844,7 +844,7 @@ int mutt_signed_handler (BODY *a, STATE *s)
     
     if (sigcnt)
     {
-      mutt_mktemp (tempfile);
+      mutt_mktemp (tempfile, sizeof (tempfile));
       if (crypt_write_signed (a, s, tempfile) == 0)
       {
 	for (i = 0; i < sigcnt; i++)

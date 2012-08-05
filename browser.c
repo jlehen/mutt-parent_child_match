@@ -40,13 +40,14 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <locale.h>
 
 static struct mapping_t FolderHelp[] = {
   { N_("Exit"),  OP_EXIT },
   { N_("Chdir"), OP_CHANGE_DIRECTORY },
   { N_("Mask"),  OP_ENTER_MASK },
   { N_("Help"),  OP_HELP },
-  { NULL }
+  { NULL,	 0 }
 };
 
 typedef struct folder_t
@@ -161,11 +162,27 @@ folder_format_str (char *dest, size_t destlen, size_t col, char op, const char *
       break;
       
     case 'd':
+    case 'D':
       if (folder->ff->st != NULL)
       {
-	tnow = time (NULL);
-	t_fmt = tnow - folder->ff->st->st_mtime < 31536000 ? "%b %d %H:%M" : "%b %d  %Y";
+	int do_locales = TRUE;
+
+	if (op == 'D') {
+	  t_fmt = NONULL(DateFmt);
+	  if (*t_fmt == '!') {
+	    ++t_fmt;
+	    do_locales = FALSE;
+	  }
+	} else {
+	  tnow = time (NULL);
+	  t_fmt = tnow - folder->ff->st->st_mtime < 31536000 ? "%b %d %H:%M" : "%b %d  %Y";
+	}
+	if (do_locales)
+	  setlocale(LC_TIME, NONULL (Locale)); /* use environment if $locale is not set */
+	else
+	  setlocale(LC_TIME, "C");
 	strftime (date, sizeof (date), t_fmt, localtime (&folder->ff->st->st_mtime));
+
 	mutt_format_s (dest, destlen, fmt, date);
       }
       else
@@ -460,6 +477,21 @@ static int examine_mailboxes (MUTTMENU *menu, struct browser_state *state)
     if ((! S_ISREG (s.st_mode)) && (! S_ISDIR (s.st_mode)) &&
 	(! S_ISLNK (s.st_mode)))
       continue;
+
+    if (mx_is_maildir (tmp->path))
+    {
+      struct stat st2;
+      char md[_POSIX_PATH_MAX];
+
+      snprintf (md, sizeof (md), "%s/new", tmp->path);
+      if (stat (md, &s) < 0)
+	s.st_mtime = 0;
+      snprintf (md, sizeof (md), "%s/cur", tmp->path);
+      if (stat (md, &st2) < 0)
+	st2.st_mtime = 0;
+      if (st2.st_mtime > s.st_mtime)
+	s.st_mtime = st2.st_mtime;
+    }
     
     strfcpy (buffer, NONULL(tmp->path), sizeof (buffer));
     mutt_pretty_mailbox (buffer, sizeof (buffer));
@@ -1053,7 +1085,6 @@ void _mutt_select_file (char *f, size_t flen, int flags, char ***files, int *num
 	  if ((err = REGCOMP (rx, s, REG_NOSUB)) != 0)
 	  {
 	    regerror (err, rx, buf, sizeof (buf));
-	    regfree (rx);
 	    FREE (&rx);
 	    mutt_error ("%s", buf);
 	  }
