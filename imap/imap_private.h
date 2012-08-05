@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
- * Copyright (C) 1999-2005 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1999-2008 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -54,11 +54,10 @@
 /* number of entries in the hash table */
 #define IMAP_CACHE_LEN 10
 
-/* number of commands that can be batched into a single request
- * ( - 1, for the easy way to detect ring buffer wrap) */
-#define IMAP_PIPELINE_DEPTH 15
-
 #define SEQLEN 5
+/* maximum length of command lines before they must be split (for
+ * lazy servers) */
+#define IMAP_MAX_CMDLEN 1024
 
 #define IMAP_REOPEN_ALLOW     (1<<0)
 #define IMAP_EXPUNGE_EXPECTED (1<<1)
@@ -69,12 +68,12 @@
 /* imap_exec flags (see imap_exec) */
 #define IMAP_CMD_FAIL_OK (1<<0)
 #define IMAP_CMD_PASS    (1<<1)
+#define IMAP_CMD_QUEUE   (1<<2)
 
 enum
 {
   IMAP_FATAL = 1,
-  IMAP_BYE,
-  IMAP_REOPENED
+  IMAP_BYE
 };
 
 enum
@@ -189,7 +188,8 @@ typedef struct
   void* cmddata;
 
   /* command queue */
-  IMAP_COMMAND cmds[IMAP_PIPELINE_DEPTH];
+  IMAP_COMMAND* cmds;
+  int cmdslots;
   int nextcmd;
   int lastcmd;
   BUFFER* cmdbuf;
@@ -227,14 +227,14 @@ int imap_rename_mailbox (IMAP_DATA* idata, IMAP_MBOX* mx, const char* newname);
 IMAP_STATUS* imap_mboxcache_get (IMAP_DATA* idata, const char* mbox,
                                  int create);
 void imap_mboxcache_free (IMAP_DATA* idata);
-int imap_make_msg_set (IMAP_DATA* idata, BUFFER* buf, int flag, int changed,
-                       int invert);
+int imap_exec_msgset (IMAP_DATA* idata, const char* pre, const char* post,
+                      int flag, int changed, int invert);
 int imap_open_connection (IMAP_DATA* idata);
 void imap_close_connection (IMAP_DATA* idata);
 IMAP_DATA* imap_conn_find (const ACCOUNT* account, int flags);
 int imap_read_literal (FILE* fp, IMAP_DATA* idata, long bytes, progress_t*);
 void imap_expunge_mailbox (IMAP_DATA* idata);
-void imap_logout (IMAP_DATA* idata);
+void imap_logout (IMAP_DATA** idata);
 int imap_sync_message (IMAP_DATA *idata, HEADER *hdr, BUFFER *cmd,
   int *err_continue);
 int imap_has_flag (LIST* flag_list, const char* flag);
@@ -243,12 +243,13 @@ int imap_has_flag (LIST* flag_list, const char* flag);
 int imap_authenticate (IMAP_DATA* idata);
 
 /* command.c */
-int imap_cmd_queue (IMAP_DATA* idata, const char* cmdstr);
 int imap_cmd_start (IMAP_DATA* idata, const char* cmd);
 int imap_cmd_step (IMAP_DATA* idata);
 void imap_cmd_finish (IMAP_DATA* idata);
 int imap_code (const char* s);
+const char* imap_cmd_trailer (IMAP_DATA* idata);
 int imap_exec (IMAP_DATA* idata, const char* cmd, int flags);
+int imap_cmd_idle (IMAP_DATA* idata);
 
 /* message.c */
 void imap_add_keywords (char* s, HEADER* keywords, LIST* mailbox_flags, size_t slen);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -264,6 +264,7 @@ struct binding_t OpPager[] = { /* map: pager */
   { "decrypt-copy",	OP_DECRYPT_COPY,		NULL },
   { "decrypt-save",    	OP_DECRYPT_SAVE,		NULL },
 
+  { "what-key",		OP_WHAT_KEY,		NULL },
 
   { NULL,		0,				NULL }
 };

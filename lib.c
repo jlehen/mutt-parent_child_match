@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1999-2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1999-2004,2006-7 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it
  *     and/or modify it under the terms of the GNU General Public
@@ -41,6 +41,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #ifdef HAVE_SYSEXITS_H
 #include <sysexits.h>
@@ -206,6 +208,25 @@ int safe_fclose (FILE **f)
     r = fclose (*f);
       
   *f = NULL;
+  return r;
+}
+
+int safe_fsync_close (FILE **f)
+{
+  int r = 0;
+
+  if (*f)
+  {
+    if (fflush (*f) || fsync (fileno (*f)))
+    {
+      r = -1;
+      fclose (*f);
+    }
+    else
+      r = fclose(*f);
+    *f = NULL;
+  }
+
   return r;
 }
 
@@ -522,7 +543,7 @@ int safe_rename (const char *src, const char *target)
 
 /* Create a temporary directory next to a file name */
 
-int mutt_mkwrapdir (const char *path, char *newfile, size_t nflen, 
+static int mutt_mkwrapdir (const char *path, char *newfile, size_t nflen, 
 		    char *newdir, size_t ndlen)
 {
   const char *basename;
@@ -557,7 +578,47 @@ int mutt_mkwrapdir (const char *path, char *newfile, size_t nflen,
   return 0;  
 }
 
-int mutt_put_file_in_place (const char *path, const char *safe_file, const char *safe_dir)
+/* remove a directory and everything under it */
+int mutt_rmtree (const char* path)
+{
+  DIR* dirp;
+  struct dirent* de;
+  char cur[_POSIX_PATH_MAX];
+  struct stat statbuf;
+  int rc = 0;
+
+  if (!(dirp = opendir (path)))
+  {
+    dprint (1, (debugfile, "mutt_rmtree: error opening directory %s\n", path));
+    return -1;
+  }
+  while ((de = readdir (dirp)))
+  {
+    if (!strcmp (".", de->d_name) || !strcmp ("..", de->d_name))
+      continue;
+
+    snprintf (cur, sizeof (cur), "%s/%s", path, de->d_name);
+    /* XXX make nonrecursive version */
+
+    if (stat(cur, &statbuf) == -1)
+    {
+      rc = 1;
+      continue;
+    }
+
+    if (S_ISDIR (statbuf.st_mode))
+      rc |= mutt_rmtree (cur);
+    else
+      rc |= unlink (cur);
+  }
+  closedir (dirp);
+
+  rc |= rmdir (path);
+
+  return rc;
+}
+
+static int mutt_put_file_in_place (const char *path, const char *safe_file, const char *safe_dir)
 {
   int rv;
   

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-7 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 2000-8 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -246,6 +246,9 @@ int mutt_sasl_client_new (CONNECTION* conn, sasl_conn_t** saslconn)
       mutt_error (_("Error setting SASL external security strength"));
       return -1;
     }
+  }
+  if (conn->account.user[0])
+  {
     dprint (2, (debugfile, "External authentication name: %s\n", conn->account.user));
     if (sasl_setprop (*saslconn, SASL_AUTH_EXTERNAL, conn->account.user) != SASL_OK)
     {
@@ -333,14 +336,18 @@ int mutt_sasl_interact (sasl_interact_t* interaction)
 void mutt_sasl_setup_conn (CONNECTION* conn, sasl_conn_t* saslconn)
 {
   SASL_DATA* sasldata = (SASL_DATA*) safe_malloc (sizeof (SASL_DATA));
+  /* work around sasl_getprop aliasing issues */
+  const void* tmp;
 
   sasldata->saslconn = saslconn;
   /* get ssf so we know whether we have to (en|de)code read/write */
-  sasl_getprop (saslconn, SASL_SSF, (const void**) &sasldata->ssf);
+  sasl_getprop (saslconn, SASL_SSF, &tmp);
+  sasldata->ssf = tmp;
   dprint (3, (debugfile, "SASL protection strength: %u\n", *sasldata->ssf));
   /* Add SASL SSF to transport SSF */
   conn->ssf += *sasldata->ssf;
-  sasl_getprop (saslconn, SASL_MAXOUTBUF, (const void**) &sasldata->pbufsize);
+  sasl_getprop (saslconn, SASL_MAXOUTBUF, &tmp);
+  sasldata->pbufsize = tmp;
   dprint (3, (debugfile, "SASL protection buffer size: %u\n", *sasldata->pbufsize));
 
   /* clear input buffer */
@@ -383,6 +390,9 @@ static int mutt_sasl_cb_authname (void* context, int id, const char** result,
   unsigned* len)
 {
   ACCOUNT* account = (ACCOUNT*) context;
+
+  if (!result)
+    return SASL_FAIL;
 
   *result = NULL;
   if (len)

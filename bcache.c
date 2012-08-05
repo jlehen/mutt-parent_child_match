@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 2006-7 Brendan Cully <brendan@kublai.com>
  * Copyright (C) 2006 Rocco Rutte <pdmef@gmx.net>
  *
  *     This program is free software; you can redistribute it and/or modify
@@ -43,7 +43,7 @@ static int bcache_path(ACCOUNT *account, const char *mailbox,
 {
   char host[STRING];
   ciss_url_t url;
-  size_t len;
+  int len;
 
   if (!account || !MessageCachedir || !*MessageCachedir || !dst || !dstlen)
     return -1;

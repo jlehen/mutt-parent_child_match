@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1996-8 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
- * Copyright (C) 1999-2005 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1999-2008 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 #include "mx.h"	/* for M_IMAP */
 #include "url.h"
 #include "imap_private.h"
-#include "mutt_ssl.h"
 #ifdef USE_HCACHE
 #include "message.h"
 #include "hcache.h"
@@ -56,13 +55,15 @@ int imap_expand_path (char* path, size_t len)
 {
   IMAP_MBOX mx;
   ciss_url_t url;
+  char fixedpath[LONG_STRING];
   int rc;
 
   if (imap_parse_path (path, &mx) < 0)
     return -1;
 
   mutt_account_tourl (&mx.account, &url);
-  url.path = mx.mbox;
+  imap_fix_path(NULL, mx.mbox, fixedpath, sizeof (fixedpath));
+  url.path = fixedpath;
 
   rc = url_ciss_tostring (&url, path, len, U_DECODE_PASSWD);
   FREE (&mx.mbox);
@@ -189,7 +190,7 @@ int imap_parse_path (const char* path, IMAP_MBOX* mx)
   }
 
   /* Defaults */
-  mx->account.flags = 0;
+  memset(&mx->account, 0, sizeof(mx->account));
   mx->account.port = ImapPort;
   mx->account.type = M_ACCT_TYPE_IMAP;
 
@@ -354,6 +355,13 @@ IMAP_DATA* imap_new_idata (void)
   if (!(idata->cmdbuf = mutt_buffer_init (NULL)))
     FREE (&idata);
 
+  idata->cmdslots = ImapPipelineDepth + 2;
+  if (!(idata->cmds = safe_calloc(idata->cmdslots, sizeof(*idata->cmds))))
+  {
+    mutt_buffer_free(&idata->cmdbuf);
+    FREE (&idata);
+  }
+
   return idata;
 }
 
@@ -369,6 +377,7 @@ void imap_free_idata (IMAP_DATA** idata)
   mutt_buffer_free(&(*idata)->cmdbuf);
   FREE (&(*idata)->buf);
   mutt_bcache_close (&(*idata)->bcache);
+  FREE (&(*idata)->cmds);
   FREE (idata);		/* __FREE_CHECKED__ */
 }
 
@@ -383,28 +392,35 @@ void imap_free_idata (IMAP_DATA** idata)
 char *imap_fix_path (IMAP_DATA *idata, char *mailbox, char *path, 
     size_t plen)
 {
-  int x = 0;
+  int i = 0;
+  char delim;
+  
+  if (idata)
+    delim = idata->delim;
+  else if (ImapDelimChars && ImapDelimChars[0])
+    delim = ImapDelimChars[0];
+  else
+    delim = '/';
 
-  while (mailbox && *mailbox && (x < (plen - 1)))
+  while (mailbox && *mailbox && i < plen - 1)
   {
-    if ((*mailbox == '/') || (*mailbox == idata->delim))
+    if (strchr(ImapDelimChars, *mailbox) || *mailbox == delim)
     {
-      while ((*mailbox == '/') || (*mailbox == idata->delim)) mailbox++;
-      path[x] = idata->delim;
+      while (*mailbox &&
+	     (strchr(ImapDelimChars, *mailbox) || *mailbox == delim))
+        mailbox++;
+      path[i] = delim;
     }
     else
     {
-      path[x] = *mailbox;
+      path[i] = *mailbox;
       mailbox++;
     }
-    x++;
+    i++;
   }
-  if (x && path[--x] != idata->delim)
-    x++;
-  path[x] = '\0';
-
-  if (!path[0])
-    strfcpy (path, "INBOX", plen);
+  if (i && path[--i] != delim)
+    i++;
+  path[i] = '\0';
 
   return path;
 }
@@ -772,4 +788,14 @@ void imap_disallow_reopen (CONTEXT *ctx)
 {
   if (ctx && ctx->magic == M_IMAP && CTX_DATA->ctx == ctx)
     CTX_DATA->reopen &= ~IMAP_REOPEN_ALLOW;
+}
+
+int imap_account_match (const ACCOUNT* a1, const ACCOUNT* a2)
+{
+  IMAP_DATA* a1_idata = imap_conn_find (a1, M_IMAP_CONN_NONEW);
+  IMAP_DATA* a2_idata = imap_conn_find (a2, M_IMAP_CONN_NONEW);
+  const ACCOUNT* a1_canon = a1_idata == NULL ? a1 : &a1_idata->conn->account;
+  const ACCOUNT* a2_canon = a2_idata == NULL ? a2 : &a2_idata->conn->account;
+
+  return mutt_account_match (a1_canon, a2_canon);
 }

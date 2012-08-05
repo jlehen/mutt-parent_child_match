@@ -40,7 +40,7 @@ similar to that of many popular shell programs, namely that a single
 quote is used to specify a literal string (one that is not
 interpreted for shell variables or quoting with a backslash [see
 next paragraph]), while double quotes indicate a string which
-should be evaluated.  For example, backquotes are evaluated inside of
+should be evaluated.  For example, backticks are evaluated inside of
 double quotes, but not single quotes.
 .PP
 \fB\(rs\fP quotes the next character, just as in shells such as bash and zsh.
@@ -58,7 +58,7 @@ middle of command names.
 .PP
 It is also possible to substitute the output of a Unix command in an
 initialization file.  This is accomplished by enclosing the command
-in backquotes (\fB`\fP\fIcommand\fP\fB`\fP).
+in backticks (\fB`\fP\fIcommand\fP\fB`\fP).
 .PP
 UNIX environment variables can be accessed like the way it is done in shells
 like sh and bash: Prepend the name of the variable by a dollar
@@ -95,7 +95,7 @@ specified group or groups. The syntax is similar to the \fBgroup\fP command,
 however the special character \fB*\fP can be used to empty a group of all of
 its contents.
 .IP
-These address groups can also be created implicitely by the \fBalias\fP, \fBlists\fP,
+These address groups can also be created implicitly by the \fBalias\fP, \fBlists\fP,
 \fBsubscribe\fP and \fBalternates\fP commands by specifying the optional \fI-group\fP
 option.
 .IP
@@ -218,7 +218,7 @@ specify multiple maps, put only a comma between the maps.
 .fi
 .IP
 If your terminal supports color, these commands can be used to
-assign \fIforeground\fP/\fIbackgound\fP combinations to certain
+assign \fIforeground\fP/\fIbackground\fP combinations to certain
 objects.  Valid objects are:
 .BR attachment ", " body ", " bold ", " header ", "
 .BR hdrdefault ", " index ", " indicator ", " markers ", "
@@ -357,7 +357,7 @@ This command adds the named \fIstring\fP to the keyboard buffer.
 .fi
 .IP
 These commands are used to set and manipulate configuration
-varibles.
+variables.
 .IP
 Mutt knows four basic types of variables: boolean, number, string
 and quadoption.  Boolean variables can be \fBset\fP (true),
@@ -573,7 +573,7 @@ messages with a size in the range \fIMIN\fP to \fIMAX\fP
 duplicated messages (see $duplicate_threads)
 .TP
 ~$
-unreferenced message (requries threaded view)
+unreferenced message (requires threaded view)
 .TP
 ~(PATTERN)
 messages in threads containing messages matching a certain pattern, e.g. all threads containing messages from you: ~(~P)

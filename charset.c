@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1999-2002,2007 Thomas Roessler <roessler@does-not-exist.org>
  *
  *     This program is free software; you can redistribute it
  *     and/or modify it under the terms of the GNU General Public
@@ -142,7 +142,7 @@ PreferredMIMENames[] =
   { "iso-ir-157",	"iso-8859-10"	},
   { "latin6",		"iso-8859-10"	}, /* this is not a bug */
   { "l6",		"iso-8859-10"	},
-  { "csISOLatin6"	"iso-8859-10"	}, 
+  { "csISOLatin6",	"iso-8859-10"	}, 
   
   { "csKOI8r",		"koi8-r"	},
   
@@ -245,7 +245,7 @@ void mutt_canonical_charset (char *dest, size_t dlen, const char *name)
   char *p;
   char scratch[LONG_STRING];
 
-  if (!ascii_strcasecmp (name, "utf-8")) 
+  if (!ascii_strcasecmp (name, "utf-8") || !ascii_strcasecmp (name, "utf8"))
   {
     strfcpy (dest, "utf-8", dlen);
     return;
@@ -628,4 +628,29 @@ void fgetconv_close (FGETCONV **_fc)
   if (fc->cd != (iconv_t)-1)
     iconv_close (fc->cd);
   FREE (_fc);		/* __FREE_CHECKED__ */
+}
+
+int mutt_check_charset (const char *s, int strict)
+{
+  int i;
+  iconv_t cd;
+
+  if (mutt_is_utf8 (s))
+    return 0;
+
+  if (!strict)
+    for (i = 0; PreferredMIMENames[i].key; i++)
+    {
+      if (ascii_strcasecmp (PreferredMIMENames[i].key, s) == 0 ||
+	  ascii_strcasecmp (PreferredMIMENames[i].pref, s) == 0)
+	return 0;
+    }
+
+  if ((cd = mutt_iconv_open (s, s, 0)) != (iconv_t)(-1))
+  {
+    iconv_close (cd);
+    return 0;
+  }
+
+  return -1;
 }

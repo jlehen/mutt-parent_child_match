@@ -210,7 +210,7 @@
 /* Define if your <locale.h> file defines LC_MESSAGES. */
 #undef HAVE_LC_MESSAGES
 
-/* Define to 1 if you have the `idn' library (-lidn). */
+/* Define to 1 if you have the `idn' library */
 #undef HAVE_LIBIDN
 
 /* Define to 1 if you have the `intl' library (-lintl). */
@@ -381,6 +381,9 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
+/* Tokyo Cabinet Support */
+#undef HAVE_TC
+
 /* Define to 1 if you have the `towlower' function. */
 #undef HAVE_TOWLOWER
 
@@ -446,6 +449,9 @@
 
 /* Where new mail is spooled. */
 #undef MAILPATH
+
+/* Define if you want complete documentation. */
+#undef MAKEDOC_FULL
 
 /* Where to find mixmaster on your system. */
 #undef MIXMASTER
@@ -569,13 +575,9 @@
 /* Version number of package */
 #undef VERSION
 
-/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
-   significant byte first (like Motorola and SPARC, unlike Intel and VAX). */
-#if defined __BIG_ENDIAN__
-# define WORDS_BIGENDIAN 1
-#elif ! defined __LITTLE_ENDIAN__
-# undef WORDS_BIGENDIAN
-#endif
+/* Define to 1 if your processor stores words with the most significant byte
+   first (like Motorola and SPARC, unlike Intel and VAX). */
+#undef WORDS_BIGENDIAN
 
 #ifndef HAVE_C99_INTTYPES
 #  if SIZEOF_SHORT == 4
@@ -598,43 +600,16 @@ typedef unsigned long long uint64_t;
 /* Number of bits in a file offset, on hosts where this is settable. */
 #undef _FILE_OFFSET_BITS
 
+/* Enable GNU extensions on systems that have them.  */
+#ifndef _GNU_SOURCE
+# undef _GNU_SOURCE
+#endif
+
 /* Define to 1 to make fseeko visible on some hosts (e.g. glibc 2.2). */
 #undef _LARGEFILE_SOURCE
 
 /* Define for large files, on AIX-style hosts. */
 #undef _LARGE_FILES
-
-/* Define to 1 if on MINIX. */
-#undef _MINIX
-
-/* Define to 2 if the system does not provide POSIX.1 features except with
-   this defined. */
-#undef _POSIX_1_SOURCE
-
-/* Define to 1 if you need to in order for `stat' and other things to work. */
-#undef _POSIX_SOURCE
-
-/* Enable extensions on AIX 3, Interix.  */
-#ifndef _ALL_SOURCE
-# undef _ALL_SOURCE
-#endif
-/* Enable GNU extensions on systems that have them.  */
-#ifndef _GNU_SOURCE
-# undef _GNU_SOURCE
-#endif
-/* Enable threading extensions on Solaris.  */
-#ifndef _POSIX_PTHREAD_SEMANTICS
-# undef _POSIX_PTHREAD_SEMANTICS
-#endif
-/* Enable extensions on HP NonStop.  */
-#ifndef _TANDEM_SOURCE
-# undef _TANDEM_SOURCE
-#endif
-/* Enable general extensions on Solaris.  */
-#ifndef __EXTENSIONS__
-# undef __EXTENSIONS__
-#endif
-
 
 /* Define like PROTOTYPES; this can be used by system headers. */
 #undef __PROTOTYPES
@@ -681,10 +656,18 @@ typedef unsigned long long uint64_t;
 /* fseeko portability defines */
 #ifdef HAVE_FSEEKO
 # define LOFF_T off_t
-# if SIZEOF_OFF_T == 8
-#  define OFF_T_FMT "%lld"
+# if HAVE_C99_INTTYPES && HAVE_INTTYPES_H
+#  if SIZEOF_OFF_T == 8
+#   define OFF_T_FMT "%" PRId64
+#  else
+#   define OFF_T_FMT "%" PRId32
+#  endif
 # else
-#  define OFF_T_FMT "%ld"
+#  if (SIZEOF_OFF_T == 8) && (SIZEOF_LONG == 4)
+#   define OFF_T_FMT "%lld"
+#  else
+#   define OFF_T_FMT "%ld"
+#  endif
 # endif
 #else
 # define LOFF_T long

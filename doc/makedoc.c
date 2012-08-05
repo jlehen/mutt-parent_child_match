@@ -76,11 +76,14 @@ enum output_formats_t
 #define D_DT		(1 << 7)
 #define D_DD            (1 << 8)
 #define D_PA            (1 << 9)
+#define D_IL		(1 << 10)
+#define D_TT            (1 << 11)
 
 enum
 {
   SP_START_EM,
   SP_START_BF,
+  SP_START_TT,
   SP_END_FT,
   SP_NEWLINE,
   SP_NEWPAR,
@@ -93,6 +96,8 @@ enum
   SP_DD,
   SP_END_DD,
   SP_END_DL,
+  SP_START_IL,
+  SP_END_IL,
   SP_END_SECT,
   SP_REFER
 };
@@ -112,8 +117,8 @@ static void print_confline (const char *, int, const char *, FILE *);
 static void handle_confline (char *, FILE *);
 static void makedoc (FILE *, FILE *);
 static void pretty_default (char *, size_t, const char *, int);
-static int sgml_fputc (int, FILE *);
-static int sgml_fputs (const char *, FILE *);
+static int sgml_fputc (int, FILE *, int);
+static int sgml_fputs (const char *, FILE *, int);
 static int sgml_id_fputs (const char *, FILE *);
 
 int main (int argc, char *argv[])
@@ -584,38 +589,42 @@ static void sgml_print_strval (const char *v, FILE *out)
     if (*v <  ' ' || *v & 0x80)
     {
       char_to_escape (buff, (unsigned int) *v);
-      sgml_fputs (buff, out);
+      sgml_fputs (buff, out, 1);
       continue;
     }
-    sgml_fputc ((unsigned int) *v, out);
+    sgml_fputc ((unsigned int) *v, out, 1);
   }
 }
 
-static int sgml_fputc (int c, FILE *out)
+static int sgml_fputc (int c, FILE *out, int full)
 {
   switch (c)
   {
+    /* the bare minimum for escaping */
     case '<': return fputs ("&lt;", out);
     case '>': return fputs ("&gt;", out);
-    case '$': return fputs ("&dollar;", out);
-    case '_': return fputs ("&lowbar;", out);
-    case '%': return fputs ("&percnt;", out);
     case '&': return fputs ("&amp;", out);
-    case '\\': return fputs ("&bsol;", out);
-    case '"': return fputs ("&quot;", out);
-    case '[': return fputs ("&lsqb;", out);
-    case ']': return fputs ("&rsqb;", out);
-    case '~': return fputs ("&tilde;", out);
+    /* map to entities, fall-through to raw if !full */
+    case '$': if (full) return fputs ("&dollar;", out);
+    case '_': if (full) return fputs ("&lowbar;", out);
+    case '%': if (full) return fputs ("&percnt;", out);
+    case '\\': if (full) return fputs ("&bsol;", out);
+    case '"': if (full) return fputs ("&quot;", out);
+    case '[': if (full) return fputs ("&lsqb;", out);
+    case ']': if (full) return fputs ("&rsqb;", out);
+    case '~': if (full) return fputs ("&tilde;", out);
+    case '|': if (full) return fputs ("&verbar;", out);
+    case '^': if (full) return fputs ("&circ;", out);
     default:  return fputc (c, out);
   }
 }
 
-static int sgml_fputs (const char *s, FILE *out)
+static int sgml_fputs (const char *s, FILE *out, int full)
 {
   for (; *s; s++)
-    if (sgml_fputc ((unsigned int) *s, out) == EOF)
+    if (sgml_fputc ((unsigned int) *s, out, full) == EOF)
       return EOF;
-  
+
   return 0;
 }
 
@@ -624,12 +633,17 @@ static int sgml_id_fputs (const char *s, FILE* out)
 {
   char id;
 
+  if (*s == '<')
+    s++;
+
   for (; *s; s++)
   {
     if (*s == '_')
       id = '-';
     else
       id = *s;
+    if (*s == '>' && !*(s+1))
+      break;
 
     if (fputc ((unsigned int) id, out) == EOF)
       return EOF;
@@ -697,14 +711,23 @@ static void print_confline (const char *varname, int type, const char *val, FILE
       fputs ("\n<sect2 id=\"", out);
       sgml_id_fputs(varname, out);
       fputs ("\">\n<title>", out);
-      sgml_fputs (varname, out);
+      sgml_fputs (varname, out, 1);
       fprintf (out, "</title>\n<literallayout>Type: %s", type2human (type));
+
       
       if (type == DT_STR || type == DT_RX || type == DT_ADDR || type == DT_PATH)
       {
-	fputs ("\nDefault: &quot;", out);
-	sgml_print_strval (val, out);
-	fputs ("&quot;</literallayout>\n", out);
+	if (val && *val)
+	{
+	  fputs ("\nDefault: <quote><literal>", out);
+	  sgml_print_strval (val, out);
+	  fputs ("</literal></quote>", out);
+	}
+	else
+	{
+	  fputs ("\nDefault: (empty)", out);
+	}
+	fputs ("</literallayout>\n", out);
       }
       else
 	fprintf (out, "\nDefault: %s</literallayout>\n", val);
@@ -733,6 +756,9 @@ static void print_confline (const char *varname, int type, const char *val, FILE
  ** - .dt starts a term in a definition list.
  ** - .dd starts a definition in a definition list.
  ** - .de on a line finishes a definition list.
+ ** - .il on a line starts an itemzied list
+ ** - .dd starts an item in an itemized list
+ ** - .ie on a line finishes an itemized list
  ** - .ts on a line starts a "tscreen" environment (name taken from SGML).
  ** - .te on a line finishes this environment.
  ** - .pp on a line starts a paragraph.
@@ -766,7 +792,7 @@ static int flush_doc (int docstat, FILE *out)
   if (docstat & (D_DL))
     docstat = print_it (SP_END_DL, NULL, out, docstat);
 
-  if (docstat & (D_EM | D_BF))
+  if (docstat & (D_EM | D_BF | D_TT))
     docstat = print_it (SP_END_FT, NULL, out, docstat);
 
   docstat = print_it (SP_END_SECT, NULL, out, docstat);
@@ -794,9 +820,10 @@ static int print_it (int special, char *str, FILE *out, int docstat)
       {
 	static int Continuation = 0;
 
-	case SP_END_FT: docstat &= ~(D_EM|D_BF); break;
+	case SP_END_FT: docstat &= ~(D_EM|D_BF|D_TT); break;
 	case SP_START_BF: docstat |= D_BF; break;
 	case SP_START_EM: docstat |= D_EM; break;
+        case SP_START_TT: docstat |= D_TT; break;
 	case SP_NEWLINE: 
 	{
 	  if (onl)
@@ -850,6 +877,8 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	}
 	case SP_DD:
 	{
+	  if (docstat & D_IL)
+	    fputs ("- ", out);
 	  Continuation = 0;
 	  break;
 	}
@@ -857,6 +886,17 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	{
 	  Continuation = 0;
 	  docstat &= ~D_DL;
+	  break;
+	}
+	case SP_START_IL:
+	{
+	  docstat |= D_IL;
+	  break;
+	}
+	case SP_END_IL:
+	{
+	  Continuation = 0;
+	  docstat &= ~D_IL;
 	  break;
 	}
 	case SP_STR:
@@ -890,23 +930,30 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	case SP_END_FT: 
 	{
 	  fputs ("\\fP", out);
-	  docstat &= ~(D_EM|D_BF);
+	  docstat &= ~(D_EM|D_BF|D_TT);
 	  break;
 	}
 	case SP_START_BF: 
 	{
 	  fputs ("\\fB", out);
 	  docstat |= D_BF;
-	  docstat &= ~D_EM;
+	  docstat &= ~(D_EM|D_TT);
 	  break;
 	}
 	case SP_START_EM:
 	{
 	  fputs ("\\fI", out);
 	  docstat |= D_EM;
-	  docstat &= ~D_BF;
+	  docstat &= ~(D_BF|D_TT);
 	  break;
 	}
+        case SP_START_TT:
+	{
+	  fputs ("\\fC", out);
+	  docstat |= D_TT;
+	  docstat &= ~(D_BF|D_EM);
+	  break;
+        }
 	case SP_NEWLINE:
 	{
 	  if (onl)
@@ -959,10 +1006,25 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	}
 	case SP_DD:
 	{
-	  fputs ("\n", out);
+	  if (docstat & D_IL)
+	    fputs (".TP\n\\(hy ", out);
+	  else
+	    fputs ("\n", out);
 	  break;
 	}
 	case SP_END_DL:
+	{
+	  fputs (".RE\n.PD 1", out);
+	  docstat &= ~D_DL;
+	  break;
+	}
+	case SP_START_IL:
+	{
+	  fputs (".RS\n.PD 0\n", out);
+	  docstat |= D_IL;
+	  break;
+	}
+	case SP_END_IL:
 	{
 	  fputs (".RE\n.PD 1", out);
 	  docstat &= ~D_DL;
@@ -1007,23 +1069,31 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	{
 	  if (docstat & D_EM) fputs ("</emphasis>", out);
 	  if (docstat & D_BF) fputs ("</emphasis>", out);
-	  docstat &= ~(D_EM|D_BF);
+          if (docstat & D_TT) fputs ("</literal>", out);
+	  docstat &= ~(D_EM|D_BF|D_TT);
 	  break;
 	}
 	case SP_START_BF: 
 	{
 	  fputs ("<emphasis role=\"bold\">", out);
 	  docstat |= D_BF;
-	  docstat &= ~D_EM;
+	  docstat &= ~(D_EM|D_TT);
 	  break;
 	}
 	case SP_START_EM:
 	{
 	  fputs ("<emphasis>", out);
 	  docstat |= D_EM;
-	  docstat &= ~D_BF;
+	  docstat &= ~(D_BF|D_TT);
 	  break;
 	}
+        case SP_START_TT:
+	{
+	  fputs ("<literal>", out);
+	  docstat |= D_TT;
+	  docstat &= ~(D_BF|D_EM);
+	  break;
+        }
 	case SP_NEWLINE:
 	{
 	  if (onl)
@@ -1062,6 +1132,11 @@ static int print_it (int special, char *str, FILE *out, int docstat)
         }
 	case SP_START_TAB:
 	{
+	  if (docstat & D_PA)
+	  {
+	    fputs ("\n</para>\n", out);
+	    docstat &= ~D_PA;
+	  }
 	  fputs ("\n<screen>\n", out);
 	  docstat |= D_TAB | D_NL;
 	  break;
@@ -1075,6 +1150,11 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	}
 	case SP_START_DL:
 	{
+	  if (docstat & D_PA)
+	  {
+	    fputs ("\n</para>\n", out);
+	    docstat &= ~D_PA;
+	  }
 	  fputs ("\n<variablelist>\n", out);
 	  docstat |= D_DL;
 	  break;
@@ -1087,18 +1167,39 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	case SP_DD:
 	{
 	  docstat |= D_DD;
-	  fputs ("</term>\n<listitem><para>", out);
+	  if (docstat & D_DL)
+	    fputs("</term>\n", out);
+	  fputs ("<listitem><para>", out);
 	  break;
 	}
         case SP_END_DD:
         {
 	  docstat &= ~D_DD;
-	  fputs ("</para></listitem></varlistentry>\n", out);
+	  fputs ("</para></listitem>", out);
+	  if (docstat & D_DL)
+	    fputs("</varlistentry>\n", out);
 	  break;
         }
 	case SP_END_DL:
 	{
 	  fputs ("</para></listitem></varlistentry></variablelist>\n", out);
+	  docstat &= ~(D_DD|D_DL);
+	  break;
+	}
+	case SP_START_IL:
+	{
+	  if (docstat & D_PA)
+	  {
+	    fputs ("\n</para>\n", out);
+	    docstat &= ~D_PA;
+	  }
+	  fputs ("\n<itemizedlist>\n", out);
+	  docstat |= D_IL;
+	  break;
+	}
+	case SP_END_IL:
+	{
+	  fputs ("</para></listitem></itemizedlist>\n", out);
 	  docstat &= ~(D_DD|D_DL);
 	  break;
 	}
@@ -1110,9 +1211,28 @@ static int print_it (int special, char *str, FILE *out, int docstat)
 	case SP_STR:
 	{
 	  if (docstat & D_TAB)
-	    fputs (str, out);
+	    sgml_fputs (str, out, 0);
 	  else
-	    sgml_fputs (str, out);
+	  {
+	    while (*str)
+	    {
+	      for (; *str; str++)
+	      {
+	        if (!strncmp (str, "``", 2))
+	        {
+		  fputs ("<quote>", out);
+		  str++;
+	        }
+	        else if (!strncmp (str, "''", 2))
+	        {
+		  fputs ("</quote>", out);
+		  str++;
+	        }
+	        else
+		  sgml_fputc (*str, out, 1);
+	      }
+	    }
+	  }
 	  break;
 	}
       }
@@ -1143,7 +1263,7 @@ void print_ref (FILE *out, int output_dollar, const char *ref)
     fputs ("\">", out);
     if (output_dollar)
       fputs ("&dollar;", out);
-    sgml_fputs (ref, out);
+    sgml_fputs (ref, out, 1);
     fputs ("</link>", out);
     break;
 
@@ -1183,6 +1303,10 @@ static int handle_docline (char *l, FILE *out, int docstat)
     return print_it (SP_START_DL, NULL, out, docstat);
   else if (!strncmp (l, ".de", 3))
     return print_it (SP_END_DL, NULL, out, docstat);
+  else if (!strncmp (l, ".il", 3))
+    return print_it (SP_START_IL, NULL, out, docstat);
+  else if (!strncmp (l, ".ie", 3))
+    return print_it (SP_END_IL, NULL, out, docstat);
   else if (!strncmp (l, ". ", 2))
     *l = ' ';
 
@@ -1210,6 +1334,12 @@ static int handle_docline (char *l, FILE *out, int docstat)
       docstat = print_it (SP_START_BF, NULL, out, docstat);
       s += 2;
     }
+    else if (!strncmp (s, "\\fC", 3))
+    {
+      docstat = commit_buff (buff, &d, out, docstat);
+      docstat = print_it (SP_START_TT, NULL, out, docstat);
+      s += 2;
+    }
     else if (!strncmp (s, "\\fP", 3))
     {
       docstat = commit_buff (buff, &d, out, docstat);
@@ -1229,6 +1359,11 @@ static int handle_docline (char *l, FILE *out, int docstat)
     }
     else if (!strncmp (s, ".dd", 3))
     {
+      if ((docstat & D_IL) && (docstat & D_DD))
+      {
+	docstat = commit_buff (buff, &d, out, docstat);
+	docstat = print_it (SP_END_DD, NULL, out, docstat);
+      }
       docstat = commit_buff (buff, &d, out, docstat);
       docstat = print_it (SP_DD, NULL, out, docstat);
       s += 3;
@@ -1252,7 +1387,7 @@ static int handle_docline (char *l, FILE *out, int docstat)
       else
       {
 	ref = s;
-	while (isalnum ((unsigned char) *s) || *s == '-' || *s == '_')
+	while (isalnum ((unsigned char) *s) || (*s && strchr("-_<>", *s)))
 	  ++s;
 
 	docstat = commit_buff (buff, &d, out, docstat);

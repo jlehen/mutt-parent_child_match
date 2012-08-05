@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 2003,2005,2008 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -26,23 +26,32 @@
 
 /* The low-level interface we use. */
 
-#ifndef HAVE_LIBIDN
+#ifdef HAVE_LIBIDN
 
-int mutt_idna_to_local (const char *in, char **out, int flags)
+/* check whether an address is an IDN */
+
+static int check_idn (ADDRESS *ap)
 {
-  *out = safe_strdup (in);
-  return 1;
+  char *p = 0;
+
+  if (!ap || !ap->mailbox)
+    return 0;
+
+  if (!ap->idn_checked)
+  {
+    ap->idn_checked = 1;
+    for (p = strchr (ap->mailbox, '@'); p && *p; p = strchr (p, '.')) 
+      if (ascii_strncasecmp (++p, "xn--", 4) == 0)
+      {
+	ap->is_idn = 1;
+	break;
+      }
+  }
+  
+  return ap->is_idn;
 }
 
-int mutt_local_to_idna (const char *in, char **out)
-{
-  *out = safe_strdup (in);
-  return 0;
-}
-			
-#else
-
-int mutt_idna_to_local (const char *in, char **out, int flags)
+static int mutt_idna_to_local (const char *in, char **out, int flags)
 {
   *out = NULL;
 
@@ -51,7 +60,7 @@ int mutt_idna_to_local (const char *in, char **out, int flags)
 
   if (!in)
     goto notrans;
-  
+
   /* Is this the right function?  Interesting effects with some bad identifiers! */
   if (idna_to_unicode_8z8z (in, out, 1) != IDNA_SUCCESS)
     goto notrans;
@@ -98,7 +107,7 @@ int mutt_idna_to_local (const char *in, char **out, int flags)
   return 1;
 }
 
-int mutt_local_to_idna (const char *in, char **out)
+static int mutt_local_to_idna (const char *in, char **out)
 {
   int rv = 0;
   char *tmp = safe_strdup (in);
@@ -125,23 +134,21 @@ int mutt_local_to_idna (const char *in, char **out)
   return rv;
 }
 
-#endif
-
-
 /* higher level functions */
 
 static int mbox_to_udomain (const char *mbx, char **user, char **domain)
 {
+  static char *buff = NULL;
   char *p;
-  *user = NULL;
-  *domain = NULL;
   
-  p = strchr (mbx, '@');
+  mutt_str_replace (&buff, mbx);
+  
+  p = strchr (buff, '@');
   if (!p || !p[1])
     return -1;
-  *user = safe_calloc((p - mbx + 1), sizeof(mbx[0]));
-  strfcpy (*user, mbx, (p - mbx + 1));
-  *domain = safe_strdup(p + 1);
+  *p = '\0';
+  *user = buff;
+  *domain  = p + 1;
   return 0;
 }
 
@@ -171,10 +178,9 @@ int mutt_addrlist_to_idna (ADDRESS *a, char **err)
     {
       safe_realloc (&a->mailbox, mutt_strlen (user) + mutt_strlen (tmp) + 2);
       sprintf (a->mailbox, "%s@%s", NONULL(user), NONULL(tmp)); /* __SPRINTF_CHECKED__ */
+      a->idn_checked = 0;
     }
     
-    FREE (&domain);
-    FREE (&user);
     FREE (&tmp);
     
     if (e)
@@ -193,17 +199,17 @@ int mutt_addrlist_to_local (ADDRESS *a)
   {
     if (!a->mailbox)
       continue;
+    if (!check_idn (a))
+      continue;
     if (mbox_to_udomain (a->mailbox, &user, &domain) == -1)
       continue;
-    
     if (mutt_idna_to_local (domain, &tmp, 0) == 0)
     {
       safe_realloc (&a->mailbox, mutt_strlen (user) + mutt_strlen (tmp) + 2);
       sprintf (a->mailbox, "%s@%s", NONULL (user), NONULL (tmp)); /* __SPRINTF_CHECKED__ */
+      a->idn_checked = 0;
     }
     
-    FREE (&domain);
-    FREE (&user);
     FREE (&tmp);
   }
   
@@ -221,13 +227,13 @@ const char *mutt_addr_for_display (ADDRESS *a)
   char *user = NULL;
   
   FREE (&buff);
-  
+
+  if (!check_idn (a))
+    return a->mailbox;
   if (mbox_to_udomain (a->mailbox, &user, &domain) != 0)
     return a->mailbox;
   if (mutt_idna_to_local (domain, &tmp, MI_MAY_BE_IRREVERSIBLE) != 0)
   {
-    FREE (&user);
-    FREE (&domain);
     FREE (&tmp);
     return a->mailbox;
   }
@@ -235,8 +241,6 @@ const char *mutt_addr_for_display (ADDRESS *a)
   safe_realloc (&buff, mutt_strlen (tmp) + mutt_strlen (user) + 2);
   sprintf (buff, "%s@%s", NONULL(user), NONULL(tmp)); /* __SPRINTF_CHECKED__ */
   FREE (&tmp);
-  FREE (&user);
-  FREE (&domain);
   return buff;
 }
 
@@ -277,3 +281,5 @@ int mutt_env_to_idna (ENVELOPE *env, char **tag, char **err)
 }
 
 #undef H_TO_IDNA
+
+#endif /* HAVE_LIBIDN */

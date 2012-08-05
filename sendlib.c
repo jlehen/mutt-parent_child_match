@@ -1520,17 +1520,15 @@ void mutt_write_address_list (ADDRESS *adr, FILE *fp, int linelen, int display)
 /* arbitrary number of elements to grow the array by */
 #define REF_INC 16
 
-#define TrimRef 10
-
 /* need to write the list in reverse because they are stored in reverse order
  * when parsed to speed up threading
  */
-static void write_references (LIST *r, FILE *f)
+void mutt_write_references (LIST *r, FILE *f, int trim)
 {
   LIST **ref = NULL;
   int refcnt = 0, refmax = 0;
 
-  for ( ; (TrimRef == 0 || refcnt < TrimRef) && r ; r = r->next)
+  for ( ; (trim == 0 || refcnt < trim) && r ; r = r->next)
   {
     if (refcnt == refmax)
       safe_realloc (&ref, (refmax += REF_INC) * sizeof (LIST *));
@@ -1804,7 +1802,7 @@ int mutt_write_rfc822_header (FILE *fp, ENVELOPE *env, BODY *attach,
 
   /* save message id if the user has set it */
   if (env->message_id && !privacy)
-    mutt_write_one_header (fp, "Message-ID", env->message_id, NULL, 0);
+    fprintf (fp, "Message-ID: %s\n", env->message_id);
 
   if (env->reply_to)
   {
@@ -1825,7 +1823,7 @@ int mutt_write_rfc822_header (FILE *fp, ENVELOPE *env, BODY *attach,
     if (env->references)
     {
       fputs ("References:", fp);
-      write_references (env->references, fp);
+      mutt_write_references (env->references, fp, 10);
       fputc('\n', fp);
     }
 
@@ -1837,7 +1835,7 @@ int mutt_write_rfc822_header (FILE *fp, ENVELOPE *env, BODY *attach,
   if (env->in_reply_to)
   {
     fputs ("In-Reply-To:", fp);
-    write_references (env->in_reply_to, fp);
+    mutt_write_references (env->in_reply_to, fp, 1);
     fputc ('\n', fp);
   }
   
@@ -2252,59 +2250,6 @@ mutt_invoke_sendmail (ADDRESS *from,	/* the sender */
   return (i);
 }
 
-/* appends string 'b' to string 'a', and returns the pointer to the new
-   string. */
-char *mutt_append_string (char *a, const char *b)
-{
-  size_t la = mutt_strlen (a);
-  safe_realloc (&a, la + mutt_strlen (b) + 1);
-  strcpy (a + la, b);	/* __STRCPY_CHECKED__ */
-  return (a);
-}
-
-/* returns 1 if char `c' needs to be quoted to protect from shell
-   interpretation when executing commands in a subshell */
-#define INVALID_CHAR(c) (!isalnum ((unsigned char)c) && !strchr ("@.+-_,:", c))
-
-/* returns 1 if string `s' contains characters which could cause problems
-   when used on a command line to execute a command */
-int mutt_needs_quote (const char *s)
-{
-  while (*s)
-  {
-    if (INVALID_CHAR (*s))
-      return 1;
-    s++;
-  }
-  return 0;
-}
-
-/* Quote a string to prevent shell escapes when this string is used on the
-   command line to send mail. */
-char *mutt_quote_string (const char *s)
-{
-  char *r, *pr;
-  size_t rlen;
-
-  rlen = mutt_strlen (s) + 3;
-  pr = r = (char *) safe_malloc (rlen);
-  *pr++ = '"';
-  while (*s)
-  {
-    if (INVALID_CHAR (*s))
-    {
-      size_t o = pr - r;
-      safe_realloc (&r, ++rlen);
-      pr = r + o;
-      *pr++ = '\\';
-    }
-    *pr++ = *s++;
-  }
-  *pr++ = '"';
-  *pr = 0;
-  return (r);
-}
-
 /* For postponing (!final) do the necessary encodings only */
 void mutt_prepare_envelope (ENVELOPE *env, int final)
 {
@@ -2397,6 +2342,7 @@ static int _mutt_bounce_message (FILE *fp, HEADER *h, ADDRESS *to, const char *r
   if ((f = safe_fopen (tempfile, "w")) != NULL)
   {
     int ch_flags = CH_XMIT | CH_NONEWLINE | CH_NOQFROM;
+    char* msgid_str;
     
     if (!option (OPTBOUNCEDELIVERED))
       ch_flags |= CH_WEED_DELIVERED;
@@ -2404,13 +2350,15 @@ static int _mutt_bounce_message (FILE *fp, HEADER *h, ADDRESS *to, const char *r
     fseeko (fp, h->offset, 0);
     fprintf (f, "Resent-From: %s", resent_from);
     fprintf (f, "\nResent-%s", mutt_make_date (date, sizeof(date)));
-    fprintf (f, "Resent-Message-ID: %s\n", mutt_gen_msgid());
+    msgid_str = mutt_gen_msgid();
+    fprintf (f, "Resent-Message-ID: %s\n", msgid_str);
     fputs ("Resent-To: ", f);
     mutt_write_address_list (to, f, 11, 0);
     mutt_copy_header (fp, h, f, ch_flags, NULL);
     fputc ('\n', f);
     mutt_copy_bytes (fp, f, h->content->length);
-    fclose (f);
+    safe_fclose (&f);
+    FREE (&msgid_str);
 
 #if USE_SMTP
     if (SmtpUrl)
@@ -2668,7 +2616,7 @@ int mutt_write_fcc (const char *path, HEADER *hdr, const char *msgid, int post, 
     rewind (tempfp);
     while (fgets (sasha, sizeof (sasha), tempfp) != NULL)
       lines++;
-    fprintf (msg->fp, "Content-Length: " OFF_T_FMT "\n", (LOFF_T) ftell (tempfp));
+    fprintf (msg->fp, "Content-Length: " OFF_T_FMT "\n", (LOFF_T) ftello (tempfp));
     fprintf (msg->fp, "Lines: %d\n\n", lines);
 
     /* copy the body and clean up */

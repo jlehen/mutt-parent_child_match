@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1999-2000 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1999-2008 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -734,7 +734,7 @@ void mutt_merge_envelopes(ENVELOPE* base, ENVELOPE** extra)
 void _mutt_mktemp (char *s, const char *src, int line)
 {
   snprintf (s, _POSIX_PATH_MAX, "%s/mutt-%s-%d-%d-%d", NONULL (Tempdir), NONULL(Hostname), (int) getuid(), (int) getpid (), Counter++);
-  dprint (1, (debugfile, "%s:%d: mutt_mktemp returns \"%s\".\n", src, line, s));
+  dprint (3, (debugfile, "%s:%d: mutt_mktemp returns \"%s\".\n", src, line, s));
   unlink (s);
 }
 
@@ -746,6 +746,7 @@ void mutt_free_alias (ALIAS **p)
   {
     t = *p;
     *p = (*p)->next;
+    mutt_alias_delete_reverse (t);
     FREE (&t->name);
     rfc822_free_address (&t->addr);
     FREE (&t);
@@ -753,11 +754,12 @@ void mutt_free_alias (ALIAS **p)
 }
 
 /* collapse the pathname using ~ or = when possible */
-void mutt_pretty_mailbox (char *s)
+void mutt_pretty_mailbox (char *s, size_t buflen)
 {
   char *p = s, *q = s;
   size_t len;
   url_scheme_t scheme;
+  char tmp[_POSIX_PATH_MAX];
 
   scheme = url_check_scheme (s);
 
@@ -779,24 +781,34 @@ void mutt_pretty_mailbox (char *s)
       q = strchr (p, '\0');
     p = q;
   }
-  
-  /* first attempt to collapse the pathname */
-  while (*p)
+
+  /* cleanup path */
+  if (strstr (p, "//") || strstr (p, "/./"))
   {
-    if (*p == '/' && p[1] == '/')
+    /* first attempt to collapse the pathname, this is more
+     * lightweight than realpath() and doesn't resolve links
+     */
+    while (*p)
     {
-      *q++ = '/';
-      p += 2;
+      if (*p == '/' && p[1] == '/')
+      {
+	*q++ = '/';
+	p += 2;
+      }
+      else if (p[0] == '/' && p[1] == '.' && p[2] == '/')
+      {
+	*q++ = '/';
+	p += 3;
+      }
+      else
+	*q++ = *p++;
     }
-    else if (p[0] == '/' && p[1] == '.' && p[2] == '/')
-    {
-      *q++ = '/';
-      p += 3;
-    }
-    else
-      *q++ = *p++;
+    *q = 0;
   }
-  *q = 0;
+  else if (strstr (p, "..") && 
+	   (scheme == U_UNKNOWN || scheme == U_FILE) &&
+	   realpath (p, tmp))
+    strfcpy (p, tmp, buflen - (p - s));
 
   if (mutt_strncmp (s, Maildir, (len = mutt_strlen (Maildir))) == 0 &&
       s[len] == '/')
@@ -1612,13 +1624,13 @@ int mutt_buffer_printf (BUFFER* buf, const char* fmt, ...)
     safe_realloc (&buf->data, buf->dsize);
     buf->dptr = buf->data + doff;
     len = vsnprintf (buf->dptr, len, fmt, ap_retry);
-    va_end (ap_retry);
   }
   if (len > 0)
     buf->dptr += len;
 
   va_end (ap);
-  
+  va_end (ap_retry);
+
   return len;
 }
 

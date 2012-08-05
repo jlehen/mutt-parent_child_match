@@ -42,7 +42,7 @@ static sort_t *AuxSort = NULL;
 if (!code) \
   code = (*((HEADER **)a))->index - (*((HEADER **)b))->index;
 
-int compare_score (const void *a, const void *b)
+static int compare_score (const void *a, const void *b)
 {
   HEADER **pa = (HEADER **) a;
   HEADER **pb = (HEADER **) b;
@@ -51,7 +51,7 @@ int compare_score (const void *a, const void *b)
   return (SORTCODE (result));
 }
 
-int compare_size (const void *a, const void *b)
+static int compare_size (const void *a, const void *b)
 {
   HEADER **pa = (HEADER **) a;
   HEADER **pb = (HEADER **) b;
@@ -60,7 +60,7 @@ int compare_size (const void *a, const void *b)
   return (SORTCODE (result));
 }
 
-int compare_date_sent (const void *a, const void *b)
+static int compare_date_sent (const void *a, const void *b)
 {
   HEADER **pa = (HEADER **) a;
   HEADER **pb = (HEADER **) b;
@@ -69,7 +69,7 @@ int compare_date_sent (const void *a, const void *b)
   return (SORTCODE (result));
 }
 
-int compare_subject (const void *a, const void *b)
+static int compare_subject (const void *a, const void *b)
 {
   HEADER **pa = (HEADER **) a;
   HEADER **pb = (HEADER **) b;
@@ -107,37 +107,37 @@ const char *mutt_get_name (ADDRESS *a)
   return ("");
 }
 
-int compare_to (const void *a, const void *b)
+static int compare_to (const void *a, const void *b)
 {
   HEADER **ppa = (HEADER **) a;
   HEADER **ppb = (HEADER **) b;
-  const char *fa, *fb;
+  char fa[SHORT_STRING];
+  const char *fb;
   int result;
 
-  fa = safe_strdup (mutt_get_name ((*ppa)->env->to));
+  strfcpy (fa, mutt_get_name ((*ppa)->env->to), SHORT_STRING);
   fb = mutt_get_name ((*ppb)->env->to);
-  result = mutt_strcasecmp (fa, fb);
-  FREE(&fa);
+  result = mutt_strncasecmp (fa, fb, SHORT_STRING);
   AUXSORT(result,a,b);
   return (SORTCODE (result));
 }
 
-int compare_from (const void *a, const void *b)
+static int compare_from (const void *a, const void *b)
 {
   HEADER **ppa = (HEADER **) a;
   HEADER **ppb = (HEADER **) b;
-  const char *fa, *fb;
+  char fa[SHORT_STRING];
+  const char *fb;
   int result;
 
-  fa = safe_strdup (mutt_get_name ((*ppa)->env->from));
+  strfcpy (fa, mutt_get_name ((*ppa)->env->from), SHORT_STRING);
   fb = mutt_get_name ((*ppb)->env->from);
-  result = mutt_strcasecmp (fa, fb);
-  FREE(&fa);
+  result = mutt_strncasecmp (fa, fb, SHORT_STRING);
   AUXSORT(result,a,b);
   return (SORTCODE (result));
 }
 
-int compare_date_received (const void *a, const void *b)
+static int compare_date_received (const void *a, const void *b)
 {
   HEADER **pa = (HEADER **) a;
   HEADER **pb = (HEADER **) b;
@@ -146,7 +146,7 @@ int compare_date_received (const void *a, const void *b)
   return (SORTCODE (result));
 }
 
-int compare_order (const void *a, const void *b)
+static int compare_order (const void *a, const void *b)
 {
   HEADER **ha = (HEADER **) a;
   HEADER **hb = (HEADER **) b;
@@ -155,7 +155,7 @@ int compare_order (const void *a, const void *b)
   return (SORTCODE ((*ha)->index - (*hb)->index));
 }
 
-int compare_spam (const void *a, const void *b)
+static int compare_spam (const void *a, const void *b)
 {
   HEADER **ppa = (HEADER **) a;
   HEADER **ppb = (HEADER **) b;

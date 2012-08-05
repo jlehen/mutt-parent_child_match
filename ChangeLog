@@ -1,4 +1,1196 @@
-2008-05-17 12:31 -0700  Brendan Cully  <brendan@kublai.com>  (fa4990c5b5c6)
+2009-01-05 16:35 -0800  Brendan Cully  <brendan@kublai.com>  (a170f93fc5b1)
+
+	* build-release: Fall back to vi if VISUAL is unset in
+	build-release
+
+	* UPDATING: Update UPDATING
+
+	* imap/command.c, imap/imap.c, imap/imap_private.h: Report CREATE
+	failures
+
+	* browser.c: Style fixes
+
+	* browser.c: Leave error message on screen if imap_mailbox_create
+	fails
+
+	* doc/mutt.man: Add pointer to the full manual to the front of mutt.1
+
+2009-01-05 09:16 -0800  Petr Písař  <petr.pisar@atlas.cz>  (990f1e841dd4)
+
+	* po/cs.po: Updated Czech translation
+
+2009-01-04 22:36 -0800  Vincent Lefevre  <vincent@vinc17.org>  (9af288ee9e91)
+
+	* po/fr.po: Updated French translation
+
+2009-01-04 18:32 -0800  Emanuele Giaquinta  <e.giaquinta@glauco.it>  (e47d05dc2633)
+
+	* imap/util.c: Indentation fix
+
+2009-01-04 18:12 -0800  Brendan Cully  <brendan@kublai.com>  (1947c370fcd9)
+
+	* Makefile.am: Remove obsolete make target
+
+	* doc/manual.xml.head: Update copyright in manual
+
+2009-01-04 17:07 -0800  Vincent Lefevre  <vincent@vinc17.org>  (bbe8694acc33)
+
+	* po/fr.po: Updated French translation
+
+2009-01-04 17:04 -0800  Brendan Cully  <brendan@kublai.com>  (d98ab9a591e5)
+
+	* pgpkey.c: Remove dead code. Thanks to Ingo Schwarze.
+
+	* COPYRIGHT: Update copyrights
+
+	* addrbook.c, ascii.h, attach.c, bcache.c, bcache.h, browser.c,
+	browser.h, charset.c, charset.h, commands.c, complete.c,
+	compose.c, crypt-gpgme.c, crypt.c, curs_main.c, dotlock.c,
+	editmsg.c, enter.c, functions.h, gnupgparse.c, handler.c,
+	hdrline.c, hook.c, init.h, lib.c, lib.h, menu.c, mh.c,
+	mutt_idna.c, mutt_idna.h, mutt_sasl.h, mutt_socket.c, muttlib.c,
+	mx.c, pager.c, pattern.c, pgp.c, pgp.h, pgpinvoke.c, pgpkey.c,
+	pgplib.c, pgplib.h, pgppacket.c, pgppubring.c, pop.c, postpone.c,
+	protos.h, query.c, recvattach.c, recvcmd.c, remailer.c, rfc1524.c,
+	rfc2047.c, rfc2231.c, rfc3676.h, send.c, setenv.c, status.c,
+	url.c: Update copyrights. Closes #3016. I went through the logs of
+	each file with a copyright header and updated the years for the
+	authors in the headers for any non-comment changes they
+	introduced. What a pain!
+
+	* imap/auth_anon.c, imap/auth_cram.c, imap/auth_login.c,
+	imap/auth_sasl.c, imap/browse.c, imap/imap.h, imap/message.h,
+	imap/utf7.c: IMAP copyright header updates
+
+	* imap/auth_gss.c, imap/command.c, imap/imap.c, imap/message.c:
+	Updated copyrights
+
+	* smtp.c: SMTP: complain when authentication fails. Closes
+	#2117. Now each failed attempt emits an error before mutt tries
+	the next method. Possibly we should just fail immediately?
+
+	* parse.c, snprintf.c: Use ! instead of testing pointers against 0.
+	Closes #3125.
+
+2009-01-04 20:12 +0100  Rocco Rutte  <pdmef@gmx.net>  (33fa1ca4b6af)
+
+	* doc/gen-map-doc, init.h: Documentation: Minor fixes and
+	improvements
+
+2009-01-03 21:02 -0800  Brendan Cully  <brendan@kublai.com>  (5a80ee54a05f)
+
+	* imap/command.c, imap/imap.c, init.c, muttlib.c, postpone.c: Raise
+	debug level for several messages
+
+	* imap/auth_gss.c: Guard against unused variable warning.  Thanks
+	to Ingo Schwarze.
+
+	* doc/Makefile.am: Remove obsolete reference to ChangeLog.old. Thanks
+	to Ingo Schwarze.
+
+	* imap/message.c: Ignore unexpected FETCH responses during
+	imap_read_headers. Thanks to Chris Li for the excellent bug report
+	in #3041. See #2902, #2935, #2985, #3028, #3041, #3143. With luck,
+	this may close them. In truth, imap_read_headers is still a horrible
+	kludge of duct tape and chicken wire.
+
+	* hash.c, hash.h: Make hash_string work in unsigned domain
+
+	* main.c: Another copyright update
+
+	* main.c, smtp.c: Update some copyrights
+
+2009-01-02 23:13 -0800  Brendan Cully  <brendan@kublai.com>  (87ef3e3550e4)
+
+	* smtp.c: SMTP: Use Hostname if Fqdn is bogus. Closes #3142.
+
+	* init.h: More tyops
+
+	* doc/manual.xml.head: Tyops
+
+	* mutt_ssl_gnutls.c: Add SSL intermediate certificate support for
+	gnutls
+
+	* mutt_ssl.c: Simplify intermediate certificate handling.  Return
+	immediately if a certificate is interactively accepted.  Display
+	index of current certificate in chain in menu title.
+
+2009-01-02 12:46 -0800  TAKAHASHI Tamotsu  <ttakah@lapis.plala.or.jp>  (5db868a874b6)
+
+	* globals.h, mutt_ssl.c: Add support for intermediate certificates to
+	openssl code. Gnutls support is not included in this patch.
+
+2009-01-01 17:02 -0800  Marcel Telka  <marcel@telka.sk>  (532f695b4352)
+
+	* smtp.c: SMTP: Require SP after AUTH response (strict RFC
+	conformance). Closes #3141.
+
+2009-01-01 16:55 -0800  Brendan Cully  <brendan@kublai.com>  (859009a507d8)
+
+	* smtp.c: SMTP: guard against short server responses
+
+2008-12-30 00:58 +0100  Rocco Rutte  <pdmef@gmx.net>  (ac870203179d)
+
+	* doc/manual.xml.head: Manual: Add missing maps to bind command docs
+
+	* doc/TODO: Documentation: Update TODO
+
+2008-12-26 14:36 +0100  Rocco Rutte  <pdmef@gmx.net>  (4917897ac9b1)
+
+	* init.c: Ignore NULL/empty lines in rc parser, fixes mutt -e ''
+	crashing
+
+2008-12-20 15:33 -0800  TAKAHASHI Tamotsu  <ttakah@lapis.plala.or.jp>  (349986b1af09)
+
+	* po/ja.po: Updated Japanese translation.
+
+2008-12-20 15:31 -0800  Brendan Cully  <brendan@kublai.com>  (a715dca3610c)
+
+	* main.c: Cosmetics for mutt -v
+
+2008-11-26 01:15 +0000  Peter Collingbourne  <peter@pcc.me.uk>  (2fefd56f440c)
+
+	* sendlib.c: Disable line wrapping for Message-ID header
+
+2008-12-16 20:19 -0800  Erik Hovland  <erik@hovland.org>  (f6ae8dc70850)
+
+	* imap/util.c: Remove unused #include directives
+
+	* crypt.c, curs_main.c, flags.c, group.c, hcache.c, mh.c, pager.c,
+	pgpmicalg.c, pgppacket.c, postpone.c, query.c, recvattach.c,
+	recvcmd.c, send.c: Remove unused #include directives
+
+	* sendlib.c: mutt_gen_msgid() allocates the msgid off of the heap.
+
+	Since mutt_gen_msgid() allocates the msgid string with strdup, it is
+	getting it off of the heap.
+
+	When the fprintf writes the msgid, the string is no longer tracked
+	and that string is leaked.
+
+	* parse.c: Match variable type to getch return type
+
+	* alias.c: Fix fread rc check
+
+	* hash.c: Remove redundant int clamping
+
+	* smime.c: Remove check that always succeeds
+
+	* pattern.c: fclose correct fp
+
+	* rfc822.c: buflen cannot be 0 here
+
+2008-12-16 12:36 -0800  Brendan Cully  <brendan@kublai.com>  (bbf4dfc2aa41)
+
+	* ChangeLog.old, Makefile.am: Remove ChangeLog.old
+
+	* imap/Makefile.am: Remove imap/BUGS from Makefile.am
+
+2008-12-15 23:45 -0800  Erik Hovland  <erik@hovland.org>  (adaf24e4117d)
+
+	* mh.c: Fix bad parentheses in stat rc
+
+	* bcache.c: snprintf returns int, not size_t
+
+	* muttlib.c: Always va_end(ap_retry) in mutt_buffer_printf
+
+2008-12-15 23:11 -0800  Brendan Cully  <brendan@kublai.com>  (101a8bcba613)
+
+	* imap/BUGS: imap/BUGS is superseded by the BTS
+
+2008-12-10 20:00 +0100  Rocco Rutte  <pdmef@gmx.net>  (817e5987633b)
+
+	* doc/manual.xml.head: Manual: Fix typos found by by Vincent Lefevre,
+	see #3109.
+
+	* doc/manual.xml.head: Manual: trim into chapter, add notes about
+	contributing
+
+	* doc/mutt.css: Make mutt.css apply for all media types
+
+	* doc/manual.xml.head, doc/mutt.css: Manual: Wrap important notes
+	in <note/>
+
+	* doc/Makefile.am, doc/chunk.xsl, doc/html.xsl, doc/mutt.xsl: Move
+	common XSLT params to mutt.xsl imported into (chunk|html).xsl
+
+	* doc/gen-map-doc, doc/makedoc.c, doc/manual.xml.head,
+	doc/manual.xml.tail, init.h: Manual: Only wrap real text
+	paragraphs in <para/>
+
+	Elements such as lists, tables, synopsis don't need it and produce
+	hundreds of warnings in tidy because of empty paragraphs.
+
+	With this change, the manual should be fully XHTML 1.0 Transitional
+	and validate without warnings and errors.
+
+	* hg-commit: hg-commit: Work even in subdirectories
+
+	* doc/chunk.xsl, doc/html.xsl: Manual: Use right XSLT-way to embed
+	CSS to avoid invalid xmlns="" attributes on <style/>
+
+	* doc/devel-notes.txt: devel-notes.txt: add some words about preparing
+	& contributing patches
+
+	* doc/manual.xml.head: Manual: Add section about typographical
+	conventions, see #3109.
+
+	* doc/manual.xml.head, doc/mutt.css: Manual: Wrap important examples
+	in <example/>
+
+2008-12-06 15:06 +0100  Rocco Rutte  <pdmef@gmx.net>  (e13e903af3bf)
+
+	* doc/manual.xml.head, doc/mutt.css: Manual: Fixup configuration
+	command synopsis and switch to <cmdsynopsis/>
+
+	* doc/makedoc.c: makedoc: use <quote/> and <literal/> in string
+	default values
+
+	The goal is to improve readability of settings where spaces are
+	relevant.
+
+	* doc/Makefile.am, doc/chunk.xsl, doc/html.xsl, doc/mutt.css:
+	Manual: Add simple and clean stylesheet, see #3109.
+
+2008-12-02 16:10 +0100  Rocco Rutte  <pdmef@gmx.net>  (3a8e5756613c)
+
+	* init.c: Include mutt_menu.h in init.c for mutt_menu_init() prototype
+
+2008-12-01 21:27 +0100  Rocco Rutte  <pdmef@gmx.net>  (1e8252a9e92f)
+
+	* ChangeLog, charset.c, history.c, init.c, init.h, pattern.c: Fix some
+	typos to silence compiler warnings
+
+2008-11-30 20:28 +0100  Rocco Rutte  <pdmef@gmx.net>  (cb251bde7fc1)
+
+	* addrbook.c, browser.c, compose.c, crypt-gpgme.c, curs_main.c,
+	init.c, menu.c, mutt_menu.h, mutt_ssl.c, mutt_ssl_gnutls.c, pager.c,
+	pgpkey.c, postpone.c, query.c, recvattach.c, remailer.c, smime.c:
+	Manage last search pattern outside of menu lifecycle
+
+	Previously, the pattern was thrown away during menu destruction. For
+	the next search, mutt then can't provide a good suggestion. The new
+	behaviour is to manage the pattern outside the lifecyle to always
+	provide the last pattern as suggestion.
+
+	* query.c: Start numbering query results with 1 instead of 0
+
+2008-11-24 11:44 -0800  Brendan Cully  <brendan@kublai.com>  (fd555f9fcb03)
+
+	* doc/manual.xml.tail, main.c: Belatedtly acknowledge Rocco's
+	significant contributions to mutt
+
+2008-11-24 12:41 +0100  Rocco Rutte  <pdmef@gmx.net>  (dc62594cc9e9)
+
+	* doc/Makefile.am: Manual: Fix lynx call for html to text
+	conversion, strip \001 when dumping with elinks
+
+	* doc/manual.xml.head: Manual: Fix/Improve quoting
+
+	* hg-commit: hg-commit: Exit if manual validation fails
+
+	* doc/manual.xml.head, doc/muttrc.man.head: Documentation:
+	Consistently use "backtick" for `
+
+	* doc/Makefile.am, doc/manual.xml.head, doc/muttrc.man.head:
+	Manual: Add 'spellcheck' target for aspell and fix typos (closes
+	#3137)
+
+2008-11-23 18:46 +0100  Rocco Rutte  <pdmef@gmx.net>  (82b4664129cd)
+
+	* doc/Makefile.am: Complete e1304a641938 commit
+
+	* doc/Makefile.am, doc/db-cleanup.xsl: Manual: Convert manual.html
+	to manual.txt under C locale
+
+	This ensures manual.txt is always pure ASCII and removes the
+	horrible XSLT-based and incomplete hack.
+
+	* doc/manual.xml.head: Manual: Fix wording for simple search
+
+2008-11-22 18:09 +0100  Rocco Rutte  <pdmef@gmx.net>  (0837f7b13990)
+
+	* po/de.po: Fix German translation for what-key
+
+	* UPDATING, functions.h, keymap.c, pager.c: Make what-key function
+	available in pager-based menus, too
+
+2008-11-21 11:34 -0800  Petr Písař  <petr.pisar@atlas.cz>  (870b7dfb89ef)
+
+	* po/cs.po: Updated Czech translation.
+
+2008-11-21 11:19 -0800  TAKAHASHI Tamotsu  <ttakah@lapis.plala.or.jp>  (34315aab7401)
+
+	* ChangeLog, mbyte.c: Initialize mbstate in mutt_filter_unprintable.
+	Closes #3134
+
+2008-11-16 21:01 -0800  TAKAHASHI Tamotsu  <ttakah@lapis.plala.or.jp>  (8199185fa595)
+
+	* snprintf.c: Add support for %ll to the bundled snprintf
+	replacement.
+
+	* configure.ac, doc/makedoc-defs.h: Add --disable-full-doc flag to
+	only build documentation for enabled features
+
+2008-11-15 20:24 -0800  Brendan Cully  <brendan@kublai.com>  (8087be7178cd)
+
+	* configure.ac: Use with_tokyocabinet exclusively (with_tc is
+	undefined). Closes #3131.
+
+2008-11-15 19:51 -0800  Alexey I. Froloff  <raorn@altlinux.org>  (af87aa1846be)
+
+	* md5.c, md5.h: md5.h, md5.c: updated to latest version from gnulib.
+	Buggy old md5.h causes problems with gcc 4.3 compiler. In md5.h
+	__attribute__ is #define'd to no-op and causes mutt_md5 to enter
+	inifinite loop while calling memcpy().
+
+2008-11-15 19:36 -0800  Gary Johnson  <garyjohn@spk.agilent.com>  (01e4deee6827)
+
+	* curs_lib.c, mutt_socket.c, mutt_ssl_gnutls.c, smtp.c: Suppress
+	several progress messages in batch mode
+
+2008-11-11 11:41 -0800  Kyle Wheeler  <kyle-mutt-dev@memoryhole.net>  (53ffd34f4de3)
+
+	* smtp.c: Use envfrom instead of recomputing it in mutt_smtp_send.
+
+2008-10-29 20:49 -0700  TAKAHASHI Tamotsu  <ttakah@lapis.plala.or.jp>  (c2439fc68cd6)
+
+	* pager.c: Restart pager search from top if called twice.  Do not
+	loop infinitely. Closes #3127.
+
+2008-10-30 01:02 +0100  Emanuele Giaquinta  <e.giaquinta@glauco.it>  (6c58b678d360)
+
+	* account.c: Remove unused variable in mutt_account_match and fix
+	comment.
+
+	* imap/command.c, imap/imap.h, imap/util.c: Add imap_account_match
+	wrapper over mutt_account_match that canonicalizes accounts with
+	imap_conn_find so that username comparison always work as expected.
+
+2008-10-28 22:20 +0000  Emanuele Giaquinta  <e.giaquinta@glauco.it>  (caa738600644)
+
+	* enter.c, group.c, handler.c, init.c, lib.c, menu.c, mh.c,
+	mutt_idna.c, mutt_ssl.c, mx.c, parse.c, recvattach.c, rfc822.c,
+	signal.c, sort.c, thread.c: Make some functions static.
+
+2008-10-20 11:50 -0700  Brendan Cully  <brendan@kublai.com>  (5ea9f336dd60)
+
+	* imap/util.c: Accidentally dropped from d4a9c0a68f2b prior to commit
+
+	* imap/imap.c, imap/message.c: Hack around INBOX.INBOX breakage
+	from [5d1cc2f0c1c4]
+
+2008-10-20 18:00 +0100  Vincent Lefevre  <vincent@vinc17.org>  (11d2c6712c88)
+
+	* pattern.c: Make eat_regexp static.
+
+2008-10-20 09:55 -0700  Kyle Wheeler  <kyle@memoryhole.net>  (361b298c9fe2)
+
+	* imap/util.c: Fix #3129
+
+2008-10-20 09:48 -0700  Brendan Cully  <brendan@kublai.com>  (f119005f8169)
+
+	* imap/imap.c, imap/imap_private.h: Call imap_free_idata instead of
+	freeing directly in imap_logout
+
+	* imap/browse.c: Fix memory leak in imap_mailbox_state
+
+2008-10-19 16:26 -0700  TAKAHASHI Tamotsu  <tamo@momonga-linux.org>  (e1fc907b2968)
+
+	* imap/browse.c: Fix up destination path when renaming mailbox. Closes
+	#2090.
+
+2008-10-19 16:14 -0700  Brendan Cully  <brendan@kublai.com>  (5d1cc2f0c1c4)
+
+	* imap/util.c: Normalize path component of IMAP URLs in
+	imap_expand_path (see #2897).
+
+	* mutt_socket.c: Fix buglet in logging from previous commit
+
+	* mutt_socket.c: Handle short writes in mutt_socket_write_d. See
+	#3000. Apparently even blocking I/O with signals masked can
+	sometimes return early. Based on a patch by Patrick Welche.
+
+2008-10-19 15:14 +0200  Emanuele Giaquinta  <e.giaquinta@glauco.it>  (2f04a811db3f)
+
+	* pattern.c, sendlib.c: Remove unused functions.
+
+	* curs_main.c, init.c, pattern.c, score.c: Make some variables static.
+
+	* configure.ac: Fix logic in [13a831a945be].
+
+2008-10-07 19:22 -0700  Brendan Cully  <brendan@kublai.com>  (10a1f06bc8aa)
+
+	* Makefile.am, configure.ac, mutt_idna.c, mutt_idna.h: Clean up with
+	/without-idn handling
+
+2008-10-07 15:58 -0700  Emanuele Giaquinta  <e.giaquinta@glauco.it>  (cd3bd3858c6c)
+
+	* mutt_socket.c: Minor simplification in mutt_socket_readln_d
+
+2008-10-07 15:27 -0700  Brendan Cully  <brendan@kublai.com>  (d13106731007)
+
+	* mutt_idna.c, mutt_idna.h: Build no-op versions of new IDN functions
+	if IDN is unavailable. Closes #3122, #3123.
+
+2008-10-01 09:33 -0700  Brendan Cully  <brendan@kublai.com>  (13a831a945be)
+
+	* configure.ac: Clean up autoconf header cache engine selection.
+
+	Any explicit --with-$engine will force that engine to be used or
+	make configure fail if the engine is unavailable.
+
+2008-09-29 14:31 -0700  Emanuele Giaquinta  <e.giaquinta@glauco.it>  (ec96c56be182)
+
+	* mutt_socket.c: Simplify host resolution code slightly.
+
+2008-09-26 08:55 +0200  Rocco Rutte  <pdmef@gmx.net>  (9e569296190b)
+
+	* UPDATING, doc/manual.xml.head, init.h: Mention tokyocabinet in
+	UPDATING and docs
+
+2008-09-25 15:07 -0700  Emanuele Giaquinta  <e.giaquinta@glauco.it>  (2050b44407bf)
+
+	* configure.ac, hcache.c, init.h, mutt.h: Support tokyocabinet
+	(successor to qdbm). Closes #3112
+
+2008-09-24 15:58 +0200  Matthias Andree  <matthias.andree@gmx.de>  (2c8bf79d99b7)
+
+	* ChangeLog, pager.c: Fix compiler warning in dprint() (closes #3120)
+
+2008-09-24 15:53 +0200  Rocco Rutte  <pdmef@gmx.net>  (c842922bea10)
+
+	* doc/manual.xml.head: Manual: Fix typo
+
+	* mbyte.c: Provide legacy implementations for iswalpha() and
+	iswupper()
+
+	In mbyte.h and without using wc functions, only the prototypes were
+	defined but implementations were missing resulting in build errors.
+	These new functions are derived from the iswalnum() and towupper()
+	routines which don't provide full unicode coverage.
+
+	* imap/imap.c: Fix an infinite loop for imap searches
+
+	Reported by Emanuele Giaquinta on #mutt.
+
+2008-09-18 08:28 +0200  Rocco Rutte  <pdmef@gmx.net>  (ffefb446142c)
+
+	* alias.c, init.c, muttlib.c, protos.h: Fix compiler warnings
+
+2008-09-17 22:27 +0200  Thomas Roessler  <roessler@does-not-exist.org>  (77e25415a08a)
+
+	* alias.c, globals.h, init.c, mutt_idna.c, muttlib.c, rfc822.h,
+	sort.c: sorting efficiency
+
+2008-09-16 17:20 +0200  Rocco Rutte  <pdmef@gmx.net>  (1cb0a127eb3d)
+
+	* UPDATING: UPDATING: $move now defaults to "no"
+
+2008-09-11 09:28 +0200  Rocco Rutte  <pdmef@gmx.net>  (1a6842983357)
+
+	* ChangeLog, keymap.c: Fix IMAP keepalive if $imap_keepalive >=
+	$timeout
+
+2008-09-01 18:23 +0200  Rocco Rutte  <pdmef@gmx.net>  (17adea9cdff6)
+
+	* UPDATING: Add note about locale-safe hcaches to UPDATING as it's a
+	user-visible change
+
+2008-08-31 23:36 +0200  Rocco Rutte  <pdmef@gmx.net>  (b6d07a662c7f)
+
+	* ChangeLog, init.h, pager.c: Fix pager to respect $wrap_search
+
+2008-08-31 23:28 +0200  Rocco Rutte  <pdmef@gmx.net>  (f4b10e6b415c)
+
+	* doc/chunk.xsl, doc/html.xsl: Backout [e5610347fb3f] for further
+	discussion
+
+2008-08-31 21:13 +0200  Rocco Rutte  <pdmef@gmx.net>  (581037c15012)
+
+	* init.h: Manual: Fix trailing \ for $preconnect
+
+2008-08-31 21:12 +0200  Rocco Rutte  <pdmef@gmx.net>  (6d80c3d5b7aa)
+
+	* doc/makedoc.c: makedoc: Fix fall-through in [c11ce7feaa3e]
+
+2008-08-31 20:56 +0200  Rocco Rutte  <pdmef@gmx.net>  (03d1344f7ea2)
+
+	* doc/gen-map-doc: Manual: Harmonize generated function mappings with
+	the rest of the manual. This includes named keys such as "<Return>",
+	attempts to use CamelCase and leaves the key column for unbound
+	functions empty so they're visually easier to spot.
+
+2008-08-31 20:12 +0200  Rocco Rutte  <pdmef@gmx.net>  (937c3976df5a)
+
+	* doc/manual.xml.head, init.h: Manual: Many content+markup
+	improvements for option documentation
+
+2008-08-31 19:30 +0200  Rocco Rutte  <pdmef@gmx.net>  (df555876d480)
+
+	* doc/makedoc.c: makedoc: Also replace | and ^ by entities in XML
+	output
+
+2008-08-31 18:25 +0200  Rocco Rutte  <pdmef@gmx.net>  (c11ce7feaa3e)
+
+	* doc/makedoc.c: makedoc: Escape <>& in <screen/> environments
+
+2008-08-31 15:27 +0200  Rocco Rutte  <pdmef@gmx.net>  (4cc92c30543b)
+
+	* doc/makedoc.c, doc/manual.xml.head, doc/manual.xml.tail, init.h:
+	Manual: Use <quote/> quoting for DocBook rather than ``''. All
+	quotes characters are now rendered to Unicode quote chars in the
+	HTML output (as <xref/> does, too) but still " for manual.txt.
+
+2008-08-31 14:31 +0200  Rocco Rutte  <pdmef@gmx.net>  (e5610347fb3f)
+
+	* doc/chunk.xsl, doc/html.xsl: Manual: Limit toc section depth to 1
+	This only lists sect1 items and prevents variables from being shown
+	making it unusable.
+
+2008-08-31 14:25 +0200  Rocco Rutte  <pdmef@gmx.net>  (15a831b84d46)
+
+	* doc/manual.xml.tail: Manual: use itemizedlist for acknowledgements
+	DocBook XSL renders simplelist to a html table which is
+	inappropriate.
+
+2008-08-30 20:21 -0700  Brendan Cully  <brendan@kublai.com>  (c2af57b1e7ee)
+
+	* ChangeLog, mutt_ssl_gnutls.c: Make gnutls read function more robust
+	against interruptions. Signals should be masked off anyway, but see
+	#3074.
+
+2008-08-30 23:19 +0200  Rocco Rutte  <pdmef@gmx.net>  (996e4e2d2855)
+
+	* doc/manual.xml.head, init.h: Manual: use $variable syntax, only
+	quote non-variable links
+
+	* doc/manual.xml.head: Manual: Various fixes+improvements in chapters
+	1+2
+
+	* doc/gen-map-doc, doc/makedoc.c, doc/manual.xml.head, init.h: Manual:
+	Layout functions as <function-name>, s/ESC/Esc/ for consistency
+
+	* doc/devel-notes.txt, doc/makedoc.c: makedoc: Add support for
+	monospace fonts with \fC...\fP
+
+	* doc/manual.xml.head: Manual: trim trailing whitespace
+
+	* doc/manual.xml.head: Manual: Fix processing warnings by manually
+	assigning missing id attributes
+
+	* doc/manual.xml.head: Manual: Add a section on mutt core concepts as
+	introduction
+
+2008-08-30 19:59 -0700  Brendan Cully  <brendan@kublai.com>  (12a6de725483)
+
+	* curs_lib.c, enter.c, flags.c, keymap.c, menu.c: Rework timeout
+	handling to support keepalive in the line editor. Also allow
+	keepalives of less than $timeout without returning before $timeout,
+	so people who don't want to be notified of new mail don't have to
+	be.
+
+2008-08-29 23:10 -0700  Rado Smiljanic  <regrado@web.de>  (4f67fc336986)
+
+	* curs_main.c, keymap.c, menu.c, pager.c: Make curses timeout the
+	minimum of $timeout and $imap_keepalive. Do keepalive in km_dokey
+	instead of directly in menu. Closes #2747.
+
+2008-08-29 22:40 -0700  Brendan Cully  <brendan@kublai.com>  (e37ae3f79ec0)
+
+	* imap/imap_private.h: Dead code
+
+	* imap/imap.c: Remove redundant code
+
+	* imap/command.c, imap/imap.c, imap/imap_private.h, imap/message.c:
+	Use sorted headers in imap_exec_msgset. Fixes [e68f79fef249]. Closes
+	#3000 again.
+
+2008-08-29 10:23 +0200  YONETANI Tomokazu  <qhwt+mutt@les.ath.cx>  (78aab353e217)
+
+	* buffy.c: Only consider empty files non-existent for buffy's
+	purpose.
+
+	According to SUS, the st_size member of struct stat is undefined for
+	directories. In case a system reports 0, the newly_created flag will
+	be set for a directory and the magic will be cleared.
+
+	If the folder type is cleared, mutt won't check the folder for new
+	mail and thus will ignore MH and Maildir type folders on such a fs
+	completely (e.g. the HAMMER fs on DragonFly BSD).
+
+2008-08-28 11:19 -0700  Brendan Cully  <brendan@kublai.com>  (1d94905ad00b)
+
+	* imap/command.c, imap/imap.c, imap/imap_private.h, imap/message.c:
+	The msgset changes seem buggy. Reverting pending further testing.
+
+	* imap/command.c, imap/imap.c, imap/imap_private.h, imap/message.c:
+	Split long IMAP commands for the benefit of lazy servers (closes
+	#3000). Also touches lots of old, hairy code. Likely to wake
+	sleeping dogs.
+
+2008-08-26 23:09 -0700  Brendan Cully  <brendan@kublai.com>  (2731e5174c5a)
+
+	* imap/util.c, mutt_sasl.c, mutt_ssl.c, mutt_ssl_gnutls.c:
+	Properly set the SASL external auth name when using SSL client
+	certs. Also zero out the account structure before filling it with
+	available data. Client certificates + SASL EXTERNAL were only
+	working by luck.
+
+	* imap/imap.c: Remove leftover IMAP IDLE handling from before
+	[53d9210aa4ee].
+
+2008-08-25 00:52 -0700  Brendan Cully  <brendan@kublai.com>  (36aa1130091a)
+
+	* UPDATING, globals.h, imap/command.c, imap/imap.c,
+	imap/imap_private.h, imap/util.c, init.c, init.h: Introduce
+	$imap_pipeline_depth. This lets users control the number of
+	commands that mutt will queue up before sending them to the
+	server. Setting this to 0 disables pipelining, which should close
+	#2892.
+
+	* imap/command.c, imap/imap.c, imap/imap_private.h, imap/message.c:
+	Rework IMAP command queueing to allow pipelining to be disabled.
+	IDLE handling has been better abstracted, and there are fewer entry
+	points to the IMAP command issuing machinery. Any commands that are
+	simply queued may be executed whenever the pipeline fills, instead
+	of requiring explicit handling in the caller.
+
+	Tested on my Cyrus server, but I wouldn't be surprise if this causes
+	new problems.
+
+2008-08-24 20:01 +0200  Rocco Rutte  <pdmef@gmx.net>  (045c5942e1ad)
+
+	* doc/manual.xml.head: Manual: Fix DTD validation error and
+	message header display section
+
+	* doc/manual.xml.head: Manual: Fix typo
+
+	* doc/manual.xml.head: Manual: Fix style and typos. Noted by
+	Vincent Lefevre, see #3109.
+
+2008-08-23 15:25 -0700  Brendan Cully  <brendan@kublai.com>  (1f9849496bc2)
+
+	* main.c: Whitespace cleanup
+
+	* main.c: Fix infinite loop with "mutt -", introduced in
+	[31c9e9727d42]. Treats - as a non-option argument. It would be
+	reasonable to treat it as an error instead.
+
+2008-08-19 16:44 -0400  Aron Griffis  <agriffis@n01se.net>  (31c9e9727d42)
+
+	* main.c: Handle -- correctly with or without -a, closes #3097
+
+	Prefix optstring with "+" to force POSIX behavior on GNU getopt, and
+	thereby prevent reordering argv. This allows us to correctly handle
+	mixed addresses, attachments, options and the double-dash to signal
+	end-of-options.
+
+	Signed-off-by: Aron Griffis <agriffis@n01se.net>
+
+2008-08-22 17:49 +0200  Rocco Rutte  <pdmef@gmx.net>  (6fd1fa2d98bc)
+
+	* doc/manual.xml.head: Manual: fix/improve markup/content, see
+	#3109
+
+2008-08-21 10:42 +0200  Rocco Rutte  <pdmef@gmx.net>  (15d93fe50e62)
+
+	* init.h: Clarify documentation for $config_charset. Closes #2021.
+
+	* doc/manual.xml.head: Improve color/mono command synopsis.
+	Closes #2630.
+
+	* init.h: Better document the effect of $thorough_search being unset.
+	Closes #3104.
+
+	* mutt_ssl.c: Port certificate host checking from msmtp to
+	mutt. It supports IDN, wildcards and extracting the hostname from
+	subject alternative field as well as common name which should be
+	the same gnutls supports. Closes #3087.
+
+2008-08-19 13:17 -0700  Brendan Cully  <brendan@kublai.com>  (573d1aab3c89)
+
+	* init.c: Silence an incorrect uninitialized variable warning.
+
+	* init.h: Better documentation for how quote_regexp determines
+	quote level. Closes #1463.
+
+2008-08-19 09:39 +0200  Rocco Rutte  <pdmef@gmx.net>  (3e850c6e43fd)
+
+	* handler.c, mutt.h: Make text/enriched handler multibyte aware.
+	Closes #3033.
+
+2008-08-18 13:08 -0700  Vincent Lefevre  <vincent@vinc17.org>  (95a11c7f677d)
+
+	* po/fr.po: Updated French translation.
+
+2008-08-18 10:24 +0200  Rocco Rutte  <pdmef@gmx.net>  (51bd7a47d552)
+
+	* pager.c: Ignore zero width characters U+200B/U+FEFF which may garble
+	the display. Closes #3061, #3048.
+
+	* charset.c, charset.h, init.c: Validate charset names for all
+	charset options. Validation is either done against mutt's table of
+	IANA assigned names or local iconv implementation (based on the
+	assumption that iconv_open(charset,charset) fails if charset is
+	unknown to the implementation). Closes #1668.
+
+2008-08-15 11:53 -0700  Brendan Cully  <brendan@kublai.com>  (ff3fbb6a92a8)
+
+	* mutt_sasl.c: Fix type-punning warning in sasl_getprop usage
+
+	* parse.c: Fix a couple of compiler warnings introduced in
+	[00ce81d778bf]. Make the style of mutt_parse_references more
+	pleasing to me.
+
+2008-07-10 09:38 -0400  Aron Griffis  <agriffis@n01se.net>  (d3ee9644765f)
+
+	* copy.c: Fix three bugs handling flags in mutt_copy_header
+
+	1. mutt_copy_header incorrectly tests CH_UPDATE to determine whether
+	to write the In-Reply-To and References headers. CH_UPDATE
+	refers only to Status: and X-Status:
+
+	2. mutt_copy_header ignores CH_NOSTATUS which is supposed to
+	indicate that the mailbox type doesn't use those headers.
+
+	3. mutt_copy_header tests h->env->irt_changed and
+	h->env->refs_changed when it should be testing CH_UPDATE_IRT and
+	CH_UPDATE_REFS, respectively. Early in the function this
+	happens:
+
+	 if (h->env) flags |= (h->env->irt_changed ? CH_UPDATE_IRT
+	: 0) | (h->env->refs_changed ? CH_UPDATE_REFS : 0);
+
+	 This means that for most callers, the result is the same, but
+	mutt_copy_header should be testing the flags because the caller
+	might have set them explicitly without setting
+	irt_changed/refs_changed.
+
+	* parse.c, protos.h, send.c: Unify parser for message-ids
+
+	Rewrite mutt_extract_message_id and change mutt_parse_references to
+	us it. The parser in mutt_extract_message_id is looser than the old
+	one in mutt_parse_references; it just looks for <[^\s>]+> and
+	doesn't worry about @-signs. Additionally it doesn't use strtok, so
+	the input string can be const.
+
+	Closes #3090, #1935, #1116 (both the stated bug and the conversation
+	following).
+
+2008-08-11 16:42 +0200  Rocco Rutte  <pdmef@gmx.net>  (508ffc26dad2)
+
+	* alias.c, doc/manual.xml.head, init.c: Prefer "backtick" over
+	"backtic" on comments and docs as it's more common, closes #3101.
+
+2008-07-27 10:48 -0400  Aron Griffis  <agriffis@n01se.net>  (3f595d14a285)
+
+	* doc/manual.xml.head: doc: semi-colon needs quoting too
+
+	If semi-colon is bound or macro'd, it needs to be quoted like space,
+	otherwise mutt thinks it's separating commands.
+
+	Signed-off-by: Aron Griffis <agriffis@n01se.net>
+
+2008-07-21 10:24 -0400  Aron Griffis  <agriffis@n01se.net>  (96b0dd25a550)
+
+	* copy.h, mutt.h: noop cleanup: move mutt_copy_header flags to copy.h
+
+	Noticed while reading that these flags are better defined in copy.h
+	than mutt.h. Builds without warnings.
+
+	Signed-off-by: Aron Griffis <agriffis@n01se.net>
+
+2008-07-24 16:19 -0400  Brendan Cully  <brendan@kublai.com>  (0e2f9189a1dd)
+
+	* m4/codeset.m4, m4/iconv.m4: Fix m4 serial numbers to avoid
+	aclocal 1.10 warnings
+
+2008-07-21 11:42 +0200  Rocco Rutte  <pdmef@gmx.net>  (7e6d98886cce)
+
+	* doc/makedoc.c: makedoc: Add ".ie" and ".il" to support itemized
+	lists.
+
+	Some settings docs use verbatim screen environments to print lists
+	while support for real lists will make it look nicer: for docbook
+	use <itemizedlist/>, \(hy for roff and '-' for text.
+
+	* doc/manual.xml.head: Document that account-hook is intended for
+	connection-related settings only
+
+	* doc/manual.xml.head: Manual: Use tables for message flags as it's
+	more compact
+
+	* doc/manual.xml.head: Manual: minor formatting tweaks
+
+	* alias.c, init.h: Encode lines written to $alias_file in
+	$config_charset if set. Closes #3095
+
+2008-07-10 09:38 -0400  Aron Griffis  <agriffis@n01se.net>  (7729b1ad530c)
+
+	* copy.c, protos.h, sendlib.c: Unify mutt_write_references
+
+	copy.c and sendlib.c have independent and different implementations
+	of writing references to a file. Choose the one in sendlib since
+	it's conservative with mallocs and supports trimming the list.
+
+	Signed-off-by: Aron Griffis <agriffis@n01se.net>
+
+	* copy.c: Clean up error handling in mutt_copy_header
+
+	mutt_copy_header unnecessarily tests the result of each fputc/fputs
+	(well, most of them anyway, it's not consistent). This obfuscates
+	the code and hides bugs. Remove these extraneous checks since
+	ferror/feof are checked at the bottom of the function, and get rid
+	of all the early returns.
+
+	Signed-off-by: Aron Griffis <agriffis@n01se.net>
+
+2008-07-17 19:48 +0200  Rocco Rutte  <pdmef@gmx.net>  (f135d64e0082)
+
+	* query.c: Cleanup unused vars changeset ba0d96408425 didn't
+	remove
+
+2008-07-11 11:34 +0200  Rocco Rutte  <pdmef@gmx.net>  (cc67b008038c)
+
+	* doc/manual.xml.head: Mention that @ can be used in usernames in URLs
+
+	* charset.c: Allow UTF-8 charset to be misspelled as "utf8"
+
+	* mutt_ssl.c: Verify hostname in (Open)SSL certificate validation
+
+	This is based on the patch by gkloepfer attached to #3087 but passes
+	the proper connection as argument (avoiding adding hostname to
+	struct sslsockdata) and validates the hostname even in case OpenSSL
+	cannot find the local issuer certificate. GnuTLS already supports
+	hostname checking. Closes #3087.
+
+2008-07-10 22:02 +0200  Rocco Rutte  <pdmef@gmx.net>  (b9ac445b035b)
+
+	* hcache.c: Prevent some pointers of 'struct body' being saved to
+	hcache
+
+	This addresses the hcache safety issue but maybe doesn't fix it
+	completely, see #2942. This also prevents mutt from crashing when
+	using a hcache that was synced when syncing the mailbox (updating
+	changed and fully-parsed messages).
+
+2008-07-10 21:46 +0200  Aron Griffis  <agriffis@n01se.net>  (6244eefaea64)
+
+	* headers.c: Remove completely wrong comment regarding in-reply-to and
+	references
+
+	...plus fix one other comment and some whitespace.
+
+2008-07-09 09:14 +0000  Rocco Rutte  <pdmef@gmx.net>  (2a9e9c487bad)
+
+	* doc/mutt.man, main.c: Document redirection to trigger batch send
+	mode in mutt(1) and mutt -h. Closes #2070.
+
+2008-07-04 09:09 +0200  Ralf Wildenhues  <wildenhues@ins.uni-bonn.de>  (74b54f11c919)
+
+	* protos.h: Fix syntax error for strtok_r compatitility prototype
+
+2008-07-02 18:26 +0200  Vladimir Marek  <Vladimir.Marek@Sun.COM>  (f72fce68ca19)
+
+	* lib.c: Use stat() instead of dirent->d_type to test for
+	directory. Closes #3089.
+
+2008-07-02 18:23 +0200  Rocco Rutte  <pdmef@gmx.net>  (7783502a04c7)
+
+	* curs_main.c: Calculate menu->max after a possible resort in index
+	(maybe changing number of messages). Closes #3088.
+
+	* curs_lib.c: Fix casts for progress update to prevent -ftrapv
+	aborts to trigger. Closes #3018.
+
+2008-07-02 08:56 -0700  Brendan Cully  <brendan@kublai.com>  (c51c16db46cc)
+
+	* crypt-gpgme.c: Only make LC_MESSAGES conditional on NLS in GPGME
+	locale support.
+
+2008-07-02 11:19 +0200  Rocco Rutte  <pdmef@gmx.net>  (8b783c916893)
+
+	* browser.c, buffy.c, commands.c, compose.c, curs_main.c, enter.c,
+	headers.c, hook.c, imap/imap.c, init.c, mbox.c, muttlib.c,
+	postpone.c, protos.h, recvattach.c, send.c, status.c: Use
+	realpath() in mutt_pretty_mailbox() for paths that may need
+	it. This requires to add the buffer size as parameter since the
+	result may be longer than the original but still fit in the
+	buffer. Closes #2948.
+
+	* hash.c: Use casts to avoid triggering integer overflow detection in
+	hash function
+
+2008-07-01 20:06 -0700  Vincent Lefevre  <vincent@vinc17.org>  (fb0df4ae0836)
+
+	* ChangeLog, curs_lib.c: Clamp timeval math to unsigned int to match
+	progress timestamps. This is fine since only relative differences
+	matter. Closes #3018.
+
+2008-07-01 18:29 -0700  Brendan Cully  <brendan@kublai.com>  (f9af0501d2dd)
+
+	* crypt-gpgme.c: Set GPGME locale on first attempt to create context.
+	Closes #2913.
+
+	* crypt-gpgme.c, crypt-gpgme.h, crypt-mod-pgp-gpgme.c: Stub in a
+	gpgme version of extract-keys. It doesn't currently work right
+	because apparently while gpg on the command line can parse a whole
+	message, we'll have to do it for gpgme. I really wonder about the
+	'ME' part of GPGME sometimes.
+
+	* crypt-gpgme.c, lib.c, lib.h: Support displaying application/pgp-keys
+	with GPGME. This was pretty convoluted because GPGME provides no way
+	to examine a key block without importing it. This code creates a
+	temporary GPG home in which to import the key in order to display
+	it.
+
+	* crypt-gpgme.c, handler.c, pgp.c: Handle DONTHANDLEPGPKEYS in
+	handler instead of crypto modules. This lets gpgme and classic pgp
+	share a bit of logic, and unbreaks key extraction at least for
+	classic PGP.
+
+	* copy.c: Bail out of copy if decryption is requested but the desired
+	engine is missing. This closes #2684, but handling of mixed crypto
+	in a single message needs more investigation.
+
+2008-07-01 01:10 -0700  rtc  <rtc@gmx.de>  (49fe0292b503)
+
+	* copy.c: When deleting attachments, always print newline
+	separating header from body. Closes #3085.
+
+2008-06-29 01:09 -0700  Brendan Cully  <brendan@kublai.com>  (677e7712d735)
+
+	* crypt-gpgme.c: Improve gpgme SMIME uid display: align each line by
+	the length of the first.
+
+	* crypt-gpgme.c: Show more information about problematic SMIME
+	signatures under gpgme. Also warn if the key is not known to be
+	good. For some reason expired keys in my environment are not
+	flagged as expired in sig->status or sig->summary.
+
+2008-06-28 20:33 -0700  Brendan Cully  <brendan@kublai.com>  (1492c24f2a4e)
+
+	* mutt_ssl_gnutls.c: Extract CN from client certificate in gnutls.
+	Nothing currently uses it, but I suspect we should be using it as
+	the external auth name in mutt_sasl_client_new.
+
+	* UPDATING, globals.h, init.h, mutt_sasl.c, mutt_ssl_gnutls.c:
+	Basic support for $ssl_client_cert when compiled with
+	gnutls. The key must not be encrypted. Closes #2911.
+
+2008-06-27 12:04 -0700  Petr Písař  <petr.pisar@atlas.cz>  (40c6e851bf76)
+
+	* po/cs.po: Updated Czech translation.
+
+2008-06-26 12:52 -0700  Brendan Cully  <brendan@kublai.com>  (c5256c65eedb)
+
+	* handler.c: Mark new error message for translation.
+
+	* curs_lib.c: Force a resize event after calling an external editor.
+	Closes #2207
+
+	* lib.c, lib.h, mh.c: fflush before fsync and close. Closes #2962
+	again.
+
+	* mh.c: fsync maildir/mh messages on commit. Closes #2962.
+
+2008-06-25 23:40 -0700  Brendan Cully  <brendan@kublai.com>  (32374c911c6c)
+
+	* smime.c: Check S/MIME signing ID exists before attempting to use
+	it. Closes #3069. Also make (s)ign automatically ask for a key if
+	no default is defined.
+
+	* init.h: Make $move default to no instead of ask-no. Closes #2945.
+
+	* doc/manual.xml.head: Document difference between index and pager
+	search. Closes #2886.
+
+	* commands.c, copy.c, crypt-gpgme.c, handler.c, mbox.c, pgp.c: Make
+	mutt_copy_message distinguish between fatal and non-fatal errors.
+	Non-fatal errors should prevent moving messages, since they indicate
+	data loss. But mutt should still attempt to display them, since
+	being able to see some attachments is better than nothing. Also stop
+	printing out non-PGP material in application/pgp attachments. Closes
+	#2545, #2912.
+
+2008-06-24 23:12 -0700  Brendan Cully  <brendan@kublai.com>  (f5fe657f0633)
+
+	* handler.c: Make multipart decoding a little more
+	forgiving. First, ignore bad content-transfer-encoding in
+	multipart sections. Second, if an attachment fails to decode,
+	print a warning and continue instead of giving up on the entire
+	message.
+
+1970-01-01 00:00 +0000  Brendan Cully  <brendan@kublai.com>  (a2e8f6fab8d3)
+
+	* smtp.c: Test that envelope from or from is set before attempting
+	SMTP delivery. Closes #3079.
+
+2008-06-14 18:23 -0700  Christoph Berg  <cb@df7cb.de>  (4b790909a037)
+
+	* doc/mbox.man: Document that From_ lines use asctime-style dates,
+	not RFC2822 dates. Closes #3077.
+
+2008-06-11 22:45 -0700  Alexey I. Froloff  <raorn@altlinux.org>  (1e8ca708a52f)
+
+	* attach.c: Do not attempt to close invalid descriptors. Closes #3075
+
+2008-06-05 13:06 +0200  Vladimir Marek  <Vladimir.Marek@Sun.COM>  (5ab92dd44ce2)
+
+	* alias.c: Wrap Fqdn in NONULL() to prevent crash with -d5 if Fqdn
+	is NULL
+
+2008-06-02 09:45 +0200  Rocco Rutte  <pdmef@gmx.net>  (d6d04a7f5aea)
+
+	* init.c: Allow for printing variable values longer than 256
+	characters
+
+	* rfc822.c: Allow for mail addresses longer than 256
+	characters (closes #3066).
+
+2008-05-30 16:14 +0200  Rocco Rutte  <pdmef@gmx.net>  (2f59be26ad22)
+
+	* protos.h: Define prototypes for compatibility functions in protos.h
+	to silence compiler warnings
+
+2008-05-29 14:18 +0200  Rocco Rutte  <pdmef@gmx.net>  (bf74c85070c4)
+
+	* menu.c: Respect $wrap_search in generic menu search (e.g.  for
+	browser)
+
+	* doc/Makefile.am: Only install mutt_dotlock(1) if binary is
+	installed, too (closes #1601).
+
+2008-05-28 22:22 -0700  Paul Walker  <paul@black-sun.demon.co.uk>  (f4259a92dab6)
+
+	* doc/Muttrc.head: Make default muttrc header weeding
+	tidier. Closes #286.
+
+2008-05-23 01:40 -0400  Todd Zullinger  <tmz@pobox.com>  (73a180edce53)
+
+	* pgp.c: Call mutt_need_hard_redraw() in pgp_decrypt_part().
+
+	This change ensures that the screen is redrawn when using gpg-agent.
+	Without this, mutt's navigation keybindings are lost after pinentry
+	curses prompts for a passphrase to descrypt a message.
+
+2008-05-28 22:16 -0700  Moritz Schulte  <moritz@g10code.com>  (7fd74c40eced)
+
+	* curs_lib.c: Make sure that the redrawing/reinitializing is done
+	always, not only when the environment variable DISPLAY is not set.
+
+2008-05-28 22:05 -0700  Vladimir Marek  <Vladimir.Marek@Sun.COM>  (9d0509641865)
+
+	* configure.ac, m4/iconv.m4: Cosmetic fix to configure
+	--help. Closes #3060.
+
+2008-05-28 21:44 -0700  Vincent Lefevre  <vincent@vinc17.org>  (7b8ef3b8ff5a)
+
+	* po/fr.po: Updated French translation
+
+2008-05-23 18:39 +0200  Rocco Rutte  <pdmef@gmx.net>  (8a3a037ec6b3)
+
+	* UPDATING: UPDATING: fix 1.5.18 line as noted by Kyle Wheeler
+
+2008-05-22 20:22 -0700  Brendan Cully  <brendan@kublai.com>  (96a01436f88b)
+
+	* imap/command.c: Escape LSUB mailbox names given to
+	mutt_parse_rc_line. Handle literals in STATUS responses for Notes
+	compatibility.
+
+2008-05-22 17:01 +0200  Rocco Rutte  <pdmef@gmx.net>  (d612ef757ee9)
+
+	* configure.ac, m4/types.m4: Use C99 macros "PRId64"/"PRId32" to
+	format file sizes/offsets if available. This fixes warning about
+	mismatching int argument sizes on amd64.
+
+	* init.h: Document that $check_mbox_size should be set before
+	mailboxes commands
+
+	* UPDATING: Mention requirement to encode X-Label: headers in
+	UPDATING
+
+2008-05-21 23:20 -0700  Rocco Rutte  <pdmef@gmx.net>  (bba92e401440)
+
+	* imap/browse.c: Guard idata->mailbox read in imap_mailbox_state.
+	Closes #3057.
+
+2008-05-21 22:59 -0700  Piarres Beobide Egaña  <pi@beobide.net>  (51c494a2e735)
+
+	* po/eu.po: Updated Basque translation.
+
+2008-05-21 22:55 -0700  René Clerc  <rene@clerc.nl>  (e95a579cf5e4)
+
+	* po/nl.po: Updated Dutch translation
+
+2008-05-21 20:36 +0200  Rocco Rutte  <pdmef@gmx.net>  (1bdb7a7c3c8f)
+
+	* buffy.c, buffy.h: Fix new mail detection for >2 GB mboxes with
+	$check_mbox_size set
+
+	* mbox.c, sendlib.c: Use ftello() instead of ftell() in more places
+	that need it (fixes progress updates for >2 GB mbox files)
+
+	* doc/manual.xml.head, init.h: Improve documentation for handling
+	multiple folders and new mail detection
+
+2008-05-20 17:08 +0200  Paul Walker  <paul@black-sun.demon.co.uk>  (a4d423798321)
+
+	* parse.c: Fix more compiler warnings on amd64 by use of %p instead of
+	%x
+
+2008-05-19 09:52 -0700  Ivan Vilata i Balaguer  <ivan@selidor.net>  (38319cd7d832)
+
+	* po/ca.po: Updated Catalan translation
+
+2008-05-19 18:49 +0200  Vladimir Marek  <Vladimir.Marek@Sun.COM>  (8ac4b70221ee)
+
+	* Makefile.am: Unbreak build with included gettext by explicitly
+	removing libs for mutt_md5
+
+2008-05-19 11:14 +0200  Rocco Rutte  <pdmef@gmx.net>  (85654735d27e)
+
+	* UPDATING: Mention mime_lookup change in UPDATING
+
+2008-05-19 10:59 +0200  Paul Walker  <paul@black-sun.demon.co.uk>  (d3fd07d0016c)
+
+	* init.c: Use %p instead of %x to debug-print pointers (fixes warnings
+	on 64bit platforms)
+
+2008-05-19 10:56 +0200  Rocco Rutte  <pdmef@gmx.net>  (771276a3bace)
+
+	* Makefile.am: hcversion.h depends on new mutt_md5 tool
+
+2008-05-18 12:42 -0700  Roland Rosenfeld  <roland@spinnaker.de>  (4ef0fc2f8378)
+
+	* po/de.po: Updated German translation
+
+2008-05-17 19:31 -0700  Andreas  <Andreas Jobs>  (aaeee8f868c4)
+
+	* crypt-gpgme.c: Fix GPGME S/MIME micalg generation, broken
+	in [e6f958b093b6]. Closes #2994.
+
+2008-05-17 18:34 -0700  Brendan Cully  <brendan@kublai.com>  (f9545d5ec15f)
+
+	* doc/Muttrc.head: Add 'mime_lookup application/octet-stream' to the
+	distributed Muttrc. Closes #2984.
+
+	* .hgignore, Makefile.am, configure.ac, hcachever.sh.in,
+	md5.c: Build local md5 tool for hcachever.sh. Closes #3025.
+
+2008-05-17 12:39 -0700  Brendan Cully  <brendan@kublai.com>  (692b7c063bf1)
+
+	* .hgsigs: mutt-1.5.18 signed
+
+	* .hgtags: Added tag mutt-1-5-18-rel for changeset ff9e4d0464b1
+
+	* ChangeLog, VERSION, po/bg.po, po/ca.po, po/cs.po, po/da.po,
+	po/de.po, po/el.po, po/eo.po, po/es.po, po/et.po, po/eu.po,
+	po/fr.po, po/ga.po, po/gl.po, po/hu.po, po/id.po, po/it.po,
+	po/ja.po, po/ko.po, po/lt.po, po/nl.po, po/pl.po, po/pt_BR.po,
+	po/ru.po, po/sk.po, po/sv.po, po/tr.po, po/uk.po, po/zh_CN.po,
+	po/zh_TW.po: automatic post-release commit for mutt-1.5.18
 
 	* UPDATING: Update UPDATING.
 

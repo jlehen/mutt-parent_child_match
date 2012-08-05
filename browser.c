@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -462,7 +462,7 @@ static int examine_mailboxes (MUTTMENU *menu, struct browser_state *state)
       continue;
     
     strfcpy (buffer, NONULL(tmp->path), sizeof (buffer));
-    mutt_pretty_mailbox (buffer);
+    mutt_pretty_mailbox (buffer, sizeof (buffer));
 
     add_folder (menu, state, buffer, &s, tmp->new);
   }
@@ -508,7 +508,7 @@ static void init_menu (struct browser_state *state, MUTTMENU *menu, char *title,
   else
   {
     strfcpy (path, LastDir, sizeof (path));
-    mutt_pretty_mailbox (path);
+    mutt_pretty_mailbox (path, sizeof (path));
 #ifdef USE_IMAP
   if (state->imap_browse && option (OPTIMAPLSUB))
     snprintf (title, titlelen, _("Subscribed [%s], File mask: %s"),
@@ -645,8 +645,7 @@ void _mutt_select_file (char *f, size_t flen, int flags, char ***files, int *num
   if (examine_directory (NULL, &state, LastDir, prefix) == -1)
     goto bail;
 
-  menu = mutt_new_menu ();
-  menu->menu = MENU_FOLDER;
+  menu = mutt_new_menu (MENU_FOLDER);
   menu->make_entry = folder_entry;
   menu->search = select_file_search;
   menu->title = title;
@@ -861,22 +860,22 @@ void _mutt_select_file (char *f, size_t flen, int flags, char ***files, int *num
 
       case OP_BROWSER_TOGGLE_LSUB:
 	if (option (OPTIMAPLSUB))
-	{
 	  unset_option (OPTIMAPLSUB);
-	}
 	else
-	{
 	  set_option (OPTIMAPLSUB);
-	}
+
 	mutt_ungetch (0, OP_CHECK_NEW);
 	break;
 
       case OP_CREATE_MAILBOX:
 	if (!state.imap_browse)
-	  mutt_error (_("Create is only supported for IMAP mailboxes"));
-	else
 	{
-	  imap_mailbox_create (LastDir);
+	  mutt_error (_("Create is only supported for IMAP mailboxes"));
+	  break;
+	}
+
+	if (!imap_mailbox_create (LastDir))
+	{
 	  /* TODO: find a way to detect if the new folder would appear in
 	   *   this window, and insert it without starting over. */
 	  destroy_state (&state);
@@ -890,6 +889,7 @@ void _mutt_select_file (char *f, size_t flen, int flags, char ***files, int *num
 	  init_menu (&state, menu, title, sizeof (title), buffy);
 	  MAYBE_REDRAW (menu->redraw);
 	}
+	/* else leave error on screen */
 	break;
 
       case OP_RENAME_MAILBOX:
@@ -899,7 +899,8 @@ void _mutt_select_file (char *f, size_t flen, int flags, char ***files, int *num
 	{
 	  int nentry = menu->current;
 
-	  if (imap_mailbox_rename (state.entry[nentry].name) >= 0) {
+	  if (imap_mailbox_rename (state.entry[nentry].name) >= 0)
+	  {
 	    destroy_state (&state);
 	    init_state (&state, NULL);
 	    state.imap_browse = 1;

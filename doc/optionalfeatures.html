@@ -1,14 +1,35 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Chapter 6. Optional features</title><meta name="generator" content="DocBook XSL Stylesheets V1.71.1" /><link rel="start" href="index.html" title="The Mutt E-Mail Client" /><link rel="up" href="index.html" title="The Mutt E-Mail Client" /><link rel="prev" href="mimesupport.html" title="Chapter 5. Mutt's MIME Support" /><link rel="next" href="tuning.html" title="Chapter 7. Performance tuning" /></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 6. Optional features</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="mimesupport.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="tuning.html">Next</a></td></tr></table><hr /></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="optionalfeatures"></a>Chapter 6. Optional features</h2></div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="sect1"><a href="optionalfeatures.html#id475133">1. General notes</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#id475138">1.1. Enabling/disabling features</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#url-syntax">1.2. URL syntax</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#ssl">2. SSL/TLS Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#pop">3. POP3 Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#imap">4. IMAP Support</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#id475555">4.1. The Folder Browser</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#id475675">4.2. Authentication</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#smtp">5. SMTP Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#account-hook">6. Managing multiple accounts</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#caching">7. Local caching</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#header-caching">7.1. Header caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#body-caching">7.2. Body caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#maint-cache">7.3. Maintenance</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#exact-address">8. Exact address generation</a></span></dt></dl></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id475133"></a>1. General notes</h2></div></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id475138"></a>1.1. Enabling/disabling features</h3></div></div></div><p>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Chapter 6. Optional features</title><meta name="generator" content="DocBook XSL Stylesheets V1.73.2" /><link rel="start" href="index.html" title="The Mutt E-Mail Client" /><link rel="up" href="index.html" title="The Mutt E-Mail Client" /><link rel="prev" href="mimesupport.html" title="Chapter 5. Mutt's MIME Support" /><link rel="next" href="tuning.html" title="Chapter 7. Performance tuning" /><style xmlns="" type="text/css">
+      body { margin-left:2%; margin-right:2%; font-family:serif; }
+.toc, .list-of-tables, .list-of-examples { font-family:sans-serif; }
+h1, h2, h3, h4, h5, h6 { font-family:sans-serif; }
+em.replaceable code { font-family:sans-serif; }
+p { text-align:justify; }
+div.table p.title, div.example p.title { font-size:smaller; font-family:sans-serif; }
+.email, .email a { font-family:monospace; }
+div.table-contents table { border-collapse:collapse; border:1px solid #c0c0c0; }
+div.table-contents table td, div.table-contents table th { padding:5px; text-align:left; }
+div.table-contents table th {
+    font-family:sans-serif;
+    background:#d0d0d0;
+    font-weight:normal;
+    vertical-align:top;
+}
+pre.screen, div.note { background:#f0f0f0; border:1px solid #c0c0c0; padding:5px; }
+div.note h3 { font-size:small; font-style:italic; font-variant: small-caps; }
+div.note h3:after { content: ":" }
+div.note { margin-bottom: 5px; }
+
+    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 6. Optional features</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="mimesupport.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="tuning.html">Next</a></td></tr></table><hr /></div><div class="chapter" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title"><a id="optionalfeatures"></a>Chapter 6. Optional features</h2></div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="sect1"><a href="optionalfeatures.html#optionalfeatures-notes">1. General notes</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#compile-time-features">1.1. Enabling/disabling features</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#url-syntax">1.2. URL syntax</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#ssl">2. SSL/TLS Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#pop">3. POP3 Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#imap">4. IMAP Support</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#imap-browser">4.1. The Folder Browser</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#imap-authentication">4.2. Authentication</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#smtp">5. SMTP Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#account-hook">6. Managing multiple accounts</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#caching">7. Local caching</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#header-caching">7.1. Header caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#body-caching">7.2. Body caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#maint-cache">7.3. Maintenance</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#exact-address">8. Exact address generation</a></span></dt></dl></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="optionalfeatures-notes"></a>1. General notes</h2></div></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="compile-time-features"></a>1.1. Enabling/disabling features</h3></div></div></div><p>
 Mutt supports several of optional features which can be enabled or
 disabled at compile-time by giving the <span class="emphasis"><em>configure</em></span> script
-certain arguments. These are listed in the ``Optional features'' section of
+certain arguments. These are listed in the “<span class="quote">Optional features</span>” section of
 the <span class="emphasis"><em>configure --help</em></span> output.
 </p><p>
 Which features are enabled or disabled can later be determined from the
 output of <code class="literal">mutt -v</code>. If a compile option starts with
-``+'' it is enabled and disabled if prefixed with ``-''. For example, if
+“<span class="quote">+</span>” it is enabled and disabled if prefixed with “<span class="quote">-</span>”. For example, if
 mutt was compiled using GnuTLS for encrypted communication instead of
 OpenSSL, <code class="literal">mutt -v</code> would contain:
 </p><pre class="screen">
@@ -22,16 +43,17 @@ proto[s]://[username[:password]@]server[:port]/[path]
 </pre><p>
 <code class="literal">proto</code> is the communication protocol:
 <code class="literal">imap</code> for IMAP, <code class="literal">pop</code> for POP3 and
-<code class="literal">smtp</code> for SMTP. If ``s'' for ``secure communication''
+<code class="literal">smtp</code> for SMTP. If “<span class="quote">s</span>” for “<span class="quote">secure communication</span>”
 is appended, mutt will attempt to establish an encrypted communication
 using SSL or TLS. If no explicit port is given, mutt will use the
 system's default for the given protocol.
 </p><p>
 Since all protocols by mutt support authentication, the username may be
 given directly in the URL instead of using the <code class="literal">pop_user</code> or
-<code class="literal">imap_user</code> variables. A password can be given, too but
-is not recommended if the URL is specified in a configuration file on
-disk.
+<code class="literal">imap_user</code> variables. It may contain the “<span class="quote">@</span>” symbol
+being used by many mail systems as part of the login name. A password can be
+given, too but is not recommended if the URL is specified in a configuration
+file on disk.
 </p><p>
 The optional path is only relevant for IMAP.
 </p><p>
@@ -40,16 +62,16 @@ server: <code class="literal">imap://imapserver:port/INBOX</code>. You can also 
 username for each folder: <code class="literal">imap://username@imapserver[:port]/INBOX</code>
 or <code class="literal">imap://username2@imapserver[:port]/path/to/folder</code>.
 Replacing <code class="literal">imap://</code> by <code class="literal">imaps://</code>
-would make mutt attempt to conect using SSL or TLS on a different port
+would make mutt attempt to connect using SSL or TLS on a different port
 to encrypt the communication.
 </p></div></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="ssl"></a>2. SSL/TLS Support</h2></div></div></div><p>
 If mutt is compiled with IMAP, POP3 and/or SMTP support, it can also be
 compiled with support for SSL or TLS using either OpenSSL or GnuTLS (
-by running the <span class="emphasis"><em>configure</em></span> script with the 
+by running the <span class="emphasis"><em>configure</em></span> script with the
 <span class="emphasis"><em>--enable-ssl=...</em></span> option for OpenSSL or
 <span class="emphasis"><em>--enable-gnutls=...</em></span> for GnuTLS). Mutt can then
 attempt to encrypt communication with remote servers if these protocols
-are suffixed with ``s'' for ``secure communication''.
+are suffixed with “<span class="quote">s</span>” for “<span class="quote">secure communication</span>”.
 </p></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="pop"></a>3. POP3 Support</h2></div></div></div><p>
 If Mutt was compiled with POP3 support (by running the <span class="emphasis"><em>configure</em></span>
 script with the <span class="emphasis"><em>--enable-pop</em></span> flag), it has the ability to work
@@ -58,70 +80,67 @@ browsing.
 </p><p>
 Remote POP3 servers can be accessed using URLs with the <code class="literal">pop</code> protocol
 for unencrypted and <code class="literal">pops</code> for encrypted
-communication, see <a href="optionalfeatures.html#url-syntax" title="1.2. URL syntax">Section 1.2, “URL syntax”</a> for details.
+communication, see <a class="xref" href="optionalfeatures.html#url-syntax" title="1.2. URL syntax">Section 1.2, “URL syntax”</a> for details.
 </p><p>
 Polling for new mail is more expensive over POP3 than locally. For this
 reason the frequency at which Mutt will check for mail remotely can be
 controlled by the
-<a href="reference.html#pop-checkinterval" title="3.215. pop_checkinterval">$pop_checkinterval</a>
+<a class="link" href="reference.html#pop-checkinterval" title="3.216. pop_checkinterval">$pop_checkinterval</a>
 variable, which defaults to every 60 seconds.
-</p><p>
-Another way to access your POP3 mail is the <span class="emphasis"><em>fetch-mail</em></span> function
-(default: G).  It allows to connect to <a href="reference.html#pop-host" title="3.217. pop_host">$pop_host</a>, fetch all your new mail and place it in the
-local <a href="reference.html#spoolfile" title="3.276. spoolfile">$spoolfile</a>.  After this
+</p><a id="fetch-mail"></a><p>
+Another way to access your POP3 mail is the <code class="literal">&lt;fetch-mail$</code> function
+(default: G).  It allows to connect to <a class="link" href="reference.html#pop-host" title="3.218. pop_host">$pop_host</a>, fetch all your new mail and place it in the
+local <a class="link" href="reference.html#spoolfile" title="3.277. spoolfile">$spoolfile</a>.  After this
 point, Mutt runs exactly as if the mail had always been local.
-</p><p>
-<span class="bold"><strong>Note:</strong></span> If you only need to fetch all messages to a
+</p><div class="note"><h3 class="title">Note</h3><p>
+If you only need to fetch all messages to a
 local mailbox you should consider using a specialized program, such as
 <code class="literal">fetchmail</code>, <code class="literal">getmail</code> or similar.
-</p></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="imap"></a>4. IMAP Support</h2></div></div></div><p>
+</p></div></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="imap"></a>4. IMAP Support</h2></div></div></div><p>
 If Mutt was compiled with IMAP support (by running the <span class="emphasis"><em>configure</em></span>
 script with the <span class="emphasis"><em>--enable-imap</em></span> flag), it has the ability to work
 with folders located on a remote IMAP server.
 </p><p>
 You can access the remote inbox by selecting the folder by its URL
-(see <a href="optionalfeatures.html#url-syntax" title="1.2. URL syntax">Section 1.2, “URL syntax”</a> for details) using the
+(see <a class="xref" href="optionalfeatures.html#url-syntax" title="1.2. URL syntax">Section 1.2, “URL syntax”</a> for details) using the
 <code class="literal">imap</code> or <code class="literal">imaps</code> protocol.
 Alternatively, a pine-compatible notation is also supported, ie
 <code class="literal">{[username@]imapserver[:port][/ssl]}path/to/folder</code>
 </p><p>
-Note that not all servers use ``/'' as the hierarchy separator.  Mutt should
+Note that not all servers use “<span class="quote">/</span>” as the hierarchy separator.  Mutt should
 correctly notice which separator is being used by the server and convert
 paths accordingly.
 </p><p>
 When browsing folders on an IMAP server, you can toggle whether to look
 at only the folders you are subscribed to, or all folders with the
-<span class="emphasis"><em>toggle-subscribed</em></span> command.  See also the 
-<a href="reference.html#imap-list-subscribed" title="3.89. imap_list_subscribed">$imap_list_subscribed</a> variable.
+<span class="emphasis"><em>toggle-subscribed</em></span> command.  See also the
+<a class="link" href="reference.html#imap-list-subscribed" title="3.89. imap_list_subscribed">$imap_list_subscribed</a> variable.
 </p><p>
 Polling for new mail on an IMAP server can cause noticeable delays. So, you'll
 want to carefully tune the
-<a href="reference.html#mail-check" title="3.104. mail_check">$mail_check</a>
+<a class="link" href="reference.html#mail-check" title="3.105. mail_check">$mail_check</a>
 and
-<a href="reference.html#timeout" title="3.287. timeout">$timeout</a>
+<a class="link" href="reference.html#timeout" title="3.288. timeout">$timeout</a>
 variables. Personally I use
-
 </p><pre class="screen">
 set mail_check=90
 set timeout=15
 </pre><p>
-
 with relatively good results over my slow modem line.
-</p><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 Note that if you are using mbox as the mail store on UW servers prior to
 v12.250, the server has been reported to disconnect a client if another client
 selects the same folder.
-</p><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id475555"></a>4.1. The Folder Browser</h3></div></div></div><p>
+</p></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="imap-browser"></a>4.1. The Folder Browser</h3></div></div></div><p>
 As of version 1.2, mutt supports browsing mailboxes on an IMAP
 server. This is mostly the same as the local file browser, with the
 following differences:
-
 </p><div class="itemizedlist"><ul type="disc"><li><p>
 In lieu of file permissions, mutt displays the string "IMAP",
 possibly followed by the symbol "+", indicating
 that the entry contains both messages and subfolders. On
 Cyrus-like servers folders will often contain both messages and
-subfolders. 
+subfolders.
 </p></li><li><p>
 For the case where an entry can contain both messages and
 subfolders, the selection key (bound to <code class="literal">enter</code> by default)
@@ -135,9 +154,7 @@ You can create, delete and rename mailboxes with the
 <code class="literal">d</code> and <code class="literal">r</code>, respectively). You may also
 <code class="literal">subscribe</code> and <code class="literal">unsubscribe</code> to mailboxes (normally
 these are bound to <code class="literal">s</code> and <code class="literal">u</code>, respectively).
-</p></li></ul></div><p>
-
-</p></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id475675"></a>4.2. Authentication</h3></div></div></div><p>
+</p></li></ul></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="imap-authentication"></a>4.2. Authentication</h3></div></div></div><p>
 Mutt supports four authentication methods with IMAP servers: SASL,
 GSSAPI, CRAM-MD5, and LOGIN (there is a patch by Grant Edwards to add
 NTLM authentication for you poor exchange users out there, but it has
@@ -157,40 +174,37 @@ installed on your system and compile mutt with the <span class="emphasis"><em>--
 Mutt will try whichever methods are compiled in and available on the server,
 in the following order: SASL, ANONYMOUS, GSSAPI, CRAM-MD5, LOGIN.
 </p><p>
-There are a few variables which control authentication: 
-
+There are a few variables which control authentication:
 </p><div class="itemizedlist"><ul type="disc"><li><p>
-<a href="reference.html#imap-user" title="3.95. imap_user">$imap_user</a> - controls
+<a class="link" href="reference.html#imap-user" title="3.96. imap_user">$imap_user</a> - controls
 the username under which you request authentication on the IMAP server,
 for all authenticators. This is overridden by an explicit username in
 the mailbox path (ie by using a mailbox name of the form
 <code class="literal">{user@host}</code>).
 </p></li><li><p>
-<a href="reference.html#imap-pass" title="3.91. imap_pass">$imap_pass</a> - a
+<a class="link" href="reference.html#imap-pass" title="3.91. imap_pass">$imap_pass</a> - a
 password which you may preset, used by all authentication methods where
 a password is needed.
 </p></li><li><p>
-<a href="reference.html#imap-authenticators" title="3.83. imap_authenticators">$imap_authenticators</a> - a colon-delimited list of IMAP
+<a class="link" href="reference.html#imap-authenticators" title="3.83. imap_authenticators">$imap_authenticators</a> - a colon-delimited list of IMAP
 authentication methods to try, in the order you wish to try them. If
 specified, this overrides mutt's default (attempt everything, in the order
 listed above).
-</p></li></ul></div><p>
-
-</p></div></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="smtp"></a>5. SMTP Support</h2></div></div></div><p>
+</p></li></ul></div></div></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="smtp"></a>5. SMTP Support</h2></div></div></div><p>
 Besides supporting traditional mail delivery through a
 sendmail-compatible program, mutt supports delivery through SMTP if it
 was configured and built with <code class="literal">--enable-smtp</code>.
 </p><p>
-If the configuration variable 
-<a href="reference.html#smtp-url" title="3.269. smtp_url">$smtp_url</a> is set, mutt
-will contact the given SMTP server to deliver messages; if it is unset, 
-mutt will use the program specified by <a href="reference.html#sendmail" title="3.257. sendmail">$sendmail</a>.
+If the configuration variable
+<a class="link" href="reference.html#smtp-url" title="3.270. smtp_url">$smtp_url</a> is set, mutt
+will contact the given SMTP server to deliver messages; if it is unset,
+mutt will use the program specified by <a class="link" href="reference.html#sendmail" title="3.258. sendmail">$sendmail</a>.
 </p><p>
-For details on the URL syntax, please see <a href="optionalfeatures.html#url-syntax" title="1.2. URL syntax">Section 1.2, “URL syntax”</a>.
+For details on the URL syntax, please see <a class="xref" href="optionalfeatures.html#url-syntax" title="1.2. URL syntax">Section 1.2, “URL syntax”</a>.
 </p><p>
 The built-in SMTP support supports encryption (the <code class="literal">smtps</code> protocol
 using SSL or TLS) as well as SMTP authentication using SASL. The authentication mechanisms
-for SASL are specified in <a href="reference.html#smtp-authenticators" title="3.267. smtp_authenticators">$smtp_authenticators</a>
+for SASL are specified in <a class="link" href="reference.html#smtp-authenticators" title="3.268. smtp_authenticators">$smtp_authenticators</a>
 defaulting to an empty list which makes mutt try all available methods
 from most-secure to least-secure.
 </p></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="account-hook"></a>6. Managing multiple accounts</h2></div></div></div><p>
@@ -199,22 +213,23 @@ you may find managing all the authentication settings inconvenient and
 error-prone. The account-hook command may help. This hook works like
 folder-hook but is invoked whenever you access a remote mailbox
 (including inside the folder browser), not just when you open the
-mailbox.
+mailbox which includes (for example) polling for new mail, storing Fcc
+messages and saving messages to a folder. As a consequence,
+account-hook should only be used to set connection-related settings such
+as passwords or tunnel commands but not settings such as sender
+address or name (because in general it should be considered unpredictable
+which account-hook was last used).
 </p><p>
 Some examples:
-</p><p>
-
 </p><pre class="screen">
 account-hook . 'unset imap_user; unset imap_pass; unset tunnel'
 account-hook imap://host1/ 'set imap_user=me1 imap_pass=foo'
 account-hook imap://host2/ 'set tunnel="ssh host2 /usr/libexec/imapd"'
 account-hook smtp://user@host3/ 'set tunnel="ssh host3 /usr/libexec/smtpd"'
-</pre><p>
-
-</p></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="caching"></a>7. Local caching</h2></div></div></div><p>
+</pre></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="caching"></a>7. Local caching</h2></div></div></div><p>
 Mutt contains two types of local caching: <span class="emphasis"><em>(1)</em></span>
-the so-called ``header caching'' and <span class="emphasis"><em>(2)</em></span> the
-so-called ``body caching'' which are both described in this section.
+the so-called “<span class="quote">header caching</span>” and <span class="emphasis"><em>(2)</em></span> the
+so-called “<span class="quote">body caching</span>” which are both described in this section.
 </p><p>
 Header caching is optional as it depends on external libraries, body
 caching is always enabled if mutt is compiled with POP and/or IMAP
@@ -230,9 +245,9 @@ thousands of single files (since Maildir and MH use one file per message.)
 Header caching can be enabled via the configure script and the
 <span class="emphasis"><em>--enable-hcache</em></span> option. It's not turned on
 by default because external database libraries are required: one
-of qdbm, gdbm or bdb must be present.
+of tokyocabinet, qdbm, gdbm or bdb must be present.
 </p><p>
-If enabled, <a href="reference.html#header-cache" title="3.107. header_cache">$header_cache</a> can be
+If enabled, <a class="link" href="reference.html#header-cache" title="3.108. header_cache">$header_cache</a> can be
 used to either point to a file or a directory. If set to point to
 a file, one database file for all folders will be used (which may
 result in lower performance), but one file per folder if it points
@@ -244,11 +259,9 @@ folders will be named by the MD5 checksums of their path. These database
 files may be safely removed if a system is short on space. You
 can compute the name of the header cache file for a particular local folder
 through a command like the following:
-</p><p>
 </p><pre class="screen">
 $ printf '%s' '/path/to/folder' | md5sum
 </pre><p>
-</p><p>
 The <code class="literal">md5sum</code> command may also be
 named <code class="literal">md5</code>, depending on your operating system.
 </p></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="body-caching"></a>7.2. Body caching</h3></div></div></div><p>
@@ -261,10 +274,10 @@ whole message bodies. This results in faster display of messages
 for POP and IMAP folders because messages usually have to be
 downloaded only once.
 </p><p>
-For configuration, the variable <a href="reference.html#message-cachedir" title="3.132. message_cachedir">$message_cachedir</a> must point to a
+For configuration, the variable <a class="link" href="reference.html#message-cachedir" title="3.133. message_cachedir">$message_cachedir</a> must point to a
 directory. There, mutt will create a hierarchy of subdirectories
 named like: <code class="literal">proto:user@hostname</code> where
-<code class="literal">proto</code> is either ``pop'' or ``imap.'' Within
+<code class="literal">proto</code> is either “<span class="quote">pop</span>” or “<span class="quote">imap.</span>” Within
 there for each folder, mutt stores messages in single files (just
 like Maildir) so that with manual symlink creation these cache
 directories can be examined with mutt as read-only Maildir folders.
@@ -279,7 +292,7 @@ disk space freed by removing messages is re-used.
 </p><p>
 For body caches, mutt can keep the local cache in sync with the
 remote mailbox if the
-<a href="reference.html#message-cache-clean" title="3.133. message_cache_clean">$message_cache_clean</a>
+<a class="link" href="reference.html#message-cache-clean" title="3.134. message_cache_clean">$message_cache_clean</a>
 variable is set. Cleaning means to remove messages from the cache which
 are no longer present in the mailbox which only happens when other mail
 clients or instances of mutt using a different body cache location
@@ -287,8 +300,8 @@ delete messages (Mutt itself removes deleted messages from the cache
 when syncing a mailbox). As cleaning can take a noticeable amount of time,
 it should not be set in general but only occasionally.
 </p></div></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="exact-address"></a>8. Exact address generation</h2></div></div></div><p>
-Mutt supports the ``Name &lt;user@host&gt;'' address syntax for reading and
-writing messages, the older ``user@host (Name)'' syntax is only supported when
+Mutt supports the “<span class="quote">Name &lt;user@host&gt;</span>” address syntax for reading and
+writing messages, the older “<span class="quote">user@host (Name)</span>” syntax is only supported when
 reading messages. The <span class="emphasis"><em>--enable-exact-address</em></span>
 switch can be given to configure to build it with write-support
 for the latter syntax. <code class="literal">EXACT_ADDRESS</code> in the output of

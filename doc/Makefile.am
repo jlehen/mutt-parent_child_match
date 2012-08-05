@@ -27,8 +27,7 @@ EXTRA_DIST = dotlock.man		\
 	smime-notes.txt			\
 	Muttrc Muttrc.head stamp-doc-rc \
 	makedoc.c makedoc-defs.h 	\
-	db-cleanup.xsl			\
-	html.xsl chunk.xsl $(BUILT_DISTFILES)
+	mutt.css mutt.xsl html.xsl chunk.xsl $(BUILT_DISTFILES)
 
 HTML_DOCFILES = manual.html index.html intro.html gettingstarted.html \
 	configuration.html mimesupport.html advancedusage.html \
@@ -40,7 +39,6 @@ srcdir_DOCFILES = PGP-Notes.txt applying-patches.txt	\
 	devel-notes.txt patch-notes.txt smime-notes.txt
 
 topsrcdir_DOCFILES = COPYRIGHT GPL INSTALL ChangeLog	\
-	ChangeLog.old					\
 	README NEWS TODO README.SECURITY README.SSL 
 
 all: makedoc-all
@@ -54,7 +52,7 @@ install-data-local: makedoc-all instdoc
 	./instdoc mutt.1 $(DESTDIR)$(mandir)/man1/mutt.1
 	./instdoc $(srcdir)/muttbug.man $(DESTDIR)$(mandir)/man1/flea.1
 	./instdoc $(srcdir)/muttbug.man $(DESTDIR)$(mandir)/man1/muttbug.1
-	./instdoc $(srcdir)/dotlock.man \
+	test x@DOTLOCK_TARGET@ = x || ./instdoc $(srcdir)/dotlock.man \
 		$(DESTDIR)$(mandir)/man1/mutt_dotlock.1
 	./instdoc muttrc.man $(DESTDIR)$(mandir)/man5/muttrc.5
 	./instdoc $(srcdir)/mbox.man $(DESTDIR)$(mandir)/man5/mbox.5
@@ -99,11 +97,10 @@ uninstall-local:
 	done
 
 check:
-manual.txt: manual.html db-cleanup.xsl
-	-xsltproc --nonet -o manual-txt.html $(srcdir)/db-cleanup.xsl manual.html || cp manual.html manual-txt.html
-	-lynx -dump -nolist -with_backspaces manual-txt.html > $@ || \
-	w3m -dump manual-txt.html > $@ || \
-	elinks -dump -no-numbering -no-references manual-txt.html > $@
+manual.txt: manual.html
+	-LC_ALL=C lynx -dump -nolist -with_backspaces manual.html > $@ || \
+	LC_ALL=C w3m -dump manual.html > $@ || \
+	LC_ALL=C elinks -dump -no-numbering -no-references manual.html | sed -e 's,\\001, ,g' > $@
 
 Muttrc: stamp-doc-rc
 
@@ -114,10 +111,10 @@ stamp-doc-rc: $(top_srcdir)/init.h makedoc$(EXEEXT) $(srcdir)/Muttrc.head
 	  $(top_srcdir)/init.h | ./makedoc$(EXEEXT) -c >> Muttrc
 	touch stamp-doc-rc
 
-manual.html: $(srcdir)/html.xsl stamp-doc-xml
+manual.html: $(srcdir)/html.xsl $(srcdir)/mutt.xsl stamp-doc-xml $(srcdir)/mutt.css
 	-xsltproc --nonet -o $@ $(srcdir)/html.xsl manual.xml
 
-stamp-doc-chunked: $(srcdir)/chunk.xsl stamp-doc-xml
+stamp-doc-chunked: $(srcdir)/chunk.xsl $(srcdir)/mutt.xsl stamp-doc-xml $(srcdir)/mutt.css
 	-xsltproc --nonet $(srcdir)/chunk.xsl manual.xml
 	touch stamp-doc-chunked
 
@@ -133,6 +130,10 @@ manual.tex: stamp-doc-xml
 
 validate: stamp-doc-xml
 	xmllint --noout --noblanks --postvalid manual.xml
+
+spellcheck:
+	-aspell -l en --mode sgml -c manual.xml.head && \
+	-aspell -l en --mode nroff -c muttrc.man.head
 
 clean-local:
 	rm -f *~ *.html *.orig *.rej  stamp-doc-* *.ps mutt.1 muttrc.man

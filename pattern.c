@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2006 Michael R. Elkins <me@mutt.org>, and others
+ * Copyright (C) 1996-2000,2006-7 Michael R. Elkins <me@mutt.org>, and others
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ static int eat_date (pattern_t *pat, BUFFER *, BUFFER *);
 static int eat_range (pattern_t *pat, BUFFER *, BUFFER *);
 static int patmatch (const pattern_t *pat, const char *buf);
 
-struct pattern_flags
+static struct pattern_flags
 {
   int tag;	/* character used to represent this op */
   int op;	/* operation to perform */
@@ -118,19 +118,6 @@ static char LastSearchExpn[LONG_STRING] = { 0 }; /* expanded version of
 #define M_PDR_ERRORDONE	(M_PDR_ERROR | M_PDR_DONE)
 
 
-int mutt_getvaluebychar (char ch, struct mapping_t *table)
-{
-  int i;
-
-  for (i = 0; table[i].name; i++)
-  {
-    if (ch == table[i].name[0])
-      return table[i].value;
-  }
-
-  return (-1);
-}
-
 /* if no uppercase letters are given, do a case-insensitive search */
 int mutt_which_case (const char *s)
 {
@@ -193,9 +180,9 @@ msg_search (CONTEXT *ctx, pattern_t* pat, int msgno)
             && !crypt_valid_passphrase(h->security))
 	{
 	  mx_close_message (&msg);
-	  if (fp)
+	  if (s.fpout)
 	  {
-	    fclose (fp);
+	    fclose (s.fpout);
 	    unlink (tempfile);
 	  }
 	  return (0);
@@ -263,7 +250,7 @@ msg_search (CONTEXT *ctx, pattern_t* pat, int msgno)
   return match;
 }
 
-int eat_regexp (pattern_t *pat, BUFFER *s, BUFFER *err)
+static int eat_regexp (pattern_t *pat, BUFFER *s, BUFFER *err)
 {
   BUFFER buf;
   int r;

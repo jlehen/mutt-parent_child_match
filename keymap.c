@@ -26,6 +26,9 @@
 #include "keymap.h"
 #include "mapping.h"
 #include "mutt_crypt.h"
+#ifdef USE_IMAP
+#include "imap/imap.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -384,17 +387,39 @@ int km_dokey (int menu)
 
   FOREVER
   {
-    /* ncurses doesn't return on resized screen when timeout is set to zero */
-    if (menu != MENU_EDITOR)
-      timeout ((Timeout > 0 ? Timeout : 60) * 1000);
+    i = Timeout > 0 ? Timeout : 60;
+#ifdef USE_IMAP
+    /* keepalive may need to run more frequently than Timeout allows */
+    if (ImapKeepalive)
+    {
+      if (ImapKeepalive >= i)
+      	imap_keepalive ();
+      else
+	while (ImapKeepalive && ImapKeepalive < i)
+	{
+	  timeout (ImapKeepalive * 1000);
+	  tmp = mutt_getch ();
+	  timeout (-1);
+	  if (tmp.ch != -2)
+	    /* something other than timeout */
+	    goto gotkey;
+	  i -= ImapKeepalive;
+	  imap_keepalive ();
+	}
+    }
+#endif
 
+    timeout (i * 1000);
     tmp = mutt_getch();
+    timeout (-1);
 
-    if (menu != MENU_EDITOR)
-      timeout (-1); /* restore blocking operation */
+    /* hide timeouts from line editor */
+    if (menu == MENU_EDITOR && tmp.ch == -2)
+      continue;
 
+  gotkey:
     LastKey = tmp.ch;
-    if (LastKey == -1)
+    if (LastKey < 0)
       return -1;
 
     /* do we have an op already? */
@@ -975,4 +1000,5 @@ void mutt_what_key (void)
   while (ch != ERR && ch != ctrl ('G'));
 
   mutt_flushinp();
+  mutt_clear_error();
 }

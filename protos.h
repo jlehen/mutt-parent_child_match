@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ void set_quadoption (int, int);
 int query_quadoption (int, const char *);
 int quadoption (int);
 
-char* mutt_extract_message_id (const char *);
+char* mutt_extract_message_id (const char *, const char **);
 
 ADDRESS *mutt_default_from (void);
 ADDRESS *mutt_get_address (ENVELOPE *, char **);
@@ -230,7 +230,7 @@ void mutt_parse_part (FILE *, BODY *);
 void mutt_perror (const char *);
 void mutt_prepare_envelope (ENVELOPE *, int);
 void mutt_unprepare_envelope (ENVELOPE *);
-void mutt_pretty_mailbox (char *);
+void mutt_pretty_mailbox (char *, size_t);
 void mutt_pretty_size (char *, size_t, LOFF_T);
 void mutt_pipe_message (HEADER *);
 void mutt_print_message (HEADER *);
@@ -265,6 +265,8 @@ int mutt_add_to_rx_list (RX_LIST **list, const char *s, int flags, BUFFER *err);
 int mutt_addr_is_user (ADDRESS *);
 int mutt_addwch (wchar_t);
 int mutt_alias_complete (char *, size_t);
+void mutt_alias_add_reverse (ALIAS *t);
+void mutt_alias_delete_reverse (ALIAS *t);
 int mutt_alloc_color (int fg, int bg);
 int mutt_any_key_to_continue (const char *);
 int mutt_buffy_check (int);
@@ -371,6 +373,7 @@ int mutt_write_mime_body (BODY *, FILE *);
 int mutt_write_mime_header (BODY *, FILE *);
 int mutt_write_one_header (FILE *fp, const char *tag, const char *value, const char *pfx, int wraplen);
 int mutt_write_rfc822_header (FILE *, ENVELOPE *, BODY *, int, int);
+void mutt_write_references (LIST *, FILE *, int);
 int mutt_yesorno (const char *, int);
 void mutt_set_header_color(CONTEXT *, HEADER *);
 void mutt_sleep (short);
@@ -523,4 +526,26 @@ int ioctl (int, int, ...);
 void ci_bounce_message (HEADER *, int *);
 int ci_send_message (int, HEADER *, char *, CONTEXT *, HEADER *);
 
+/* prototypes for compatibility functions */
+
+#ifndef HAVE_SETENV
+int setenv (const char *, const char *, int);
+#endif
+
+#ifndef HAVE_STRCASECMP
+int strcasecmp (char *, char *);
+int strncasecmp (char *, char *, size_t);
+#endif
+
+#ifndef HAVE_STRDUP
+char *strdup (const char *);
+#endif
+
+#ifndef HAVE_STRSEP
+char *strsep (char **, const char *);
+#endif
+
+#ifndef HAVE_STRTOK_R
+char *strtok_r (char *, const char *, char **);
+#endif
 

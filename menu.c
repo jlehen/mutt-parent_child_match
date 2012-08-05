@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002 Michael R. Elkins <me@mutt.org>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -25,16 +25,14 @@
 #include "mutt_menu.h"
 #include "mbyte.h"
 
-#ifdef USE_IMAP
-#include "imap.h"
-#endif
-
 #include <string.h>
 #include <stdlib.h>
 
 extern int Charset_is_utf8; /* FIXME: bad modularisation */
 
 extern size_t UngetCount;
+
+char* SearchBuffers[MENU_MAX];
 
 static void print_enriched_string (int attr, unsigned char *s, int do_color)
 {
@@ -154,7 +152,7 @@ static void menu_make_entry (char *s, int l, MUTTMENU *menu, int i)
     menu->make_entry (s, l, menu, i);
 }
 
-void menu_pad_string (char *s, size_t n)
+static void menu_pad_string (char *s, size_t n)
 {
   char *scratch = safe_strdup (s);
   int shift = option (OPTARROWCURSOR) ? 3 : 0;
@@ -355,7 +353,7 @@ void menu_redraw_current (MUTTMENU *menu)
   menu->redraw &= REDRAW_STATUS;
 }
 
-void menu_redraw_prompt (MUTTMENU *menu)
+static void menu_redraw_prompt (MUTTMENU *menu)
 {
   if (menu->dialog) 
   {
@@ -481,7 +479,7 @@ void menu_prev_line (MUTTMENU *menu)
  * halfdown: jumplen == pagelen/2
  */
 #define DIRECTION ((neg * 2) + 1)
-void menu_length_jump (MUTTMENU *menu, int jumplen)
+static void menu_length_jump (MUTTMENU *menu, int jumplen)
 {
   int tmp, neg = (jumplen >= 0) ? 0 : -1;
   int c = MIN (MenuContext, menu->pagelen / 2);
@@ -642,7 +640,7 @@ void menu_current_bottom (MUTTMENU *menu)
     mutt_error _("No entries.");
 }
 
-void menu_next_entry (MUTTMENU *menu)
+static void menu_next_entry (MUTTMENU *menu)
 {
   if (menu->current < menu->max - 1)
   {
@@ -653,7 +651,7 @@ void menu_next_entry (MUTTMENU *menu)
     mutt_error _("You are on the last entry.");
 }
 
-void menu_prev_entry (MUTTMENU *menu)
+static void menu_prev_entry (MUTTMENU *menu)
 {
   if (menu->current)
   {
@@ -677,10 +675,19 @@ static int menu_search_generic (MUTTMENU *m, regex_t *re, int n)
   return (regexec (re, buf, 0, NULL, 0));
 }
 
-MUTTMENU *mutt_new_menu (void)
+void mutt_menu_init (void)
+{
+  int i;
+
+  for (i = 0; i < MENU_MAX; i++)
+    SearchBuffers[i] = NULL;
+}
+
+MUTTMENU *mutt_new_menu (int menu)
 {
   MUTTMENU *p = (MUTTMENU *) safe_calloc (1, sizeof (MUTTMENU));
 
+  p->menu = menu;
   p->current = 0;
   p->top = 0;
   p->offset = 1;
@@ -695,9 +702,7 @@ void mutt_menuDestroy (MUTTMENU **p)
 {
   int i;
 
-  FREE (&(*p)->searchBuf);
-
-  if ((*p)->dialog) 
+  if ((*p)->dialog)
   {
     for (i=0; i < (*p)->max; i++)
       FREE (&(*p)->dialog[i]);
@@ -713,24 +718,30 @@ void mutt_menuDestroy (MUTTMENU **p)
 
 static int menu_search (MUTTMENU *menu, int op)
 {
-  int r;
+  int r, wrap = 0;
   int searchDir;
   regex_t re;
   char buf[SHORT_STRING];
+  char* searchBuf = menu->menu >= 0 && menu->menu < MENU_MAX ?
+                    SearchBuffers[menu->menu] : NULL;
 
   if (op != OP_SEARCH_NEXT && op != OP_SEARCH_OPPOSITE)
   {
-    strfcpy (buf, menu->searchBuf ? menu->searchBuf : "", sizeof (buf));
+    strfcpy (buf, searchBuf ? searchBuf : "", sizeof (buf));
     if (mutt_get_field ((op == OP_SEARCH) ? _("Search for: ") : 
                                             _("Reverse search for: "),
 			 buf, sizeof (buf), M_CLEAR) != 0 || !buf[0])
       return (-1);
-    mutt_str_replace (&menu->searchBuf, buf);
+    if (menu->menu >= 0 && menu->menu < MENU_MAX)
+    {
+      mutt_str_replace (&SearchBuffers[menu->menu], buf);
+      searchBuf = SearchBuffers[menu->menu];
+    }
     menu->searchDir = (op == OP_SEARCH) ? M_SEARCH_DOWN : M_SEARCH_UP;
   }
   else 
   {
-    if (!menu->searchBuf)
+    if (!searchBuf || !*searchBuf)
     {
       mutt_error _("No search pattern.");
       return (-1);
@@ -741,7 +752,7 @@ static int menu_search (MUTTMENU *menu, int op)
   if (op == OP_SEARCH_OPPOSITE)
     searchDir = -searchDir;
 
-  if ((r = REGCOMP (&re, menu->searchBuf, REG_NOSUB | mutt_which_case (menu->searchBuf))) != 0)
+  if ((r = REGCOMP (&re, searchBuf, REG_NOSUB | mutt_which_case (searchBuf))) != 0)
   {
     regerror (r, &re, buf, sizeof (buf));
     regfree (&re);
@@ -750,6 +761,9 @@ static int menu_search (MUTTMENU *menu, int op)
   }
 
   r = menu->current + searchDir;
+search_next:
+  if (wrap)
+    mutt_message (_("Search wrapped to top."));
   while (r >= 0 && r < menu->max)
   {
     if (menu->search (menu, &re, r) == 0)
@@ -761,6 +775,11 @@ static int menu_search (MUTTMENU *menu, int op)
     r += searchDir;
   }
 
+  if (option (OPTWRAPSEARCH) && wrap++ == 0)
+  {
+    r = searchDir == 1 ? 0 : menu->max - 1;
+    goto search_next;
+  }
   regfree (&re);
   mutt_error _("Not found.");
   return (-1);
@@ -792,7 +811,7 @@ static int menu_dialog_dokey (MUTTMENU *menu, int *ip)
 
   ch = mutt_getch ();
 
-  if (ch.ch == -1)
+  if (ch.ch < 0)
   {
     *ip = -1;
     return 0;
@@ -852,10 +871,6 @@ int mutt_menuLoop (MUTTMENU *menu)
     
     
     mutt_curs_set (0);
-
-#ifdef USE_IMAP
-    imap_keepalive ();
-#endif
 
     if (menu_redraw (menu) == OP_REDRAW)
       return OP_REDRAW;

@@ -41,7 +41,7 @@
 char *mutt_read_rfc822_line (FILE *f, char *line, size_t *linelen)
 {
   char *buf = line;
-  char ch;
+  int ch;
   size_t offset = 0;
 
   FOREVER
@@ -92,66 +92,21 @@ char *mutt_read_rfc822_line (FILE *f, char *line, size_t *linelen)
 static LIST *mutt_parse_references (char *s, int in_reply_to)
 {
   LIST *t, *lst = NULL;
-  int m, n = 0;
-  char *o = NULL, *new, *at;
+  char *m;
+  const char *sp;
 
-  while ((s = strtok (s, " \t;")) != NULL)
+  m = mutt_extract_message_id (s, &sp);
+  while (m)
   {
-    /*
-     * some mail clients add other garbage besides message-ids, so do a quick
-     * check to make sure this looks like a valid message-id
-     * some idiotic clients also break their message-ids between lines, deal
-     * with that too (give up if it's more than two lines, though)
-     */
-    t = NULL;
-    new = NULL;
+    t = safe_malloc (sizeof (LIST));
+    t->data = m;
+    t->next = lst;
+    lst = t;
 
-    if (*s == '<')
-    {
-      n = strlen (s);
-      if (s[n-1] != '>')
-      {
-	o = s;
-	s = NULL;
-	continue;
-      }
-
-      new = safe_strdup (s);
-    }
-    else if (o)
-    {
-      m = strlen (s);
-      if (s[m - 1] == '>')
-      {
-	new = safe_malloc (sizeof (char) * (n + m + 1));
-	strcpy (new, o);	/* __STRCPY_CHECKED__ */
-	strcpy (new + n, s);	/* __STRCPY_CHECKED__ */
-      }
-    }
-    if (new)
-    {
-      /* make sure that this really does look like a message-id.
-       * it should have exactly one @, and if we're looking at
-       * an in-reply-to header, make sure that the part before
-       * the @ has more than eight characters or it's probably
-       * an email address
-       */
-      if (!(at = strchr (new, '@')) || strchr (at + 1, '@')
-	  || (in_reply_to && at - new <= 8))
-	FREE (&new);
-      else
-      {
-	t = (LIST *) safe_malloc (sizeof (LIST));
-	t->data = new;
-	t->next = lst;
-	lst = t;
-      }
-    }
-    o = NULL;
-    s = NULL;
+    m = mutt_extract_message_id (NULL, &sp);
   }
 
-  return (lst);
+  return lst;
 }
 
 int mutt_check_encoding (const char *c)
@@ -341,12 +296,12 @@ void mutt_parse_content_type (char *s, BODY *ct)
     /* Some pre-RFC1521 gateways still use the "name=filename" convention,
      * but if a filename has already been set in the content-disposition,
      * let that take precedence, and don't set it here */
-    if ((pc = mutt_get_parameter( "name", ct->parameter)) != 0 && !ct->filename)
+    if ((pc = mutt_get_parameter( "name", ct->parameter)) && !ct->filename)
       ct->filename = safe_strdup(pc);
     
 #ifdef SUN_ATTACHMENT
     /* this is deep and utter perversion */
-    if ((pc = mutt_get_parameter ("conversions", ct->parameter)) != 0)
+    if ((pc = mutt_get_parameter ("conversions", ct->parameter)))
       ct->encoding = mutt_check_encoding (pc);
 #endif
     
@@ -425,9 +380,9 @@ static void parse_content_disposition (char *s, BODY *ct)
   {
     s++;
     SKIPWS (s);
-    if ((s = mutt_get_parameter ("filename", (parms = parse_parameters (s)))) != 0)
+    if ((s = mutt_get_parameter ("filename", (parms = parse_parameters (s)))))
       mutt_str_replace (&ct->filename, s);
-    if ((s = mutt_get_parameter ("name", parms)) != 0)
+    if ((s = mutt_get_parameter ("name", parms)))
       ct->form_name = safe_strdup (s);
     mutt_free_parameter (&parms);
   }
@@ -925,20 +880,64 @@ time_t mutt_parse_date (const char *s, HEADER *h)
   return (mutt_mktime (&tm, 0) + tz_offset);
 }
 
-/* extract the first substring that looks like a message-id */
-char *mutt_extract_message_id (const char *s)
+/* extract the first substring that looks like a message-id.
+ * call back with NULL for more (like strtok).
+ */
+char *mutt_extract_message_id (const char *s, const char **saveptr)
 {
-  const char *p;
-  char *r;
-  size_t l;
+  const char *o, *onull, *p;
+  char *ret = NULL;
 
-  if ((s = strchr (s, '<')) == NULL || (p = strchr (s, '>')) == NULL)
-    return (NULL);
-  l = (size_t)(p - s) + 1;
-  r = safe_malloc (l + 1);
-  memcpy (r, s, l);
-  r[l] = 0;
-  return (r);
+  if (s)
+    p = s;
+  else if (saveptr)
+    p = *saveptr;
+  else
+    return NULL;
+
+  for (s = NULL, o = NULL, onull = NULL;
+       (p = strpbrk (p, "<> \t;")) != NULL; ++p)
+  {
+    if (*p == '<')
+    {
+      s = p; 
+      o = onull = NULL;
+      continue;
+    }
+
+    if (!s)
+      continue;
+
+    if (*p == '>')
+    {
+      size_t olen = onull - o, slen = p - s + 1;
+      ret = safe_malloc (olen + slen + 1);
+      if (o)
+	memcpy (ret, o, olen);
+      memcpy (ret + olen, s, slen);
+      ret[olen + slen] = '\0';
+      if (saveptr)
+	*saveptr = p + 1; /* next call starts after '>' */
+      return ret;
+    }
+
+    /* some idiotic clients break their message-ids between lines */
+    if (s == p) 
+      /* step past another whitespace */
+      s = p + 1;
+    else if (o)
+      /* more than two lines, give up */
+      s = o = onull = NULL;
+    else
+    {
+      /* remember the first line, start looking for the second */
+      o = s;
+      onull = p;
+      s = p + 1;
+    }
+  }
+
+  return NULL;
 }
 
 void mutt_parse_mime_message (CONTEXT *ctx, HEADER *cur)
@@ -1132,7 +1131,7 @@ int mutt_parse_rfc822_line (ENVELOPE *e, HEADER *hdr, char *line, char *p, short
     {
       /* We add a new "Message-ID:" when building a message */
       FREE (&e->message_id);
-      e->message_id = mutt_extract_message_id (p);
+      e->message_id = mutt_extract_message_id (p, NULL);
       matched = 1;
     }
     else if (!ascii_strncasecmp (line + 1, "ail-", 4))
@@ -1485,7 +1484,7 @@ ADDRESS *mutt_parse_adrlist (ADDRESS *p, const char *s)
 }
 
 /* Compares mime types to the ok and except lists */
-int count_body_parts_check(LIST **checklist, BODY *b, int dflt)
+static int count_body_parts_check(LIST **checklist, BODY *b, int dflt)
 {
   LIST *type;
   ATTACH_MATCH *a;
@@ -1521,7 +1520,7 @@ int count_body_parts_check(LIST **checklist, BODY *b, int dflt)
 #define AT_COUNT(why)   { shallcount = 1; }
 #define AT_NOCOUNT(why) { shallcount = 0; }
 
-int count_body_parts (BODY *body, int flags)
+static int count_body_parts (BODY *body, int flags)
 {
   int count = 0;
   int shallcount, shallrecurse;
@@ -1600,14 +1599,14 @@ int count_body_parts (BODY *body, int flags)
       count++;
     bp->attach_qualifies = shallcount ? 1 : 0;
 
-    dprint(5, (debugfile, "cbp: %08x shallcount = %d\n", (unsigned int)bp, shallcount));
+    dprint(5, (debugfile, "cbp: %p shallcount = %d\n", (void *)bp, shallcount));
 
     if (shallrecurse)
     {
-      dprint(5, (debugfile, "cbp: %08x pre count = %d\n", (unsigned int)bp, count));
+      dprint(5, (debugfile, "cbp: %p pre count = %d\n", (void *)bp, count));
       bp->attach_count = count_body_parts(bp->parts, flags & ~M_PARTS_TOPLEVEL);
       count += bp->attach_count;
-      dprint(5, (debugfile, "cbp: %08x post count = %d\n", (unsigned int)bp, count));
+      dprint(5, (debugfile, "cbp: %p post count = %d\n", (void *)bp, count));
     }
   }
 

@@ -136,7 +136,7 @@ int mmdf_parse_mailbox (CONTEXT *ctx)
       count++;
       if (!ctx->quiet)
 	mutt_progress_update (&progress, count,
-			      (int)loc / (ctx->size / 100 + 1));
+			      (int) (loc / (ctx->size / 100 + 1)));
 
       if (ctx->msgcount == ctx->hdrmax)
 	mx_alloc_memory (ctx);
@@ -302,7 +302,7 @@ int mbox_parse_mailbox (CONTEXT *ctx)
 
       if (!ctx->quiet)
 	mutt_progress_update (&progress, count,
-			      (int)(ftell (ctx->fp) / (ctx->size / 100 + 1)));
+			      (int)(ftello (ctx->fp) / (ctx->size / 100 + 1)));
 
       if (ctx->msgcount == ctx->hdrmax)
 	mx_alloc_memory (ctx);
@@ -799,7 +799,7 @@ int mbox_sync_mailbox (CONTEXT *ctx, int *index_hint)
   for (i = first, j = 0; i < ctx->msgcount; i++)
   {
     if (!ctx->quiet)
-      mutt_progress_update (&progress, i, (int)(ftell (ctx->fp) / (ctx->size / 100 + 1)));
+      mutt_progress_update (&progress, i, (int)(ftello (ctx->fp) / (ctx->size / 100 + 1)));
     /*
      * back up some information which is needed to restore offsets when
      * something fails.
@@ -833,7 +833,8 @@ int mbox_sync_mailbox (CONTEXT *ctx, int *index_hint)
        */
       newOffset[i - first].hdr = ftello (fp) + offset;
 
-      if (mutt_copy_message (fp, ctx, ctx->hdrs[i], M_CM_UPDATE, CH_FROM | CH_UPDATE | CH_UPDATE_LEN) == -1)
+      if (mutt_copy_message (fp, ctx, ctx->hdrs[i], M_CM_UPDATE,
+                             CH_FROM | CH_UPDATE | CH_UPDATE_LEN) != 0)
       {
 	mutt_perror (tempfile);
 	mutt_sleep (5);
@@ -955,7 +956,7 @@ int mbox_sync_mailbox (CONTEXT *ctx, int *index_hint)
     rename (tempfile, savefile);
     mutt_unblock_signals ();
     mx_fastclose_mailbox (ctx);
-    mutt_pretty_mailbox (savefile);
+    mutt_pretty_mailbox (savefile, sizeof (savefile));
     mutt_error (_("Write failed!  Saved partial mailbox to %s"), savefile);
     mutt_sleep (5);
     return (-1);

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>, and others
+ * Copyright (C) 1996-2002,2004,2007 Michael R. Elkins <me@mutt.org>, and others
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -426,7 +426,7 @@ void mutt_select_fcc (char *path, size_t pathlen, HEADER *hdr)
     else
       strfcpy (path, NONULL (Outbox), pathlen);
   }
-  mutt_pretty_mailbox (path);
+  mutt_pretty_mailbox (path, pathlen);
 }
 
 static char *_mutt_string_hook (const char *match, int hook)

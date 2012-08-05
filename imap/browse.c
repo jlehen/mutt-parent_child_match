@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
- * Copyright (C) 1999-2007 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1999-2008 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -228,7 +228,7 @@ int imap_mailbox_state (const char* path, struct mailbox_state* state)
     return -1;
   }
 
-  if (!imap_mxcmp(mx.mbox, idata->mailbox))
+  if (idata->ctx && !imap_mxcmp(mx.mbox, idata->mailbox))
   {
     state->new = idata->ctx->new;
     state->messages = idata->ctx->msgcount;
@@ -238,6 +238,8 @@ int imap_mailbox_state (const char* path, struct mailbox_state* state)
     state->new = status->unseen;
     state->messages = status->messages;
   }
+
+  FREE (&mx.mbox);
 
   return 0;
 }
@@ -329,7 +331,9 @@ int imap_mailbox_rename(const char* mailbox)
     goto fail;
   }
 
-  if (imap_rename_mailbox (idata, &mx, newname) < 0) {
+  imap_fix_path (idata, newname, buf, sizeof (buf));
+
+  if (imap_rename_mailbox (idata, &mx, buf) < 0) {
     mutt_error (_("Rename failed: %s"), imap_get_qualifier (idata->buf));
     mutt_sleep (1);
     goto fail;

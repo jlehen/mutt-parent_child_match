@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996,1997 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1998,1999 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1996-7,2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1998-2005 Thomas Roessler <roessler@does-not-exist.org>
  * Copyright (C) 2004 g10 Code GmbH
  *
  *     This program is free software; you can redistribute it and/or modify
@@ -293,11 +293,10 @@ int pgp_application_pgp_handler (BODY *m, STATE *s)
 	clearsign = 1;
         needpass = 0;
       }
-      else if (!option (OPTDONTHANDLEPGPKEYS) &&
-	       mutt_strcmp ("PUBLIC KEY BLOCK-----\n", buf + 15) == 0)
+      else if (!mutt_strcmp ("PUBLIC KEY BLOCK-----\n", buf + 15))
       {
         needpass = 0;
-        pgp_keyblock =1;
+        pgp_keyblock = 1;
       } 
       else
       {
@@ -467,13 +466,16 @@ int pgp_application_pgp_handler (BODY *m, STATE *s)
 	  state_attach_puts (_("[-- END PGP SIGNED MESSAGE --]\n"), s);
       }
     }
+#if 0
     else
     {
+      /* why would we want to display this at all? */
       /* XXX - we may wish to recode here */
       if (s->prefix)
 	state_puts (s->prefix, s);
       state_puts (buf, s);
     }
+#endif
   }
 
   rc = 0;
@@ -848,7 +850,10 @@ BODY *pgp_decrypt_part (BODY *a, STATE *s, FILE *fpout, BODY *p)
 
   fflush (fpout);
   rewind (fpout);
-  
+
+  if (pgp_use_gpg_agent())
+    mutt_need_hard_redraw ();
+
   if (fgetc (fpout) == EOF)
   {
     mutt_error _("Decryption failed");
