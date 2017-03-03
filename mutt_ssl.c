@@ -37,12 +37,6 @@
 #include "mutt_ssl.h"
 #include "mutt_idna.h"
 
-#if OPENSSL_VERSION_NUMBER >= 0x00904000L
-#define READ_X509_KEY(fp, key)	PEM_read_X509(fp, key, NULL, NULL)
-#else
-#define READ_X509_KEY(fp, key)	PEM_read_X509(fp, key, NULL)
-#endif
-
 /* Just in case OpenSSL doesn't define DEVRANDOM */
 #ifndef DEVRANDOM
 #define DEVRANDOM "/dev/urandom"
@@ -82,6 +76,7 @@ static int ssl_socket_open (CONNECTION * conn);
 static int ssl_socket_close (CONNECTION * conn);
 static int tls_close (CONNECTION* conn);
 static void ssl_err (sslsockdata *data, int err);
+static void ssl_dprint_err_stack (void);
 static int ssl_cache_trusted_cert (X509 *cert);
 static int ssl_check_certificate (CONNECTION *conn, sslsockdata * data);
 static int interactive_check_cert (X509 *cert, int idx, int len);
@@ -334,7 +329,17 @@ static int ssl_socket_open (CONNECTION * conn)
   data = (sslsockdata *) safe_calloc (1, sizeof (sslsockdata));
   conn->sockdata = data;
 
-  data->ctx = SSL_CTX_new (SSLv23_client_method ());
+  if (! (data->ctx = SSL_CTX_new (SSLv23_client_method ())))
+  {
+    /* L10N: an SSL context is a data structure returned by the OpenSSL
+     *       function SSL_CTX_new().  In this case it returned NULL: an
+     *       error condition.
+     */
+    mutt_error (_("Unable to create SSL context"));
+    ssl_dprint_err_stack ();
+    mutt_socket_close (conn);
+    return -1;
+  }
 
   /* disable SSL protocols as needed */
   if (!option(OPTTLSV1))
@@ -395,11 +400,7 @@ static int ssl_negotiate (CONNECTION *conn, sslsockdata* ssldata)
   int err;
   const char* errmsg;
 
-#if OPENSSL_VERSION_NUMBER >= 0x00906000L
-  /* This only exists in 0.9.6 and above. Without it we may get interrupted
-   *   reads or writes. Bummer. */
   SSL_set_mode (ssldata->ssl, SSL_MODE_AUTO_RETRY);
-#endif
 
   if ((err = SSL_connect (ssldata->ssl)) != 1)
   {
@@ -533,6 +534,30 @@ static void ssl_err (sslsockdata *data, int err)
   dprint (1, (debugfile, "SSL error: %s\n", errmsg));
 }
 
+static void ssl_dprint_err_stack (void)
+{
+#ifdef DEBUG
+  BIO *bio;
+  char *buf = NULL;
+  long buflen;
+  char *output;
+
+  if (! (bio = BIO_new (BIO_s_mem ())))
+    return;
+  ERR_print_errors (bio);
+  if ((buflen = BIO_get_mem_data (bio, &buf)) > 0)
+  {
+    output = safe_malloc (buflen + 1);
+    memcpy (output, buf, buflen);
+    output[buflen] = '\0';
+    dprint (1, (debugfile, "SSL error stack: %s\n", output));
+    FREE (&output);
+  }
+  BIO_free (bio);
+#endif
+}
+
+
 static char *x509_get_part (char *line, const char *ndx)
 {
   static char ret[SHORT_STRING];
@@ -596,7 +621,7 @@ static char *asn1time_to_string (ASN1_UTCTIME *tm)
 
 static int check_certificate_by_signer (X509 *peercert)
 {
-  X509_STORE_CTX xsc;
+  X509_STORE_CTX *xsc;
   X509_STORE *ctx;
   int pass = 0, i;
 
@@ -626,23 +651,24 @@ static int check_certificate_by_signer (X509 *peercert)
     return 0;
   }
 
-  X509_STORE_CTX_init (&xsc, ctx, peercert, SslSessionCerts);
+  xsc = X509_STORE_CTX_new();
+  if (xsc == NULL) return 0;
+  X509_STORE_CTX_init (xsc, ctx, peercert, SslSessionCerts);
 
-  pass = (X509_verify_cert (&xsc) > 0);
+  pass = (X509_verify_cert (xsc) > 0);
 #ifdef DEBUG
   if (! pass)
   {
     char buf[SHORT_STRING];
     int err;
 
-    err = X509_STORE_CTX_get_error (&xsc);
+    err = X509_STORE_CTX_get_error (xsc);
     snprintf (buf, sizeof (buf), "%s (%d)",
 	X509_verify_cert_error_string(err), err);
     dprint (2, (debugfile, "X509_verify_cert: %s\n", buf));
-    dprint (2, (debugfile, " [%s]\n", peercert->name));
   }
 #endif
-  X509_STORE_CTX_cleanup (&xsc);
+  X509_STORE_CTX_free (xsc);
   X509_STORE_free (ctx);
 
   return pass;
@@ -704,7 +730,7 @@ static int check_certificate_by_digest (X509 *peercert)
   FILE *fp;
 
   /* expiration check */
-  if (option (OPTSSLVERIFYDATES) != M_NO)
+  if (option (OPTSSLVERIFYDATES) != MUTT_NO)
   {
     if (X509_cmp_current_time (X509_get_notBefore (peercert)) >= 0)
     {
@@ -731,7 +757,7 @@ static int check_certificate_by_digest (X509 *peercert)
     return 0;
   }
 
-  while ((cert = READ_X509_KEY (fp, &cert)) != NULL)
+  while ((cert = PEM_read_X509 (fp, &cert, NULL, NULL)) != NULL)
   {
     pass = compare_certificates (cert, peercert, peermd, peermdlen) ? 0 : 1;
 
@@ -887,7 +913,7 @@ out:
 
 static int ssl_cache_trusted_cert (X509 *c)
 {
-  dprint (1, (debugfile, "trusted: %s\n", c->name));
+  dprint (1, (debugfile, "ssl_cache_trusted_cert: trusted\n"));
   if (!SslSessionCerts)
     SslSessionCerts = sk_X509_new_null();
   return (sk_X509_push (SslSessionCerts, X509_dup(c)));
@@ -908,7 +934,7 @@ static int ssl_check_preauth (X509 *cert, const char* host)
   }
 
   buf[0] = 0;
-  if (host && option (OPTSSLVERIFYHOST) != M_NO)
+  if (host && option (OPTSSLVERIFYHOST) != MUTT_NO)
   {
     if (!check_host (cert, host, buf, sizeof (buf)))
     {
@@ -940,6 +966,13 @@ static int ssl_check_certificate (CONNECTION *conn, sslsockdata *data)
   int i, preauthrc, chain_len;
   STACK_OF(X509) *chain;
   X509 *cert;
+#ifdef DEBUG
+  char buf[STRING];
+
+  dprint (1, (debugfile, "ssl_check_certificate: checking cert %s\n",
+              X509_NAME_oneline (X509_get_subject_name (data->cert),
+                                 buf, sizeof (buf))));
+#endif
 
   if ((preauthrc = ssl_check_preauth (data->cert, conn->account.host)) > 0)
     return preauthrc;
@@ -955,6 +988,10 @@ static int ssl_check_certificate (CONNECTION *conn, sslsockdata *data)
   for (i = chain_len-1; i >= 0; i--)
   {
     cert = sk_X509_value (chain, i);
+
+    dprint (1, (debugfile, "ssl_check_certificate: checking cert chain entry %s\n",
+                X509_NAME_oneline (X509_get_subject_name (cert),
+                                   buf, sizeof (buf))));
 
     /* if the certificate validates or is manually accepted, then add it to
      * the trusted set and recheck the peer certificate */
@@ -982,8 +1019,6 @@ static int interactive_check_cert (X509 *cert, int idx, int len)
   FILE *fp;
   char *name = NULL, *c;
 
-  dprint (2, (debugfile, "interactive_check_cert: %s\n", cert->name));
-
   menu->max = 19;
   menu->dialog = (char **) safe_calloc (1, menu->max * sizeof (char *));
   for (i = 0; i < menu->max; i++)
@@ -994,7 +1029,6 @@ static int interactive_check_cert (X509 *cert, int idx, int len)
   row++;
   name = X509_NAME_oneline (X509_get_subject_name (cert),
 			    buf, sizeof (buf));
-  dprint (2, (debugfile, "oneline: %s\n", name));
 
   for (i = 0; i < 5; i++)
   {
@@ -1030,7 +1064,7 @@ static int interactive_check_cert (X509 *cert, int idx, int len)
 	    len - idx, len);
   menu->title = title;
   if (SslCertFile
-      && (option (OPTSSLVERIFYDATES) == M_NO
+      && (option (OPTSSLVERIFYDATES) == MUTT_NO
 	  || (X509_cmp_current_time (X509_get_notAfter (cert)) >= 0
 	      && X509_cmp_current_time (X509_get_notBefore (cert)) < 0)))
   {

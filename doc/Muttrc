@@ -708,19 +708,19 @@ attachments   -I message/external-body
 # 
 # Setting this variable will cause Mutt to automatically enable and
 # disable encryption, based on whether all message recipient keys
-# can be located by mutt.
+# can be located by Mutt.
 # 
-# When this option is enabled, mutt will determine the encryption
-# setting each time the TO, CC, and BCC lists are edited.  If
-# $edit_headers is set, mutt will also do so each time the message
+# When this option is enabled, Mutt will enable/disable encryption
+# each time the TO, CC, and BCC lists are edited.  If
+# $edit_headers is set, Mutt will also do so each time the message
 # is edited.
 # 
-# While this is set, encryption settings can't be manually changed.
-# The pgp or smime menus provide an option to disable the option for
-# a particular message.
+# While this is set, encryption can't be manually enabled/disabled.
+# The pgp or smime menus provide a selection to temporarily disable
+# this option for the current message.
 # 
 # If $crypt_autoencrypt or $crypt_replyencrypt enable encryption for
-# a message, this option will be disabled for the message.  It can
+# a message, this option will be disabled for that message.  It can
 # be manually re-enabled in the pgp or smime menus.
 # (Crypto only)
 # 
@@ -1135,7 +1135,9 @@ attachments   -I message/external-body
 # %F      file permissions
 # %g      group name (or numeric gid, if missing)
 # %l      number of hard links
-# %N      N if folder has new mail, blank otherwise
+# %m      number of messages in the mailbox *
+# %n      number of unread messages in the mailbox *
+# %N      N if mailbox has new mail, blank otherwise
 # %s      size in bytes
 # %t      ``*'' if the file is tagged, blank otherwise
 # %u      owner name (or numeric uid, if missing)
@@ -1145,6 +1147,12 @@ attachments   -I message/external-body
 # 
 # 
 # For an explanation of ``soft-fill'', see the $index_format documentation.
+# 
+# * = can be optionally printed if nonzero
+# 
+# %m, %n, and %N only work for monitored mailboxes.
+# %m requires $mail_check_stats to be set.
+# %n requires $mail_check_stats to be set (except for IMAP mailboxes).
 # 
 # 
 # set followup_to=yes
@@ -1971,6 +1979,32 @@ attachments   -I message/external-body
 # 
 # When $mark_old is set, Mutt does not consider the mailbox to contain new
 # mail if only old messages exist.
+# 
+# 
+# set mail_check_stats=no
+#
+# Name: mail_check_stats
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, mutt will periodically calculate message
+# statistics of a mailbox while polling for new mail.  It will
+# check for unread, flagged, and total message counts.  Because
+# this operation is more performance intensive, it defaults to
+# unset, and has a separate option, $mail_check_stats_interval, to
+# control how often to update these counts.
+# 
+# 
+# set mail_check_stats_interval=60
+#
+# Name: mail_check_stats_interval
+# Type: number
+# Default: 60
+# 
+# 
+# When $mail_check_stats is set, this variable configures
+# how often (in seconds) mutt will update message counts.
 # 
 # 
 # set mailcap_path=""
@@ -3795,6 +3829,188 @@ attachments   -I message/external-body
 # shell from /etc/passwd is used.
 # 
 # 
+# set sidebar_delim_chars="/."
+#
+# Name: sidebar_delim_chars
+# Type: string
+# Default: "/."
+# 
+# 
+# This contains the list of characters which you would like to treat
+# as folder separators for displaying paths in the sidebar.
+# 
+# Local mail is often arranged in directories: `dir1/dir2/mailbox'.
+# set sidebar_delim_chars='/'
+# 
+# IMAP mailboxes are often named: `folder1.folder2.mailbox'.
+# set sidebar_delim_chars='.'
+# 
+# See also: $sidebar_short_path, $sidebar_folder_indent, $sidebar_indent_string.
+# 
+# 
+# set sidebar_divider_char="|"
+#
+# Name: sidebar_divider_char
+# Type: string
+# Default: "|"
+# 
+# 
+# This specifies the characters to be drawn between the sidebar (when
+# visible) and the other Mutt panels. ASCII and Unicode line-drawing
+# characters are supported.
+# 
+# 
+# set sidebar_folder_indent=no
+#
+# Name: sidebar_folder_indent
+# Type: boolean
+# Default: no
+# 
+# 
+# Set this to indent mailboxes in the sidebar.
+# 
+# See also: $sidebar_short_path, $sidebar_indent_string, $sidebar_delim_chars.
+# 
+# 
+# set sidebar_format="%B%*  %n"
+#
+# Name: sidebar_format
+# Type: string
+# Default: "%B%*  %n"
+# 
+# 
+# This variable allows you to customize the sidebar display. This string is
+# similar to $index_format, but has its own set of printf(3)-like
+# sequences:
+# %B      Name of the mailbox
+# %S      * Size of mailbox (total number of messages)
+# %N      * Number of New messages in the mailbox
+# %n      N if mailbox has new mail, blank otherwise
+# %F      * Number of Flagged messages in the mailbox
+# %!      ``!'' : one flagged message;
+#         ``!!'' : two flagged messages;
+#         ``n!'' : n flagged messages (for n > 2).
+#         Otherwise prints nothing.
+# %d      * @ Number of deleted messages
+# %L      * @ Number of messages after limiting
+# %t      * @ Number of tagged messages
+# %>X     right justify the rest of the string and pad with ``X''
+# %|X     pad to the end of the line with ``X''
+# %*X     soft-fill with character ``X'' as pad
+# 
+# 
+# * = Can be optionally printed if nonzero
+# @ = Only applicable to the current folder
+# 
+# In order to use %S, %N, %F, and %!, $mail_check_stats must
+# be set.  When thus set, a suggested value for this option is
+# "%B%?F? [%F]?%* %?N?%N/?%S".
+# 
+# 
+# set sidebar_indent_string="  "
+#
+# Name: sidebar_indent_string
+# Type: string
+# Default: "  "
+# 
+# 
+# This specifies the string that is used to indent mailboxes in the sidebar.
+# It defaults to two spaces.
+# 
+# See also: $sidebar_short_path, $sidebar_folder_indent, $sidebar_delim_chars.
+# 
+# 
+# set sidebar_new_mail_only=no
+#
+# Name: sidebar_new_mail_only
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, the sidebar will only display mailboxes containing new, or
+# flagged, mail.
+# 
+# See also: sidebar_whitelist.
+# 
+# 
+# set sidebar_next_new_wrap=no
+#
+# Name: sidebar_next_new_wrap
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, the <sidebar-next-new> command will not stop and the end of
+# the list of mailboxes, but wrap around to the beginning. The
+# <sidebar-prev-new> command is similarly affected, wrapping around to
+# the end of the list.
+# 
+# 
+# set sidebar_short_path=no
+#
+# Name: sidebar_short_path
+# Type: boolean
+# Default: no
+# 
+# 
+# By default the sidebar will show the mailbox's path, relative to the
+# $folder variable. Setting sidebar_shortpath=yes will shorten the
+# names relative to the previous name. Here's an example:
+# shortpath=no shortpath=yes shortpath=yes, folderindent=yes, indentstr=".."
+# fruit           fruit         fruit
+# fruit.apple  apple         ..apple
+# fruit.banana banana        ..banana
+# fruit.cherry cherry        ..cherry
+# 
+# 
+# See also: $sidebar_delim_chars, $sidebar_folder_indent, $sidebar_indent_string.
+# 
+# 
+# set sidebar_sort_method=order
+#
+# Name: sidebar_sort_method
+# Type: sort order
+# Default: order
+# 
+# 
+# Specifies how to sort entries in the file browser.  By default, the
+# entries are sorted alphabetically.  Valid values:
+# - alpha (alphabetically)
+# - count (all message count)
+# - flagged (flagged message count)
+# - new (new message count)
+# - unsorted
+# 
+# 
+# You may optionally use the ``reverse-'' prefix to specify reverse sorting
+# order (example: ``set sort_browser=reverse-date'').
+# 
+# 
+# set sidebar_visible=no
+#
+# Name: sidebar_visible
+# Type: boolean
+# Default: no
+# 
+# 
+# This specifies whether or not to show sidebar. The sidebar shows a list of
+# all your mailboxes.
+# 
+# See also: $sidebar_format, $sidebar_width
+# 
+# 
+# set sidebar_width=30
+#
+# Name: sidebar_width
+# Type: number
+# Default: 30
+# 
+# 
+# This controls the width of the sidebar.  It is measured in screen columns.
+# For example: sidebar_width=20 could display 20 ASCII characters, or 10
+# Chinese characters.
+# 
+# 
 # set sig_dashes=yes
 #
 # Name: sig_dashes
@@ -4819,6 +5035,21 @@ attachments   -I message/external-body
 # recipient.  The fifth character is used to indicate mail that was sent
 # by you.  The sixth character is used to indicate when a mail
 # was sent to a mailing-list you subscribe to.
+# 
+# 
+# set trash=""
+#
+# Name: trash
+# Type: path
+# Default: ""
+# 
+# 
+# If set, this variable specifies the path of the trash folder where the
+# mails marked for deletion will be moved, instead of being irremediably
+# purged.
+# 
+# NOTE: When you delete a message in the trash folder, it is really
+# deleted, so that you have a way to clean the trash.
 # 
 # 
 # set ts_icon_format="M%?n?AIL&ail?"

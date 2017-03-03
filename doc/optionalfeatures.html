@@ -26,7 +26,7 @@ div.note { margin-bottom: 5px; }
 tr { vertical-align: top; }
 .comment { color:#707070; }
 
-    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 6. Optional Features</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="mimesupport.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="security.html">Next</a></td></tr></table><hr /></div><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="optionalfeatures"></a>Chapter 6. Optional Features</h1></div></div></div><div class="toc"><p><strong>Table of Contents</strong></p><dl class="toc"><dt><span class="sect1"><a href="optionalfeatures.html#optionalfeatures-notes">1. General Notes</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#compile-time-features">1.1. Enabling/Disabling Features</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#url-syntax">1.2. URL Syntax</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#ssl">2. SSL/TLS Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#pop">3. POP3 Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#imap">4. IMAP Support</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#imap-browser">4.1. The IMAP Folder Browser</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#imap-authentication">4.2. Authentication</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#smtp">5. SMTP Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#account-hook">6. Managing Multiple Accounts</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#caching">7. Local Caching</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#header-caching">7.1. Header Caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#body-caching">7.2. Body Caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#cache-dirs">7.3. Cache Directories</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#maint-cache">7.4. Maintenance</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#exact-address">8. Exact Address Generation</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#sending-mixmaster">9. Sending Anonymous Messages via Mixmaster</a></span></dt></dl></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="optionalfeatures-notes"></a>1. General Notes</h2></div></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="compile-time-features"></a>1.1. Enabling/Disabling Features</h3></div></div></div><p>
+    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 6. Optional Features</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="mimesupport.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="security.html">Next</a></td></tr></table><hr /></div><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="optionalfeatures"></a>Chapter 6. Optional Features</h1></div></div></div><div class="toc"><p><strong>Table of Contents</strong></p><dl class="toc"><dt><span class="sect1"><a href="optionalfeatures.html#optionalfeatures-notes">1. General Notes</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#compile-time-features">1.1. Enabling/Disabling Features</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#url-syntax">1.2. URL Syntax</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#ssl">2. SSL/TLS Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#pop">3. POP3 Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#imap">4. IMAP Support</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#imap-browser">4.1. The IMAP Folder Browser</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#imap-authentication">4.2. Authentication</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#smtp">5. SMTP Support</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#account-hook">6. Managing Multiple Accounts</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#caching">7. Local Caching</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#header-caching">7.1. Header Caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#body-caching">7.2. Body Caching</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#cache-dirs">7.3. Cache Directories</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#maint-cache">7.4. Maintenance</a></span></dt></dl></dd><dt><span class="sect1"><a href="optionalfeatures.html#exact-address">8. Exact Address Generation</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#sending-mixmaster">9. Sending Anonymous Messages via Mixmaster</a></span></dt><dt><span class="sect1"><a href="optionalfeatures.html#sidebar">10. Sidebar</a></span></dt><dd><dl><dt><span class="sect2"><a href="optionalfeatures.html#sidebar-intro">10.1. Introduction</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#sidebar-variables">10.2. Variables</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#sidebar-functions">10.3. Functions</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#sidebar-commands">10.4. Commands</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#sidebar-colors">10.5. Colors</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#sidebar-sort">10.6. Sort</a></span></dt><dt><span class="sect2"><a href="optionalfeatures.html#sidebar-see-also">10.7. See Also</a></span></dt></dl></dd></dl></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="optionalfeatures-notes"></a>1. General Notes</h2></div></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="compile-time-features"></a>1.1. Enabling/Disabling Features</h3></div></div></div><p>
 Mutt supports several of optional features which can be enabled or
 disabled at compile-time by giving the <span class="emphasis"><em>configure</em></span>
 script certain arguments. These are listed in the <span class="quote">“<span class="quote">Optional
@@ -97,7 +97,7 @@ Remote POP3 servers can be accessed using URLs with the
 </p><p>
 Polling for new mail is more expensive over POP3 than locally. For this
 reason the frequency at which Mutt will check for mail remotely can be
-controlled by the <a class="link" href="reference.html#pop-checkinterval" title="3.194. pop_checkinterval">$pop_checkinterval</a> variable, which
+controlled by the <a class="link" href="reference.html#pop-checkinterval" title="3.196. pop_checkinterval">$pop_checkinterval</a> variable, which
 defaults to every 60 seconds.
 </p><p>
 POP is read-only which doesn't allow for some features like editing
@@ -109,8 +109,8 @@ the POP server (either by Mutt or other tools).
 </p><a id="fetch-mail"></a><p>
 Another way to access your POP3 mail is the
 <code class="literal">&lt;fetch-mail&gt;</code> function (default: G).  It allows
-to connect to <a class="link" href="reference.html#pop-host" title="3.196. pop_host">$pop_host</a>, fetch all your
-new mail and place it in the local <a class="link" href="reference.html#spoolfile" title="3.284. spoolfile">$spoolfile</a>.  After this point, Mutt runs
+to connect to <a class="link" href="reference.html#pop-host" title="3.198. pop_host">$pop_host</a>, fetch all your
+new mail and place it in the local <a class="link" href="reference.html#spoolfile" title="3.297. spoolfile">$spoolfile</a>.  After this point, Mutt runs
 exactly as if the mail had always been local.
 </p><div class="note"><h3 class="title">Note</h3><p>
 If you only need to fetch all messages to a local mailbox you should
@@ -138,7 +138,7 @@ at only the folders you are subscribed to, or all folders with the
 <span class="emphasis"><em>toggle-subscribed</em></span> command.  See also the <a class="link" href="reference.html#imap-list-subscribed" title="3.106. imap_list_subscribed">$imap_list_subscribed</a> variable.
 </p><p>
 Polling for new mail on an IMAP server can cause noticeable delays. So,
-you'll want to carefully tune the <a class="link" href="reference.html#mail-check" title="3.122. mail_check">$mail_check</a> and <a class="link" href="reference.html#timeout" title="3.309. timeout">$timeout</a> variables. Reasonable values are:
+you'll want to carefully tune the <a class="link" href="reference.html#mail-check" title="3.122. mail_check">$mail_check</a> and <a class="link" href="reference.html#timeout" title="3.322. timeout">$timeout</a> variables. Reasonable values are:
 </p><pre class="screen">
 set mail_check=90
 set timeout=15
@@ -215,16 +215,16 @@ Besides supporting traditional mail delivery through a
 sendmail-compatible program, Mutt supports delivery through SMTP if it
 was configured and built with <code class="literal">--enable-smtp</code>.
 </p><p>
-If the configuration variable <a class="link" href="reference.html#smtp-url" title="3.277. smtp_url">$smtp_url</a>
+If the configuration variable <a class="link" href="reference.html#smtp-url" title="3.290. smtp_url">$smtp_url</a>
 is set, Mutt will contact the given SMTP server to deliver messages; if
-it is unset, Mutt will use the program specified by <a class="link" href="reference.html#sendmail" title="3.244. sendmail">$sendmail</a>.
+it is unset, Mutt will use the program specified by <a class="link" href="reference.html#sendmail" title="3.246. sendmail">$sendmail</a>.
 </p><p>
 For details on the URL syntax, please see <a class="xref" href="optionalfeatures.html#url-syntax" title="1.2. URL Syntax">Section 1.2, “URL Syntax”</a>.
 </p><p>
 The built-in SMTP support supports encryption (the
 <code class="literal">smtps</code> protocol using SSL or TLS) as well as SMTP
 authentication using SASL. The authentication mechanisms for SASL are
-specified in <a class="link" href="reference.html#smtp-authenticators" title="3.275. smtp_authenticators">$smtp_authenticators</a> defaulting to
+specified in <a class="link" href="reference.html#smtp-authenticators" title="3.288. smtp_authenticators">$smtp_authenticators</a> defaulting to
 an empty list which makes Mutt try all available methods from
 most-secure to least-secure.
 </p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="account-hook"></a>6. Managing Multiple Accounts</h2></div></div></div><p>
@@ -254,7 +254,7 @@ account-hook imap://host1/ 'set imap_user=me1 imap_pass=foo'
 account-hook imap://host2/ 'set tunnel="ssh host2 /usr/libexec/imapd"'
 account-hook smtp://user@host3/ 'set tunnel="ssh host3 /usr/libexec/smtpd"'
 </pre><p>
-To manage multiple accounts with, for example, different values of <a class="link" href="reference.html#record" title="3.220. record">$record</a> or sender addresses, <a class="link" href="configuration.html#folder-hook" title="7. Setting Variables Based Upon Mailbox"><span class="command"><strong>folder-hook</strong></span></a> has to be be
+To manage multiple accounts with, for example, different values of <a class="link" href="reference.html#record" title="3.222. record">$record</a> or sender addresses, <a class="link" href="configuration.html#folder-hook" title="7. Setting Variables Based Upon Mailbox"><span class="command"><strong>folder-hook</strong></span></a> has to be be
 used together with the <a class="link" href="configuration.html#mailboxes" title="14. Monitoring Incoming Mail"><span class="command"><strong>mailboxes</strong></span></a> command.
 </p><div class="example"><a id="ex-multiaccount"></a><p class="title"><strong>Example 6.2. Managing multiple accounts</strong></p><div class="example-contents"><pre class="screen">
 mailboxes imap://user@host1/INBOX
@@ -267,13 +267,13 @@ In example <a class="xref" href="optionalfeatures.html#ex-multiaccount" title="E
 using <a class="link" href="configuration.html#mailboxes" title="14. Monitoring Incoming Mail"><span class="command"><strong>mailboxes</strong></span></a> so
 Mutt polls them for new mail. Each <a class="link" href="configuration.html#folder-hook" title="7. Setting Variables Based Upon Mailbox"><span class="command"><strong>folder-hook</strong></span></a> triggers
 when one mailbox below each IMAP account is opened and sets <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a> to the account's root folder. Next, it
-sets <a class="link" href="reference.html#record" title="3.220. record">$record</a> to the
+sets <a class="link" href="reference.html#record" title="3.222. record">$record</a> to the
 <span class="emphasis"><em>INBOX/Sent</em></span> folder below the newly set <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a>. Please notice that the value the
 <span class="quote">“<span class="quote">+</span>”</span> <a class="link" href="advancedusage.html#shortcuts" title="8. Mailbox Shortcuts">mailbox shortcut</a>
 refers to depends on the <span class="emphasis"><em>current</em></span> value of <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a> and therefore has to be set separately
 per account. Setting other values like <a class="link" href="reference.html#from" title="3.77. from">$from</a>
-or <a class="link" href="reference.html#signature" title="3.249. signature">$signature</a> is analogous to setting
-<a class="link" href="reference.html#record" title="3.220. record">$record</a>.
+or <a class="link" href="reference.html#signature" title="3.262. signature">$signature</a> is analogous to setting
+<a class="link" href="reference.html#record" title="3.222. record">$record</a>.
 </p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="caching"></a>7. Local Caching</h2></div></div></div><p>
 Mutt contains two types of local caching: <span class="emphasis"><em>(1)</em></span> the
 so-called <span class="quote">“<span class="quote">header caching</span>”</span> and <span class="emphasis"><em>(2)</em></span> the
@@ -311,11 +311,11 @@ In addition to caching message headers only, Mutt can also cache whole
 message bodies. This results in faster display of messages for POP and
 IMAP folders because messages usually have to be downloaded only once.
 </p><p>
-For configuration, the variable <a class="link" href="reference.html#message-cachedir" title="3.138. message_cachedir">$message_cachedir</a> must point to a directory. There, Mutt will
+For configuration, the variable <a class="link" href="reference.html#message-cachedir" title="3.140. message_cachedir">$message_cachedir</a> must point to a directory. There, Mutt will
 create a hierarchy of subdirectories named like the account and mailbox
 path the cache is for.
 </p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="cache-dirs"></a>7.3. Cache Directories</h3></div></div></div><p>
-For using both, header and body caching, <a class="link" href="reference.html#header-cache" title="3.81. header_cache">$header_cache</a> and <a class="link" href="reference.html#message-cachedir" title="3.138. message_cachedir">$message_cachedir</a> can be safely set
+For using both, header and body caching, <a class="link" href="reference.html#header-cache" title="3.81. header_cache">$header_cache</a> and <a class="link" href="reference.html#message-cachedir" title="3.140. message_cachedir">$message_cachedir</a> can be safely set
 to the same value.
 </p><p>
 In a header or body cache directory, Mutt creates a directory hierarchy
@@ -336,7 +336,7 @@ big. It depends on the database library used for header caching whether
 disk space freed by removing messages is re-used.
 </p><p>
 For body caches, Mutt can keep the local cache in sync with the remote
-mailbox if the <a class="link" href="reference.html#message-cache-clean" title="3.137. message_cache_clean">$message_cache_clean</a> variable is
+mailbox if the <a class="link" href="reference.html#message-cache-clean" title="3.139. message_cache_clean">$message_cache_clean</a> variable is
 set. Cleaning means to remove messages from the cache which are no
 longer present in the mailbox which only happens when other mail clients
 or instances of Mutt using a different body cache location delete
@@ -380,10 +380,28 @@ changes, leave the menu, or <code class="literal">&lt;accept&gt;</code> them
 pressing (by default) the <code class="literal">Return</code> key.
 </p><p>
 Note that different remailers do have different capabilities, indicated
-in the %c entry of the remailer menu lines (see <a class="link" href="reference.html#mix-entry-format" title="3.149. mix_entry_format">$mix_entry_format</a>).  Most important is
+in the %c entry of the remailer menu lines (see <a class="link" href="reference.html#mix-entry-format" title="3.151. mix_entry_format">$mix_entry_format</a>).  Most important is
 the <span class="quote">“<span class="quote">middleman</span>”</span> capability, indicated by a capital
 <span class="quote">“<span class="quote">M</span>”</span>: This means that the remailer in question cannot be
 used as the final element of a chain, but will only forward messages to
 other mixmaster remailers.  For details on the other capabilities,
 please have a look at the mixmaster documentation.
-</p></div></div><div class="navfooter"><hr /><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="mimesupport.html">Prev</a> </td><td width="20%" align="center"> </td><td width="40%" align="right"> <a accesskey="n" href="security.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 5. Mutt's MIME Support </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 7. Security Considerations</td></tr></table></div></body></html>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="sidebar"></a>10. Sidebar</h2></div><div><h3 class="subtitle">Overview of mailboxes</h3></div></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="sidebar-intro"></a>10.1. Introduction</h3></div></div></div><p>
+      The Sidebar shows a list of all your mailboxes.  The list can be
+      turned on and off, it can be themed and the list style can be
+      configured.
+    </p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="sidebar-variables"></a>10.2. Variables</h3></div></div></div><div class="table"><a id="table-sidebar-variables"></a><p class="title"><strong>Table 6.1. Sidebar Variables</strong></p><div class="table-contents"><table class="table" summary="Sidebar Variables" border="1"><colgroup><col /><col /><col /></colgroup><thead><tr><th>Name</th><th>Type</th><th>Default</th></tr></thead><tbody><tr><td><code class="literal">sidebar_delim_chars</code></td><td>string</td><td><code class="literal">/.</code></td></tr><tr><td><code class="literal">sidebar_divider_char</code></td><td>string</td><td><code class="literal">|</code></td></tr><tr><td><code class="literal">sidebar_folder_indent</code></td><td>boolean</td><td><code class="literal">no</code></td></tr><tr><td><code class="literal">sidebar_format</code></td><td>string</td><td><code class="literal">%B%*  %n</code></td></tr><tr><td><code class="literal">sidebar_indent_string</code></td><td>string</td><td><code class="literal">  </code> (two spaces)</td></tr><tr><td><code class="literal">sidebar_new_mail_only</code></td><td>boolean</td><td><code class="literal">no</code></td></tr><tr><td><code class="literal">sidebar_next_new_wrap</code></td><td>boolean</td><td><code class="literal">no</code></td></tr><tr><td><code class="literal">sidebar_short_path</code></td><td>boolean</td><td><code class="literal">no</code></td></tr><tr><td><code class="literal">sidebar_sort_method</code></td><td>enum</td><td><code class="literal">unsorted</code></td></tr><tr><td><code class="literal">sidebar_visible</code></td><td>boolean</td><td><code class="literal">no</code></td></tr><tr><td><code class="literal">sidebar_width</code></td><td>number</td><td><code class="literal">20</code></td></tr></tbody></table></div></div><br class="table-break" /></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="sidebar-functions"></a>10.3. Functions</h3></div></div></div><p>
+      Sidebar adds the following functions to Mutt.
+      By default, none of them are bound to keys.
+    </p><div class="table"><a id="table-sidebar-functions"></a><p class="title"><strong>Table 6.2. Sidebar Functions</strong></p><div class="table-contents"><table class="table" summary="Sidebar Functions" border="1"><colgroup><col /><col /><col /></colgroup><thead><tr><th>Menus</th><th>Function</th><th>Description</th></tr></thead><tbody><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-next&gt;</code></td><td>Move the highlight to next mailbox</td></tr><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-next-new&gt;</code></td><td>Move the highlight to next mailbox with new mail</td></tr><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-open&gt;</code></td><td>Open highlighted mailbox</td></tr><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-page-down&gt;</code></td><td>Scroll the Sidebar down 1 page</td></tr><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-page-up&gt;</code></td><td>Scroll the Sidebar up 1 page</td></tr><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-prev&gt;</code></td><td>Move the highlight to previous mailbox</td></tr><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-prev-new&gt;</code></td><td>Move the highlight to previous mailbox with new mail</td></tr><tr><td>index,pager</td><td><code class="literal">&lt;sidebar-toggle-visible&gt;</code></td><td>Make the Sidebar (in)visible</td></tr></tbody></table></div></div><br class="table-break" /></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="sidebar-commands"></a>10.4. Commands</h3></div></div></div><div class="cmdsynopsis"><p><code class="command">sidebar_whitelist<a id="sidebar-whitelist"></a></code>   
+	<em class="replaceable"><code>mailbox</code></em>
+        [
+	<em class="replaceable"><code>mailbox</code></em>
+      ...]</p></div><p>
+      This command specifies mailboxes that will always be displayed
+      in the sidebar, even if <a class="link" href="reference.html#sidebar-new-mail-only" title="3.254. sidebar_new_mail_only">$sidebar_new_mail_only</a>
+      is set and the mailbox does not contain new mail.
+    </p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="sidebar-colors"></a>10.5. Colors</h3></div></div></div><div class="table"><a id="table-sidebar-colors"></a><p class="title"><strong>Table 6.3. Sidebar Colors</strong></p><div class="table-contents"><table class="table" summary="Sidebar Colors" border="1"><colgroup><col /><col /><col /></colgroup><thead><tr><th>Name</th><th>Default Color</th><th>Description</th></tr></thead><tbody><tr><td><code class="literal">sidebar_divider</code></td><td>default</td><td>The dividing line between the Sidebar and the Index/Pager panels</td></tr><tr><td><code class="literal">sidebar_flagged</code></td><td>default</td><td>Mailboxes containing flagged mail</td></tr><tr><td><code class="literal">sidebar_highlight</code></td><td>underline</td><td>Cursor to select a mailbox</td></tr><tr><td><code class="literal">sidebar_indicator</code></td><td>mutt <code class="literal">indicator</code></td><td>The mailbox open in the Index panel</td></tr><tr><td><code class="literal">sidebar_new</code></td><td>default</td><td>Mailboxes containing new mail</td></tr><tr><td><code class="literal">sidebar_spoolfile</code></td><td>default</td><td>Mailbox that receives incoming mail</td></tr></tbody></table></div></div><br class="table-break" /><p>
+    If the <code class="literal">sidebar_indicator</code> color isn't set, then the default Mutt
+    indicator color will be used (the color used in the index panel).
+    </p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="sidebar-sort"></a>10.6. Sort</h3></div></div></div><div class="table"><a id="table-sidebar-sort"></a><p class="title"><strong>Table 6.4. Sidebar Sort</strong></p><div class="table-contents"><table class="table" summary="Sidebar Sort" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Sort</th><th>Description</th></tr></thead><tbody><tr><td><code class="literal">alpha</code></td><td>Alphabetically by path</td></tr><tr><td><code class="literal">count</code></td><td>Total number of messages</td></tr><tr><td><code class="literal">flagged</code></td><td>Number of flagged messages</td></tr><tr><td><code class="literal">name</code></td><td>Alphabetically by path</td></tr><tr><td><code class="literal">new</code></td><td>Number of new messages</td></tr><tr><td><code class="literal">path</code></td><td>Alphabetically by path</td></tr><tr><td><code class="literal">unsorted</code></td><td>Do not resort the paths</td></tr></tbody></table></div></div><br class="table-break" /></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="sidebar-see-also"></a>10.7. See Also</h3></div></div></div><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p><a class="link" href="advancedusage.html#regexp" title="2. Regular Expressions">Regular Expressions</a></p></li><li class="listitem"><p><a class="link" href="advancedusage.html#patterns" title="3. Patterns: Searching, Limiting and Tagging">Patterns</a></p></li><li class="listitem"><p><a class="link" href="configuration.html#color" title="9. Using Color and Mono Video Attributes">Color command</a></p></li></ul></div></div></div></div><div class="navfooter"><hr /><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="mimesupport.html">Prev</a> </td><td width="20%" align="center"> </td><td width="40%" align="right"> <a accesskey="n" href="security.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 5. Mutt's MIME Support </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 7. Security Considerations</td></tr></table></div></body></html>

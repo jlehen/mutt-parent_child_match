@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009,2013 Derek Martin <code@pizzashack.org>
+ * Copyright (C) 2009,2013,2016 Derek Martin <code@pizzashack.org>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -24,26 +24,28 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/types.h>
-#include "sys_socket.h"
+#include <sys/socket.h>
 
 #include "mutt.h"
 
 
 int getdnsdomainname (char *d, size_t len)
 {
-  /* A DNS name can actually be only 253 octets, string is 256 */
+  int ret = -1;
+
+#ifdef HAVE_GETADDRINFO
   char *node;
   long node_len;
   struct addrinfo hints;
   struct addrinfo *h;
   char *p;
-  int ret;
 
   *d = '\0';
   memset(&hints, 0, sizeof (struct addrinfo));
   hints.ai_flags = AI_CANONNAME;
   hints.ai_family = AF_UNSPEC;
 
+  /* A DNS name can actually be only 253 octets, string is 256 */
   if ((node_len = sysconf(_SC_HOST_NAME_MAX)) == -1)
     node_len = STRING;
   node = safe_malloc(node_len + 1);
@@ -64,6 +66,8 @@ int getdnsdomainname (char *d, size_t len)
     freeaddrinfo(h);
   }
   FREE (&node);
+#endif
+
   return ret;
 }
 
