@@ -115,7 +115,7 @@ set record=+sent_on_$HOSTNAME
 will cause Mutt to save outgoing messages to a folder named
 <span class="quote">“<span class="quote">sent_on_kremvax</span>”</span> if the environment variable
 <code class="literal">$HOSTNAME</code> is set to <span class="quote">“<span class="quote">kremvax.</span>”</span> (See
-<a class="link" href="reference.html#record" title="3.220. record">$record</a> for details.)
+<a class="link" href="reference.html#record" title="3.222. record">$record</a> for details.)
 </p><p>
 Mutt expands the variable when it is assigned, not when it is used. If
 the value of a variable on the right-hand side of an assignment changes
@@ -328,7 +328,7 @@ encrypt outgoing messages.
 The postpone menu is similar to the index menu, except is used when
 recalling a message the user was composing, but saved until later.
 </p></dd><dt><span class="term">query</span></dt><dd><p>
-The query menu is the browser for results returned by <a class="link" href="reference.html#query-command" title="3.212. query_command">$query_command</a>.
+The query menu is the browser for results returned by <a class="link" href="reference.html#query-command" title="3.214. query_command">$query_command</a>.
 </p></dd><dt><span class="term">mix</span></dt><dd><p>
 The mixmaster screen is used to select remailer options for outgoing
 messages (if Mutt is compiled with Mixmaster support).
@@ -398,7 +398,7 @@ The regexp parameter has <a class="link" href="advancedusage.html#shortcuts" tit
 shortcut</a> expansion performed on the first character.
 See  <a class="xref" href="advancedusage.html#mailbox-hook" title="5.2. Mailbox Matching in Hooks">Mailbox Matching in Hooks</a> for more details.
 </p><div class="note"><h3 class="title">Note</h3><p>
-If you use the <span class="quote">“<span class="quote">!</span>”</span> shortcut for <a class="link" href="reference.html#spoolfile" title="3.284. spoolfile">$spoolfile</a> at the beginning of the pattern,
+If you use the <span class="quote">“<span class="quote">!</span>”</span> shortcut for <a class="link" href="reference.html#spoolfile" title="3.297. spoolfile">$spoolfile</a> at the beginning of the pattern,
 you must place it inside of double or single quotes in order to
 distinguish it from the logical <span class="emphasis"><em>not</em></span> operator for
 the expression.
@@ -419,7 +419,7 @@ The keyboard buffer will not be processed until after all hooks
 are run; multiple <a class="link" href="configuration.html#push" title="22. Adding Key Sequences to the Keyboard Buffer">push</a> or <a class="link" href="configuration.html#exec" title="23. Executing Functions">exec</a> commands will end up being processed in
 reverse order.
 </p></div><p>
-The following example will set the <a class="link" href="reference.html#sort" title="3.278. sort">sort</a>
+The following example will set the <a class="link" href="reference.html#sort" title="3.291. sort">sort</a>
 variable to <code class="literal">date-sent</code> for all folders but to
 <code class="literal">threads</code> for all folders containing
 <span class="quote">“<span class="quote">mutt</span>”</span> in their name.
@@ -520,7 +520,7 @@ server-side searches (=b, =B, =h) are not supported for color index
 patterns.
 </p><p>
 <span class="emphasis"><em>object</em></span> can be one of:
-</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>attachment</p></li><li class="listitem"><p>bold (highlighting bold patterns in the body of messages)</p></li><li class="listitem"><p>error (error messages printed by Mutt)</p></li><li class="listitem"><p>hdrdefault (default color of the message header in the pager)</p></li><li class="listitem"><p>indicator (arrow or bar used to indicate the current item in a menu)</p></li><li class="listitem"><p>markers (the <span class="quote">“<span class="quote">+</span>”</span> markers at the beginning of wrapped lines in the pager)</p></li><li class="listitem"><p>message (informational messages)</p></li><li class="listitem"><p>normal</p></li><li class="listitem"><p>prompt</p></li><li class="listitem"><p>quoted (text matching <a class="link" href="reference.html#quote-regexp" title="3.215. quote_regexp">$quote_regexp</a> in the body of a message)</p></li><li class="listitem"><p>quoted1, quoted2, ..., quoted<span class="emphasis"><em>N</em></span> (higher levels of quoting)</p></li><li class="listitem"><p>search (highlighting of words in the pager)</p></li><li class="listitem"><p>signature</p></li><li class="listitem"><p>status (mode lines used to display info about the mailbox or message)</p></li><li class="listitem"><p>tilde (the <span class="quote">“<span class="quote">~</span>”</span> used to pad blank lines in the pager)</p></li><li class="listitem"><p>tree (thread tree drawn in the message index and attachment menu)</p></li><li class="listitem"><p>underline (highlighting underlined patterns in the body of messages)</p></li></ul></div><p>
+</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>attachment</p></li><li class="listitem"><p>bold (highlighting bold patterns in the body of messages)</p></li><li class="listitem"><p>error (error messages printed by Mutt)</p></li><li class="listitem"><p>hdrdefault (default color of the message header in the pager)</p></li><li class="listitem"><p>indicator (arrow or bar used to indicate the current item in a menu)</p></li><li class="listitem"><p>markers (the <span class="quote">“<span class="quote">+</span>”</span> markers at the beginning of wrapped lines in the pager)</p></li><li class="listitem"><p>message (informational messages)</p></li><li class="listitem"><p>normal</p></li><li class="listitem"><p>prompt</p></li><li class="listitem"><p>quoted (text matching <a class="link" href="reference.html#quote-regexp" title="3.217. quote_regexp">$quote_regexp</a> in the body of a message)</p></li><li class="listitem"><p>quoted1, quoted2, ..., quoted<span class="emphasis"><em>N</em></span> (higher levels of quoting)</p></li><li class="listitem"><p>search (highlighting of words in the pager)</p></li><li class="listitem"><p>signature</p></li><li class="listitem"><p>status (mode lines used to display info about the mailbox or message)</p></li><li class="listitem"><p>tilde (the <span class="quote">“<span class="quote">~</span>”</span> used to pad blank lines in the pager)</p></li><li class="listitem"><p>tree (thread tree drawn in the message index and attachment menu)</p></li><li class="listitem"><p>underline (highlighting underlined patterns in the body of messages)</p></li></ul></div><p>
 <span class="emphasis"><em>foreground</em></span> and <span class="emphasis"><em>background</em></span> can
 be one of the following:
 </p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>white</p></li><li class="listitem"><p>black</p></li><li class="listitem"><p>green</p></li><li class="listitem"><p>magenta</p></li><li class="listitem"><p>blue</p></li><li class="listitem"><p>cyan</p></li><li class="listitem"><p>yellow</p></li><li class="listitem"><p>red</p></li><li class="listitem"><p>default</p></li><li class="listitem"><p>color<span class="emphasis"><em>x</em></span></p></li></ul></div><p>
@@ -596,7 +596,7 @@ For <span class="emphasis"><em>object</em></span>, see the <span class="command"
 command. <span class="emphasis"><em>attribute</em></span> can be one of the following:
 </p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>none</p></li><li class="listitem"><p>bold</p></li><li class="listitem"><p>underline</p></li><li class="listitem"><p>reverse</p></li><li class="listitem"><p>standout</p></li></ul></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="msg-hdr-display"></a>10. Message Header Display</h2></div></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="hdr-folding"></a>10.1. Header Display</h3></div></div></div><p>
 When displaying a message in the pager, Mutt folds long header lines at
-<a class="link" href="reference.html#wrap" title="3.326. wrap">$wrap</a> columns. Though there're precise rules
+<a class="link" href="reference.html#wrap" title="3.340. wrap">$wrap</a> columns. Though there're precise rules
 about where to break and how, Mutt always folds headers using a tab for
 readability. (Note that the sending side is not affected by this, Mutt
 tries to implement standards compliant folding.)
@@ -670,7 +670,7 @@ on whether you sent them or whether you received them from someone else.
 For instance, when replying to a message that you sent to a different
 party, Mutt will automatically suggest to send the response to the
 original message's recipients — responding to yourself won't make
-much sense in many cases.  (See <a class="link" href="reference.html#reply-to" title="3.226. reply_to">$reply_to</a>.)
+much sense in many cases.  (See <a class="link" href="reference.html#reply-to" title="3.228. reply_to">$reply_to</a>.)
 </p><p>
 Many users receive e-mail under a number of different addresses. To
 fully use Mutt's features here, the program must be able to recognize
@@ -837,7 +837,7 @@ to remove all tokens.
 The folders in the <span class="command"><strong>mailboxes</strong></span> command are resolved
 when the command is executed, so if these names contain <a class="link" href="advancedusage.html#shortcuts" title="8. Mailbox Shortcuts">shortcut characters</a> (such as <span class="quote">“<span class="quote">=</span>”</span>
 and <span class="quote">“<span class="quote">!</span>”</span>), any variable definition that affects these
-characters (like <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a> and <a class="link" href="reference.html#spoolfile" title="3.284. spoolfile">$spoolfile</a>) should be set before the
+characters (like <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a> and <a class="link" href="reference.html#spoolfile" title="3.297. spoolfile">$spoolfile</a>) should be set before the
 <span class="command"><strong>mailboxes</strong></span> command. If none of these shortcuts are
 used, a local path should be absolute as otherwise Mutt tries to find it
 relative to the directory from where Mutt was started which may not
@@ -907,10 +907,10 @@ Also see the <a class="link" href="configuration.html#fcc-save-hook" title="18.�
    
 <em class="replaceable"><code>mailbox</code></em>
  </p></div><p>
-This command is used to save outgoing mail in a mailbox other than <a class="link" href="reference.html#record" title="3.220. record">$record</a>.  Mutt searches the initial list of
+This command is used to save outgoing mail in a mailbox other than <a class="link" href="reference.html#record" title="3.222. record">$record</a>.  Mutt searches the initial list of
 message recipients for the first matching <span class="emphasis"><em>pattern</em></span>
 and uses <span class="emphasis"><em>mailbox</em></span> as the default Fcc: mailbox.  If
-no match is found the message will be saved to <a class="link" href="reference.html#record" title="3.220. record">$record</a> mailbox.
+no match is found the message will be saved to <a class="link" href="reference.html#record" title="3.222. record">$record</a> mailbox.
 </p><p>
 To provide more flexibility and good defaults, Mutt applies the
 expandos of <a class="link" href="reference.html#index-format" title="3.118. index_format">$index_format</a> to
@@ -966,7 +966,7 @@ when <span class="command"><strong>reply-hook</strong></span> have been executed
 changed, either by editing it, or by using the compose menu to change
 its recipients or subject.  <span class="command"><strong>send2-hook</strong></span> is executed
 after <span class="command"><strong>send-hook</strong></span>, and can, e.g., be used to set
-parameters such as the <a class="link" href="reference.html#sendmail" title="3.244. sendmail">$sendmail</a>
+parameters such as the <a class="link" href="reference.html#sendmail" title="3.246. sendmail">$sendmail</a>
 variable depending on the message's sender address.
 </p><p>
 For each type of <span class="command"><strong>send-hook</strong></span> or
@@ -978,7 +978,7 @@ Example: <code class="literal"><span class="command"><strong>send-hook</strong><
 "<span class="command"><strong>set</strong></span> mime_forward signature=''"</code>
 </p><p>
 Another typical use for this command is to change the values of the
-<a class="link" href="reference.html#attribution" title="3.16. attribution">$attribution</a>, <a class="link" href="reference.html#signature" title="3.249. signature">$signature</a> and <a class="link" href="reference.html#locale" title="3.121. locale">$locale</a> variables in order to change the
+<a class="link" href="reference.html#attribution" title="3.16. attribution">$attribution</a>, <a class="link" href="reference.html#signature" title="3.262. signature">$signature</a> and <a class="link" href="reference.html#locale" title="3.121. locale">$locale</a> variables in order to change the
 language of the attributions and signatures based upon the recipients.
 </p><div class="note"><h3 class="title">Note</h3><p>
 <span class="command"><strong>send-hook</strong></span>'s are only executed once after getting the
@@ -1083,8 +1083,8 @@ a message's score if <span class="emphasis"><em>pattern</em></span> matches it.
 <span class="emphasis"><em>pattern</em></span> is a string in the format described in the
 <a class="link" href="advancedusage.html#patterns" title="3. Patterns: Searching, Limiting and Tagging">patterns</a> section (note: For efficiency
 reasons, patterns which scan information not available in the index,
-such as <code class="literal">~b</code>, <code class="literal">~B</code> or
-<code class="literal">~h</code>, may not be used).  <span class="emphasis"><em>value</em></span> is
+such as <code class="literal">~b</code>, <code class="literal">~B</code>, <code class="literal">~h</code>,
+or <code class="literal">~X</code> may not be used).  <span class="emphasis"><em>value</em></span> is
 a positive or negative integer.  A message's final score is the sum
 total of all matching <span class="command"><strong>score</strong></span> entries.  However, you
 may optionally prefix <span class="emphasis"><em>value</em></span> with an equal sign
@@ -1138,10 +1138,10 @@ adjusted.
 If you're using multiple spam filters, a message can have more than one
 spam-related header. You can define <span class="command"><strong>spam</strong></span> patterns for
 each filter you use. If a message matches two or more of these patterns,
-and the <a class="link" href="reference.html#spam-separator" title="3.283. spam_separator">$spam_separator</a> variable
+and the <a class="link" href="reference.html#spam-separator" title="3.296. spam_separator">$spam_separator</a> variable
 is set to a string, then the message's spam tag will consist of all the
 <span class="emphasis"><em>format</em></span> strings joined together, with the value of
-<a class="link" href="reference.html#spam-separator" title="3.283. spam_separator">$spam_separator</a> separating them.
+<a class="link" href="reference.html#spam-separator" title="3.296. spam_separator">$spam_separator</a> separating them.
 </p><p>
 For example, suppose one uses DCC, SpamAssassin, and PureMessage, then
 the configuration might look like in <a class="xref" href="configuration.html#ex-spam" title="Example 3.14. Configuring spam detection">Example 3.14, “Configuring spam detection”</a>.
@@ -1159,7 +1159,7 @@ message's spam tag would read <code class="literal">90+/DCC-Fuz2,
 DCC report indicate the checksum used — in this case,
 <span class="quote">“<span class="quote">Fuz2</span>”</span>.)
 </p><p>
-If the <a class="link" href="reference.html#spam-separator" title="3.283. spam_separator">$spam_separator</a> variable is
+If the <a class="link" href="reference.html#spam-separator" title="3.296. spam_separator">$spam_separator</a> variable is
 unset, then each spam pattern match supersedes the previous one. Instead
 of getting joined <span class="emphasis"><em>format</em></span> strings, you'll get only
 the last one to match.
@@ -1442,7 +1442,7 @@ as an argument, or you can remove all hooks of a specific type by saying
 something like <code class="literal"><span class="command"><strong>unhook</strong></span> send-hook</code>.
 </p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="formatstrings"></a>29. Format Strings</h2></div></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="formatstrings-basics"></a>29.1. Basic usage</h3></div></div></div><p>
 Format strings are a general concept you'll find in several locations
-through the Mutt configuration, especially in the <a class="link" href="reference.html#index-format" title="3.118. index_format">$index_format</a>, <a class="link" href="reference.html#pager-format" title="3.156. pager_format">$pager_format</a>, <a class="link" href="reference.html#status-format" title="3.300. status_format">$status_format</a>, and other related
+through the Mutt configuration, especially in the <a class="link" href="reference.html#index-format" title="3.118. index_format">$index_format</a>, <a class="link" href="reference.html#pager-format" title="3.158. pager_format">$pager_format</a>, <a class="link" href="reference.html#status-format" title="3.313. status_format">$status_format</a>, and other related
 variables. These can be very straightforward, and it's quite possible
 you already know how to use them.
 </p><p>
@@ -1501,7 +1501,7 @@ printed if <span class="emphasis"><em>sequence_char</em></span> is nonzero.
 as normal text, but you may not nest optional strings.
 </p><p>
 Here is an example illustrating how to optionally print the number of
-new messages in a mailbox in <a class="link" href="reference.html#status-format" title="3.300. status_format">$status_format</a>:
+new messages in a mailbox in <a class="link" href="reference.html#status-format" title="3.313. status_format">$status_format</a>:
 </p><pre class="screen">
 %?n?%n new messages.?</pre><p>
 You can also switch between two strings using the following construct:
@@ -1530,7 +1530,7 @@ string between the single quotes as the only argument.
 </p><p>
 A practical example is the <code class="literal">mutt_xtitle</code> script
 installed in the <code class="literal">samples</code> subdirectory of the Mutt
-documentation: it can be used as filter for <a class="link" href="reference.html#status-format" title="3.300. status_format">$status_format</a> to set the current
+documentation: it can be used as filter for <a class="link" href="reference.html#status-format" title="3.313. status_format">$status_format</a> to set the current
 terminal's title, if supported.
 </p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="formatstrings-padding"></a>29.4. Padding</h3></div></div></div><p>
 In most format strings, Mutt supports different types of padding using

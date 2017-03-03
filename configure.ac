@@ -175,6 +175,14 @@ if test x$have_smime != xno ; then
 	SMIMEAUX_TARGET="smime_keys"
 fi
 
+AC_ARG_ENABLE(sidebar, AC_HELP_STRING([--enable-sidebar], [Enable Sidebar support]),
+[       if test x$enableval = xyes ; then
+		AC_DEFINE(USE_SIDEBAR, 1, [Define if you want support for the sidebar.])
+		OPS="$OPS \$(srcdir)/OPS.SIDEBAR"
+                MUTT_LIB_OBJECTS="$MUTT_LIB_OBJECTS sidebar.o"
+        fi
+])
+
 AC_ARG_WITH(mixmaster, AS_HELP_STRING([--with-mixmaster@<:@=PATH@:>@],[Include Mixmaster support]),
   [if test "$withval" != no
    then
@@ -281,7 +289,9 @@ main ()
 	done
         AC_CHECK_LIB($cf_ncurses, initscr,
                 [MUTTLIBS="$MUTTLIBS -l$cf_ncurses"
-		
+
+                AC_CHECK_LIB(tinfo, tgetent, [MUTTLIBS="$MUTTLIBS -ltinfo"])
+
                 if test "$cf_ncurses" = ncursesw; then
 			AC_CHECK_HEADERS(ncursesw/ncurses.h,[cf_cv_ncurses_header="ncursesw/ncurses.h"])
 		else
@@ -578,6 +588,12 @@ need_socket="no"
 
 dnl -- socket dependencies --
 
+dnl getaddrinfo is used by getdomain.c, and requires libnsl and
+dnl libsocket on some platforms
+AC_CHECK_FUNC(gethostent, , AC_CHECK_LIB(nsl, gethostent))
+AC_CHECK_FUNC(setsockopt, , AC_CHECK_LIB(socket, setsockopt))
+AC_CHECK_FUNCS(getaddrinfo)
+
 AC_ARG_ENABLE(pop,  AS_HELP_STRING([--enable-pop],[Enable POP3 support]),
 [       if test x$enableval = xyes ; then
                 AC_DEFINE(USE_POP,1,[ Define if you want support for the POP3 protocol. ])
@@ -621,9 +637,6 @@ then
                 AC_MSG_RESULT([no])
                 AC_DEFINE(socklen_t,int,
                         [ Define to 'int' if <sys/socket.h> doesn't have it. ]))
-        AC_CHECK_FUNC(gethostent, , AC_CHECK_LIB(nsl, gethostent))
-        AC_CHECK_FUNC(setsockopt, , AC_CHECK_LIB(socket, setsockopt))
-        AC_CHECK_FUNCS(getaddrinfo)
         AC_DEFINE(USE_SOCKET,1,
                 [ Include code for socket support. Set automatically if you enable POP3 or IMAP ])
         MUTT_LIB_OBJECTS="$MUTT_LIB_OBJECTS account.o mutt_socket.o mutt_tunnel.o"
@@ -676,13 +689,16 @@ AC_ARG_WITH(ssl, AS_HELP_STRING([--with-ssl@<:@=PFX@:>@],[Enable TLS support usi
 
             crypto_libs=""
             AC_CHECK_LIB(z, deflate, [crypto_libs=-lz])
-            AC_CHECK_LIB(crypto, X509_new,
-              [crypto_libs="-lcrypto $crypto_libs"],, [$crypto_libs])
+            AC_CHECK_LIB(crypto, X509_STORE_CTX_new,
+              [crypto_libs="-lcrypto $crypto_libs"],
+              AC_MSG_ERROR([Unable to find SSL library]), [$crypto_libs])
             AC_CHECK_LIB(ssl, SSL_new,,
               AC_MSG_ERROR([Unable to find SSL library]), [$crypto_libs])
 
             LIBS="$LIBS $crypto_libs"
             AC_CHECK_FUNCS(RAND_status RAND_egd)
+            AC_CHECK_DECLS([SSL_set_mode, SSL_MODE_AUTO_RETRY],,
+              AC_MSG_ERROR([Unable to find decent SSL header]), [[#include <openssl/ssl.h>]])
 
             AC_DEFINE(USE_SSL,1,[ Define if you want support for SSL. ])
             AC_DEFINE(USE_SSL_OPENSSL,1,[ Define if you want support for SSL via OpenSSL. ])

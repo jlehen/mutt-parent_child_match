@@ -26,7 +26,7 @@ div.note { margin-bottom: 5px; }
 tr { vertical-align: top; }
 .comment { color:#707070; }
 
-    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 4. Advanced Usage</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="configuration.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="mimesupport.html">Next</a></td></tr></table><hr /></div><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="advancedusage"></a>Chapter 4. Advanced Usage</h1></div></div></div><div class="toc"><p><strong>Table of Contents</strong></p><dl class="toc"><dt><span class="sect1"><a href="advancedusage.html#charset-handling">1. Character Set Handling</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#regexp">2. Regular Expressions</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#patterns">3. Patterns: Searching, Limiting and Tagging</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#patterns-modifier">3.1. Pattern Modifier</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#simple-searches">3.2. Simple Searches</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#complex-patterns">3.3. Nesting and Boolean Operators</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#date-patterns">3.4. Searching by Date</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#tags">4. Using Tags</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#hooks">5. Using Hooks</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#pattern-hook">5.1. Message Matching in Hooks</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#mailbox-hook">5.2. Mailbox Matching in Hooks</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#query">6. External Address Queries</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#mailbox-formats">7. Mailbox Formats</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#shortcuts">8. Mailbox Shortcuts</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#using-lists">9. Handling Mailing Lists</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#new-mail">10. New Mail Detection</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#new-mail-formats">10.1. How New Mail Detection Works</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#new-mail-polling">10.2. Polling For New Mail</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#editing-threads">11. Editing Threads</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#link-threads">11.1. Linking Threads</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#break-threads">11.2. Breaking Threads</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#dsn">12. Delivery Status Notification (DSN) Support</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#urlview">13. Start a WWW Browser on URLs</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#misc-topics">14. Miscellany</a></span></dt></dl></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="charset-handling"></a>1. Character Set Handling</h2></div></div></div><p>
+    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 4. Advanced Usage</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="configuration.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="mimesupport.html">Next</a></td></tr></table><hr /></div><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="advancedusage"></a>Chapter 4. Advanced Usage</h1></div></div></div><div class="toc"><p><strong>Table of Contents</strong></p><dl class="toc"><dt><span class="sect1"><a href="advancedusage.html#charset-handling">1. Character Set Handling</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#regexp">2. Regular Expressions</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#patterns">3. Patterns: Searching, Limiting and Tagging</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#patterns-modifier">3.1. Pattern Modifier</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#simple-searches">3.2. Simple Searches</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#complex-patterns">3.3. Nesting and Boolean Operators</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#date-patterns">3.4. Searching by Date</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#tags">4. Using Tags</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#hooks">5. Using Hooks</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#pattern-hook">5.1. Message Matching in Hooks</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#mailbox-hook">5.2. Mailbox Matching in Hooks</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#query">6. External Address Queries</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#mailbox-formats">7. Mailbox Formats</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#shortcuts">8. Mailbox Shortcuts</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#using-lists">9. Handling Mailing Lists</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#new-mail">10. New Mail Detection</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#new-mail-formats">10.1. How New Mail Detection Works</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#new-mail-polling">10.2. Polling For New Mail</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#calc-mailbox-counts">10.3. Calculating Mailbox Message Counts</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#editing-threads">11. Editing Threads</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#link-threads">11.1. Linking Threads</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#break-threads">11.2. Breaking Threads</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#dsn">12. Delivery Status Notification (DSN) Support</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#urlview">13. Start a WWW Browser on URLs</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#misc-topics">14. Miscellany</a></span></dt></dl></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="charset-handling"></a>1. Character Set Handling</h2></div></div></div><p>
 A <span class="quote">“<span class="quote">character set</span>”</span> is basically a mapping between bytes and
 glyphs and implies a certain character encoding scheme. For example, for
 the ISO 8859 family of character sets, an encoding of 8bit per character
@@ -248,12 +248,12 @@ If that is the case, Mutt will use the shown pattern modifier instead.
 If a keyword would conflict with your search keyword, you need to turn
 it into a regular expression to avoid matching the keyword table. For
 example, if you want to find all messages matching <span class="quote">“<span class="quote">flag</span>”</span>
-(using <a class="link" href="reference.html#simple-search" title="3.250. simple_search">$simple_search</a>)
+(using <a class="link" href="reference.html#simple-search" title="3.263. simple_search">$simple_search</a>)
 but don't want to match flagged messages, simply search for
 <span class="quote">“<span class="quote"><code class="literal">[f]lag</code></span>”</span>.
 </p><div class="table"><a id="tab-simplesearch-keywords"></a><p class="title"><strong>Table 4.5. Simple search keywords</strong></p><div class="table-contents"><table class="table" summary="Simple search keywords" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Keyword</th><th>Pattern modifier</th></tr></thead><tbody><tr><td>all</td><td>~A</td></tr><tr><td>.</td><td>~A</td></tr><tr><td>^</td><td>~A</td></tr><tr><td>del</td><td>~D</td></tr><tr><td>flag</td><td>~F</td></tr><tr><td>new</td><td>~N</td></tr><tr><td>old</td><td>~O</td></tr><tr><td>repl</td><td>~Q</td></tr><tr><td>read</td><td>~R</td></tr><tr><td>tag</td><td>~T</td></tr><tr><td>unread</td><td>~U</td></tr></tbody></table></div></div><br class="table-break" /><p>
 The second type of simple search is to build a complex search pattern
-using <a class="link" href="reference.html#simple-search" title="3.250. simple_search">$simple_search</a> as a
+using <a class="link" href="reference.html#simple-search" title="3.263. simple_search">$simple_search</a> as a
 template. Mutt will insert your query properly quoted and search for the
 composed complex query.
 </p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="complex-patterns"></a>3.3. Nesting and Boolean Operators</h3></div></div></div><p>
@@ -421,7 +421,7 @@ other hooks of that type to restore configuration defaults.
 send-hook . 'unmy_hdr From:'
 send-hook ~C'^b@b\.b$' my_hdr from: c@c.c
 </pre></div></div><br class="example-break" /><p>
-In <a class="xref" href="advancedusage.html#ex-default-hook" title="Example 4.3. Specifying a “default” hook">Example 4.3, “Specifying a <span class="quote">“<span class="quote">default</span>”</span> hook”</a>, by default the value of <a class="link" href="reference.html#from" title="3.77. from">$from</a> and <a class="link" href="reference.html#realname" title="3.218. realname">$realname</a> is not overridden. When sending
+In <a class="xref" href="advancedusage.html#ex-default-hook" title="Example 4.3. Specifying a “default” hook">Example 4.3, “Specifying a <span class="quote">“<span class="quote">default</span>”</span> hook”</a>, by default the value of <a class="link" href="reference.html#from" title="3.77. from">$from</a> and <a class="link" href="reference.html#realname" title="3.220. realname">$realname</a> is not overridden. When sending
 messages either To: or Cc: to <code class="literal">&lt;b@b.b&gt;</code>, the
 From: header is changed to <code class="literal">&lt;c@c.c&gt;</code>.
 </p><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="pattern-hook"></a>5.1. Message Matching in Hooks</h3></div></div></div><p>
@@ -490,7 +490,7 @@ if the mailbox shortcut results in an empty regexp.
 </p></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="query"></a>6. External Address Queries</h2></div></div></div><p>
 Mutt supports connecting to external directory databases such as LDAP,
 ph/qi, bbdb, or NIS through a wrapper script which connects to Mutt
-using a simple interface.  Using the <a class="link" href="reference.html#query-command" title="3.212. query_command">$query_command</a> variable, you specify the
+using a simple interface.  Using the <a class="link" href="reference.html#query-command" title="3.214. query_command">$query_command</a> variable, you specify the
 wrapper command to use.  For example:
 </p><pre class="screen">
 set query_command = "mutt_ldap_query.pl %s"
@@ -530,7 +530,7 @@ can select one or more addresses to be added to the prompt.
 Mutt supports reading and writing of four different local mailbox
 formats: mbox, MMDF, MH and Maildir.  The mailbox type is auto detected,
 so there is no need to use a flag for different mailbox types.  When
-creating new mailboxes, Mutt uses the default specified with the <a class="link" href="reference.html#mbox-type" title="3.133. mbox_type">$mbox_type</a> variable. A short description of
+creating new mailboxes, Mutt uses the default specified with the <a class="link" href="reference.html#mbox-type" title="3.135. mbox_type">$mbox_type</a> variable. A short description of
 the formats follows.
 </p><p>
 <span class="emphasis"><em>mbox</em></span>.  This is a widely used mailbox format for
@@ -584,10 +584,10 @@ There are a number of built in shortcuts which refer to specific
 mailboxes.  These shortcuts can be used anywhere you are prompted for a
 file or mailbox path or in path-related configuration variables. Note
 that these only work at the beginning of a string.
-</p><div class="table"><a id="tab-mailbox-shortcuts"></a><p class="title"><strong>Table 4.7. Mailbox shortcuts</strong></p><div class="table-contents"><table class="table" summary="Mailbox shortcuts" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Shortcut</th><th>Refers to...</th></tr></thead><tbody><tr><td><code class="literal">!</code></td><td>your <a class="link" href="reference.html#spoolfile" title="3.284. spoolfile">$spoolfile</a> (incoming) mailbox</td></tr><tr><td><code class="literal">&gt;</code></td><td>your <a class="link" href="reference.html#mbox" title="3.132. mbox">$mbox</a> file</td></tr><tr><td><code class="literal">&lt;</code></td><td>your <a class="link" href="reference.html#record" title="3.220. record">$record</a> file</td></tr><tr><td><code class="literal">^</code></td><td>the current mailbox</td></tr><tr><td><code class="literal">-</code> or <code class="literal">!!</code></td><td>the file you've last visited</td></tr><tr><td><code class="literal">~</code></td><td>your home directory</td></tr><tr><td><code class="literal">=</code> or <code class="literal">+</code></td><td>your <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a> directory</td></tr><tr><td><span class="emphasis"><em>@alias</em></span></td><td>to the <a class="link" href="configuration.html#save-hook" title="16. Specify Default Save Mailbox">default save folder</a> as determined by the address of the alias</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p><div class="table"><a id="tab-mailbox-shortcuts"></a><p class="title"><strong>Table 4.7. Mailbox shortcuts</strong></p><div class="table-contents"><table class="table" summary="Mailbox shortcuts" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Shortcut</th><th>Refers to...</th></tr></thead><tbody><tr><td><code class="literal">!</code></td><td>your <a class="link" href="reference.html#spoolfile" title="3.297. spoolfile">$spoolfile</a> (incoming) mailbox</td></tr><tr><td><code class="literal">&gt;</code></td><td>your <a class="link" href="reference.html#mbox" title="3.134. mbox">$mbox</a> file</td></tr><tr><td><code class="literal">&lt;</code></td><td>your <a class="link" href="reference.html#record" title="3.222. record">$record</a> file</td></tr><tr><td><code class="literal">^</code></td><td>the current mailbox</td></tr><tr><td><code class="literal">-</code> or <code class="literal">!!</code></td><td>the file you've last visited</td></tr><tr><td><code class="literal">~</code></td><td>your home directory</td></tr><tr><td><code class="literal">=</code> or <code class="literal">+</code></td><td>your <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a> directory</td></tr><tr><td><span class="emphasis"><em>@alias</em></span></td><td>to the <a class="link" href="configuration.html#save-hook" title="16. Specify Default Save Mailbox">default save folder</a> as determined by the address of the alias</td></tr></tbody></table></div></div><br class="table-break" /><p>
 For example, to store a copy of outgoing messages in the folder they
 were composed in, a <a class="link" href="configuration.html#folder-hook" title="7. Setting Variables Based Upon Mailbox"><span class="command"><strong>folder-hook</strong></span></a> can be used
-to set <a class="link" href="reference.html#record" title="3.220. record">$record</a>:
+to set <a class="link" href="reference.html#record" title="3.222. record">$record</a>:
 </p><pre class="screen">
 folder-hook . 'set record=^'</pre></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="using-lists"></a>9. Handling Mailing Lists</h2></div></div></div><p>
 Mutt has a few configuration options that make dealing with large
@@ -646,7 +646,7 @@ The other method some mailing list admins use is to generate a
 address rather than the author of the message.  This can create problems
 when trying to reply directly to the author in private, since most mail
 clients will automatically reply to the address given in the
-<span class="quote">“<span class="quote">Reply-To</span>”</span> field.  Mutt uses the <a class="link" href="reference.html#reply-to" title="3.226. reply_to">$reply_to</a> variable to help decide which
+<span class="quote">“<span class="quote">Reply-To</span>”</span> field.  Mutt uses the <a class="link" href="reference.html#reply-to" title="3.228. reply_to">$reply_to</a> variable to help decide which
 address to use.  If set to <span class="emphasis"><em>ask-yes</em></span> or
 <span class="emphasis"><em>ask-no</em></span>, you will be prompted as to whether or not
 you would like to use the address given in the <span class="quote">“<span class="quote">Reply-To</span>”</span>
@@ -664,7 +664,7 @@ fields with the <span class="quote">“<span class="quote">~y</span>”</span> s
 not a standard message header field, but it can easily be inserted by
 procmail and other mail filtering agents.
 </p><p>
-Lastly, Mutt has the ability to <a class="link" href="reference.html#sort" title="3.278. sort">sort</a> the
+Lastly, Mutt has the ability to <a class="link" href="reference.html#sort" title="3.291. sort">sort</a> the
 mailbox into <a class="link" href="gettingstarted.html#threads" title="5.3. Threaded Mode">threads</a>.  A thread is a
 group of messages which all relate to the same subject.  This is usually
 organized into a tree-like structure where a message and all of its
@@ -698,9 +698,9 @@ mail detection instead which won't work for size-neutral changes.
 </p><p>
 New mail for Maildir is assumed if there is one message in the
 <code class="literal">new/</code> subdirectory which is not marked deleted (see
-<a class="link" href="reference.html#maildir-trash" title="3.127. maildir_trash">$maildir_trash</a>). For MH folders, a
+<a class="link" href="reference.html#maildir-trash" title="3.129. maildir_trash">$maildir_trash</a>). For MH folders, a
 mailbox is considered having new mail if there's at least one message in
-the <span class="quote">“<span class="quote">unseen</span>”</span> sequence as specified by <a class="link" href="reference.html#mh-seq-unseen" title="3.145. mh_seq_unseen">$mh_seq_unseen</a>.
+the <span class="quote">“<span class="quote">unseen</span>”</span> sequence as specified by <a class="link" href="reference.html#mh-seq-unseen" title="3.147. mh_seq_unseen">$mh_seq_unseen</a>.
 </p><p>
 Mutt does not poll POP3 folders for new mail, it only periodically
 checks the currently opened folder (if it's a POP3 folder).
@@ -708,11 +708,17 @@ checks the currently opened folder (if it's a POP3 folder).
 For IMAP, by default Mutt uses recent message counts provided by the
 server to detect new mail. If the <a class="link" href="reference.html#imap-idle" title="3.104. imap_idle">$imap_idle</a> option is set, it'll use the IMAP
 IDLE extension if advertised by the server.
+</p><p>
+The <a class="link" href="reference.html#mail-check-recent" title="3.123. mail_check_recent">$mail_check_recent</a>
+option changes whether Mutt will notify you of new mail in an
+already visited mailbox.  When set (the default) it will only notify
+you of new mail received since the last time you opened the mailbox.
+When unset, Mutt will notify you of any new mail in the mailbox.
 </p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="new-mail-polling"></a>10.2. Polling For New Mail</h3></div></div></div><p>
-When in the index menu and being idle (also see <a class="link" href="reference.html#timeout" title="3.309. timeout">$timeout</a>), Mutt periodically checks for new
+When in the index menu and being idle (also see <a class="link" href="reference.html#timeout" title="3.322. timeout">$timeout</a>), Mutt periodically checks for new
 mail in all folders which have been configured via the
 <span class="command"><strong>mailboxes</strong></span> command. The interval depends on the folder
-type: for local/IMAP folders it consults <a class="link" href="reference.html#mail-check" title="3.122. mail_check">$mail_check</a> and <a class="link" href="reference.html#pop-checkinterval" title="3.194. pop_checkinterval">$pop_checkinterval</a> for POP folders.
+type: for local/IMAP folders it consults <a class="link" href="reference.html#mail-check" title="3.122. mail_check">$mail_check</a> and <a class="link" href="reference.html#pop-checkinterval" title="3.196. pop_checkinterval">$pop_checkinterval</a> for POP folders.
 </p><p>
 Outside the index menu the directory browser supports checking for new
 mail using the <code class="literal">&lt;check-new&gt;</code> function which is
@@ -727,7 +733,7 @@ For the pager, index and directory browser menus, Mutt contains the
 mail in the command line at the bottom of the screen.
 </p><p>
 For the index, by default Mutt displays the number of mailboxes with new
-mail in the status bar, please refer to the <a class="link" href="reference.html#status-format" title="3.300. status_format">$status_format</a> variable for details.
+mail in the status bar, please refer to the <a class="link" href="reference.html#status-format" title="3.313. status_format">$status_format</a> variable for details.
 </p><p>
 When changing folders, Mutt fills the prompt with the first folder from
 the mailboxes list containing new mail (if any), pressing
@@ -735,6 +741,15 @@ the mailboxes list containing new mail (if any), pressing
 mail.  The (by default unbound) function
 <code class="literal">&lt;next-unread-mailbox&gt;</code> in the index can be used
 to immediately open the next folder with unread mail (if any).
+</p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="calc-mailbox-counts"></a>10.3. Calculating Mailbox Message Counts</h3></div></div></div><p>
+If <a class="link" href="reference.html#mail-check-stats" title="3.124. mail_check_stats">$mail_check_stats</a> is set,
+Mutt will periodically calculate the unread, flagged, and total
+message counts for each mailbox watched by the
+<span class="command"><strong>mailboxes</strong></span> command.  This calculation takes place at
+the same time as new mail polling, but is controlled by a separate
+timer: <a class="link" href="reference.html#mail-check-stats-interval" title="3.125. mail_check_stats_interval">$mail_check_stats_interval</a>.
+</p><p>
+The sidebar can display these message counts.  See <a class="link" href="reference.html#sidebar-format" title="3.252. sidebar_format">$sidebar_format</a>.
 </p></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="editing-threads"></a>11. Editing Threads</h2></div></div></div><p>
 Mutt has the ability to dynamically restructure threads that are broken
 either by misconfigured software or bad behavior from some
@@ -769,14 +784,14 @@ different results (such as failed message, message delivered, etc.).
 <a class="link" href="reference.html#dsn-return" title="3.57. dsn_return">$dsn_return</a> requests how much of your
 message should be returned with the receipt (headers or full message).
 </p><p>
-When using <a class="link" href="reference.html#sendmail" title="3.244. sendmail">$sendmail</a> for mail delivery,
+When using <a class="link" href="reference.html#sendmail" title="3.246. sendmail">$sendmail</a> for mail delivery,
 you need to use either Berkeley sendmail 8.8.x (or greater) a MTA
 supporting DSN command line options compatible to Sendmail: The -N and
 -R options can be used by the mail client to make requests as to what
 type of status messages should be returned. Please consider your MTA
 documentation whether DSN is supported.
 </p><p>
-For SMTP delivery using <a class="link" href="reference.html#smtp-url" title="3.277. smtp_url">$smtp_url</a>, it
+For SMTP delivery using <a class="link" href="reference.html#smtp-url" title="3.290. smtp_url">$smtp_url</a>, it
 depends on the capabilities announced by the server whether Mutt will
 attempt to request DSN or not.
 </p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="urlview"></a>13. Start a WWW Browser on URLs</h2></div></div></div><p>
@@ -808,7 +823,7 @@ specified in the <code class="literal">$MAIL</code> environment variable if
 present. Otherwise, the value of <code class="literal">$MAILDIR</code> is taken
 into account. If that isn't present either, Mutt takes the user's
 mailbox in the mailspool as determined at compile-time (which may also
-reside in the home directory). The <a class="link" href="reference.html#spoolfile" title="3.284. spoolfile">$spoolfile</a> setting overrides this
+reside in the home directory). The <a class="link" href="reference.html#spoolfile" title="3.297. spoolfile">$spoolfile</a> setting overrides this
 selection. Highest priority has the mailbox given with the
 <code class="literal">-f</code> command line option.
 </p></dd></dl></div></div></div><div class="navfooter"><hr /><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="configuration.html">Prev</a> </td><td width="20%" align="center"> </td><td width="40%" align="right"> <a accesskey="n" href="mimesupport.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 3. Configuration </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 5. Mutt's MIME Support</td></tr></table></div></body></html>

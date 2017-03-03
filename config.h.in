@@ -75,6 +75,14 @@
    `GNUTLS_VERIFY_DISABLE_TIME_CHECKS', and to 0 if you don't. */
 #undef HAVE_DECL_GNUTLS_VERIFY_DISABLE_TIME_CHECKS
 
+/* Define to 1 if you have the declaration of `SSL_MODE_AUTO_RETRY', and to 0
+   if you don't. */
+#undef HAVE_DECL_SSL_MODE_AUTO_RETRY
+
+/* Define to 1 if you have the declaration of `SSL_set_mode', and to 0 if you
+   don't. */
+#undef HAVE_DECL_SSL_SET_MODE
+
 /* Define to 1 if you have the declaration of `sys_siglist', and to 0 if you
    don't. */
 #undef HAVE_DECL_SYS_SIGLIST
@@ -613,6 +621,9 @@
 
 /* Define if mutt should run setgid "mail". */
 #undef USE_SETGID
+
+/* Define if you want support for the sidebar. */
+#undef USE_SIDEBAR
 
 /* Define if you compile with SLang instead of curses/ncurses. */
 #undef USE_SLANG_CURSES
