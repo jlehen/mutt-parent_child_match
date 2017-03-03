@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2003 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2003,2012 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ int rfc1524_expand_command (BODY *a, char *filename, char *_type,
   if (option (OPTMAILCAPSANITIZE))
     mutt_sanitize_filename (type, 0);
 
-  while (x < clen && command[x] && y < sizeof (buf) - 1)
+  while (x < clen - 1 && command[x] && y < sizeof (buf) - 1)
   {
     if (command[x] == '\\')
     {
@@ -136,8 +136,8 @@ static char *get_field (char *s)
     }
     else
     {
-      *ch++ = 0;
-      SKIPWS (ch);
+      *ch = 0;
+      ch = skip_email_wsp(ch + 1);
       break;
     }
   }
@@ -161,7 +161,7 @@ static int get_field_text (char *field, char **entry,
   }
   else 
   {
-    mutt_error (_("Improperly formated entry for type %s in \"%s\" line %d"),
+    mutt_error (_("Improperly formatted entry for type %s in \"%s\" line %d"),
 		type, filename, line);
     return 0;
   }
@@ -450,7 +450,7 @@ int rfc1524_expand_filename (char *nametemplate,
 			     char *newfile,
 			     size_t nflen)
 {
-  int i, j, k, ps, r;
+  int i, j, k, ps;
   char *s;
   short lmatch = 0, rmatch = 0; 
   char left[_POSIX_PATH_MAX];
@@ -518,7 +518,7 @@ int rfc1524_expand_filename (char *nametemplate,
       
       rmatch = 1;
 
-      for(r = 0, j = mutt_strlen(oldfile) - 1, k = mutt_strlen(nametemplate) - 1 ;
+      for(j = mutt_strlen(oldfile) - 1, k = mutt_strlen(nametemplate) - 1 ;
 	  j >= (lmatch ? i : 0) && k >= i + 2;
 	  j--, k--)
       {

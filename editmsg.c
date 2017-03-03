@@ -146,6 +146,7 @@ static int edit_one_message (CONTEXT *ctx, HEADER *cur)
   if (mx_open_mailbox (ctx->path, M_APPEND, &tmpctx) == NULL)
   {
     rc = -1;
+    /* L10N: %s is from strerror(errno) */
     mutt_error (_("Can't append to folder: %s"), strerror (errno));
     goto bail;
   }
@@ -163,7 +164,7 @@ static int edit_one_message (CONTEXT *ctx, HEADER *cur)
 
   /* 
    * XXX - we have to play games with the message flags to avoid
-   * problematic behaviour with maildir folders.
+   * problematic behavior with maildir folders.
    *
    */
 

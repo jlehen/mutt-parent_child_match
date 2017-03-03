@@ -26,7 +26,7 @@
 
 
 /* 
-    Type defintions for crypto module functions.
+    Type definitions for crypto module functions.
  */
 typedef void (*crypt_func_void_passphrase_t) (void);
 typedef int (*crypt_func_valid_passphrase_t)  (void);
@@ -43,8 +43,7 @@ typedef int (*crypt_func_pgp_check_traditional_t) (FILE *fp, BODY *b,
 typedef BODY *(*crypt_func_pgp_traditional_encryptsign_t) (BODY *a, int flags,
                                                            char *keylist);
 typedef BODY *(*crypt_func_pgp_make_key_attachment_t) (char *tempf);
-typedef char *(*crypt_func_findkeys_t) (ADDRESS *to,
-                                        ADDRESS *cc, ADDRESS *bcc);
+typedef char *(*crypt_func_findkeys_t) (ADDRESS *adrlist, int oppenc_mode);
 typedef BODY *(*crypt_func_sign_message_t) (BODY *a);
 typedef BODY *(*crypt_func_pgp_encrypt_message_t) (BODY *a, char *keylist,
                                                    int sign);
@@ -107,7 +106,7 @@ typedef struct crypt_module_functions
 
 
 /*
-   A structure to decribe a crypto module. 
+   A structure to describe a crypto module. 
  */
 typedef struct crypt_module_specs
 {

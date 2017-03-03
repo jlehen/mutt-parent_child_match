@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2013 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2002 Thomas Roessler <roessler@does-not-exist.org>
  *
  *     This program is free software; you can redistribute it and/or modify
@@ -57,7 +57,6 @@ void mbox_reset_atime (CONTEXT *, struct stat *);
 int mh_read_dir (CONTEXT *, const char *);
 int mh_sync_mailbox (CONTEXT *, int *);
 int mh_check_mailbox (CONTEXT *, int *);
-int mh_buffy (const char *);
 int mh_check_empty (const char *);
 
 int maildir_read_dir (CONTEXT *);

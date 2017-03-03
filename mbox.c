@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2010,2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -690,7 +690,6 @@ static int mbox_has_new(CONTEXT *ctx)
 void mbox_reset_atime (CONTEXT *ctx, struct stat *st)
 {
   struct utimbuf utimebuf;
-  int i;
   struct stat _st;
 
   if (!st)
@@ -705,7 +704,7 @@ void mbox_reset_atime (CONTEXT *ctx, struct stat *st)
 
   /*
    * When $mbox_check_recent is set, existing new mail is ignored, so do not
-   * recent the atime to mtime-1 to signal new mail.
+   * reset the atime to mtime-1 to signal new mail.
    */
   if (!option(OPTMAILCHECKRECENT) && utimebuf.actime >= utimebuf.modtime && mbox_has_new(ctx))
     utimebuf.actime = utimebuf.modtime - 1;
@@ -969,7 +968,11 @@ int mbox_sync_mailbox (CONTEXT *ctx, int *index_hint)
     if (i == 0)
     {
       ctx->size = ftello (ctx->fp); /* update the size of the mailbox */
-      ftruncate (fileno (ctx->fp), ctx->size);
+      if (ftruncate (fileno (ctx->fp), ctx->size) != 0)
+      {
+        i = -1;
+        dprint (1, (debugfile, "mbox_sync_mailbox: ftruncate() failed\n"));
+      }
     }
   }
 
@@ -977,9 +980,9 @@ int mbox_sync_mailbox (CONTEXT *ctx, int *index_hint)
   fp = NULL;
   mbox_unlock_mailbox (ctx);
 
-  if (fclose (ctx->fp) != 0 || i == -1)
+  if (safe_fclose (&ctx->fp) != 0 || i == -1)
   {
-    /* error occured while writing the mailbox back, so keep the temp copy
+    /* error occurred while writing the mailbox back, so keep the temp copy
      * around
      */
     

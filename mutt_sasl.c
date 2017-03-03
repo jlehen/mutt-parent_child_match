@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2000-8 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 2000-2008,2012,2014 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <sasl/sasl.h>
-#include <sys/socket.h>
+#include "sys_socket.h"
 #include <netinet/in.h>
 
 static int getnameinfo_err(int ret)
@@ -103,27 +103,29 @@ static int mutt_sasl_conn_poll (CONNECTION* conn);
 
 /* utility function, stolen from sasl2 sample code */
 static int iptostring(const struct sockaddr *addr, socklen_t addrlen,
-                     char *out, unsigned outlen) {
-    char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
-    int ret;
-    
-    if(!addr || !out) return SASL_BADPARAM;
+                      char *out, unsigned outlen)
+{
+  char hbuf[NI_MAXHOST], pbuf[NI_MAXSERV];
+  int ret;
 
-    ret=getnameinfo(addr, addrlen, hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
-                   NI_NUMERICHOST |
+  if (!addr || !out)
+    return SASL_BADPARAM;
+
+  ret = getnameinfo(addr, addrlen, hbuf, sizeof(hbuf), pbuf, sizeof(pbuf),
+                    NI_NUMERICHOST |
 #ifdef NI_WITHSCOPEID
-		   NI_WITHSCOPEID |
+                    NI_WITHSCOPEID |
 #endif
-		   NI_NUMERICSERV);
-    if(ret)
-      return getnameinfo_err(ret);
+                    NI_NUMERICSERV);
+  if (ret)
+    return getnameinfo_err(ret);
 
-    if(outlen < strlen(hbuf) + strlen(pbuf) + 2)
-        return SASL_BUFOVER;
+  if (outlen < strlen(hbuf) + strlen(pbuf) + 2)
+    return SASL_BUFOVER;
 
-    snprintf(out, outlen, "%s;%s", hbuf, pbuf);
+  snprintf(out, outlen, "%s;%s", hbuf, pbuf);
 
-    return SASL_OK;
+  return SASL_OK;
 }
 
 /* mutt_sasl_start: called before doing a SASL exchange - initialises library
@@ -140,7 +142,7 @@ int mutt_sasl_start (void)
 
   /* set up default logging callback */
   callbacks[0].id = SASL_CB_LOG;
-  callbacks[0].proc = mutt_sasl_cb_log;
+  callbacks[0].proc = (int (*)(void))mutt_sasl_cb_log;
   callbacks[0].context = NULL;
 
   callbacks[1].id = SASL_CB_LIST_END;
@@ -195,8 +197,8 @@ int mutt_sasl_client_new (CONNECTION* conn, sasl_conn_t** saslconn)
 
   size = sizeof (local);
   if (!getsockname (conn->fd, (struct sockaddr *)&local, &size)) {
-    if (!iptostring((struct sockaddr *)&local, size, iplocalport,
-		      IP_PORT_BUFLEN) != SASL_OK)
+    if (iptostring((struct sockaddr *)&local, size, iplocalport,
+                   IP_PORT_BUFLEN) == SASL_OK)
       plp = iplocalport;
     else
       dprint (2, (debugfile, "SASL failed to parse local IP address\n"));
@@ -206,8 +208,8 @@ int mutt_sasl_client_new (CONNECTION* conn, sasl_conn_t** saslconn)
   
   size = sizeof (remote);
   if (!getpeername (conn->fd, (struct sockaddr *)&remote, &size)){
-    if (!iptostring((struct sockaddr *)&remote, size, ipremoteport,
-		      IP_PORT_BUFLEN) != SASL_OK)
+    if (iptostring((struct sockaddr *)&remote, size, ipremoteport,
+                   IP_PORT_BUFLEN) == SASL_OK)
       prp = ipremoteport;
     else
       dprint (2, (debugfile, "SASL failed to parse remote IP address\n"));
@@ -224,6 +226,7 @@ int mutt_sasl_client_new (CONNECTION* conn, sasl_conn_t** saslconn)
   if (rc != SASL_OK)
   {
     mutt_error (_("Error allocating SASL connection"));
+    mutt_sleep (2);
     return -1;
   }
 
@@ -267,17 +270,17 @@ sasl_callback_t* mutt_sasl_get_callbacks (ACCOUNT* account)
   callback = mutt_sasl_callbacks;
 
   callback->id = SASL_CB_USER;
-  callback->proc = mutt_sasl_cb_authname;
+  callback->proc = (int (*)(void))mutt_sasl_cb_authname;
   callback->context = account;
   callback++;
 
   callback->id = SASL_CB_AUTHNAME;
-  callback->proc = mutt_sasl_cb_authname;
+  callback->proc = (int (*)(void))mutt_sasl_cb_authname;
   callback->context = account;
   callback++;
 
   callback->id = SASL_CB_PASS;
-  callback->proc = mutt_sasl_cb_pass;
+  callback->proc = (int (*)(void))mutt_sasl_cb_pass;
   callback->context = account;
   callback++;
 

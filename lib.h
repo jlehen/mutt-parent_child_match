@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2007,2010,2012 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2005,2007 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it
@@ -57,7 +57,7 @@
 # define TRUE 1
 # define FALSE 0
 
-# define HUGE_STRING	5120
+# define HUGE_STRING     8192
 # define LONG_STRING     1024
 # define STRING          256
 # define SHORT_STRING    128
@@ -97,6 +97,24 @@
 /* this macro must check for *c == 0 since isspace(0) has unreliable behavior
    on some systems */
 # define SKIPWS(c) while (*(c) && isspace ((unsigned char) *(c))) c++;
+
+#define EMAIL_WSP " \t\r\n"
+
+/* skip over WSP as defined by RFC5322.  This is used primarily for parsing
+ * header fields. */
+
+static inline char *skip_email_wsp(const char *s)
+{
+  if (s)
+    return (char *)(s + strspn(s, EMAIL_WSP));
+  return (char *)s;
+}
+
+static inline int is_email_wsp(char c)
+{
+  return c && (strchr(EMAIL_WSP, c) != NULL);
+}
+
 
 /*
  * These functions aren't defined in lib.c, but

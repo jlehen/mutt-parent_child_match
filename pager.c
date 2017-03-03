@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2007,2010,2012-2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -79,7 +79,8 @@ static HEADER *OldHdr = NULL;
 #define CHECK_ACL(aclbit,action) \
 		if (!mutt_bit_isset(Context->rights,aclbit)) { \
 			mutt_flushinp(); \
-			mutt_error (_("Cannot %s: Operation not permitted by ACL"), action); \
+        /* L10N: %s is one of the CHECK_ACL entries below. */ \
+			mutt_error (_("%s: Operation not permitted by ACL"), action); \
 			break; \
 		}
 
@@ -299,7 +300,7 @@ resolve_color (struct line_t *lineInfo, int n, int cnt, int flags, int special,
 
   if (color != last_color)
   {
-    attrset (color);
+    ATTRSET (color);
     last_color = color;
   }
 }
@@ -1187,10 +1188,17 @@ static int format_line (struct line_t **lineInfo, int n, unsigned char *buf,
       last_special = special;
     }
 
-    if (IsWPrint (wc))
+    if (IsWPrint (wc) || (Charset_is_utf8 && wc == 0x00A0))
     {
       if (wc == ' ')
 	space = ch;
+      else if (Charset_is_utf8 && wc == 0x00A0)
+      {
+	/* Convert non-breaking space to normal space. The local variable
+	 * `space' is not set here so that the caller of this function won't
+	 * attempt to wrap at this character. */
+	wc = ' ';
+      }
       t = wcwidth (wc);
       if (col + t > wrap_cols)
 	break;
@@ -1453,7 +1461,7 @@ display_line (FILE *f, LOFF_T *last_pos, struct line_t **lineInfo, int n,
 #ifndef USE_SLANG_CURSES
   if (col == 0)
   {
-    SETCOLOR (MT_COLOR_NORMAL);
+    NORMAL_COLOR;
     addch (' ');
   }
 #endif
@@ -1475,10 +1483,7 @@ display_line (FILE *f, LOFF_T *last_pos, struct line_t **lineInfo, int n,
     else
       def_color = ColorDefs[ (*lineInfo)[m].type ];
 
-    attrset (def_color);
-#ifdef HAVE_BKGDSET
-    bkgdset (def_color | ' ');
-#endif
+    ATTRSET(def_color);
   }
 
   /* ncurses always wraps lines when you get to the right side of the
@@ -1496,10 +1501,7 @@ display_line (FILE *f, LOFF_T *last_pos, struct line_t **lineInfo, int n,
    * filled to the right margin.
    */
   if (flags & M_SHOWCOLOR)
-  {
-    SETCOLOR(MT_COLOR_NORMAL);
-    BKGDSET(MT_COLOR_NORMAL);
-  }
+    NORMAL_COLOR;
 
   /* build a return code */
   if (!(flags & M_SHOW))
@@ -1526,13 +1528,13 @@ upNLines (int nlines, struct line_t *info, int cur, int hiding)
   return cur;
 }
 
-static struct mapping_t PagerHelp[] = {
+static const struct mapping_t PagerHelp[] = {
   { N_("Exit"),	OP_EXIT },
   { N_("PrevPg"), OP_PREV_PAGE },
   { N_("NextPg"), OP_NEXT_PAGE },
   { NULL,	0 }
 };
-static struct mapping_t PagerHelpExtra[] = {
+static const struct mapping_t PagerHelpExtra[] = {
   { N_("View Attachm."), OP_VIEW_ATTACHMENTS },
   { N_("Del"), OP_DELETE },
   { N_("Reply"), OP_REPLY },
@@ -1636,7 +1638,7 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
 
     if (redraw & REDRAW_FULL)
     {
-      SETCOLOR (MT_COLOR_NORMAL);
+      NORMAL_COLOR;
       /* clear() doesn't optimize screen redraws */
       move (0, 0);
       clrtobot ();
@@ -1674,7 +1676,7 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
 	SETCOLOR (MT_COLOR_STATUS);
 	move (helpoffset, 0);
 	mutt_paddstr (COLS, helpstr);
-	SETCOLOR (MT_COLOR_NORMAL);
+	NORMAL_COLOR;
       }
 
 #if defined (USE_SLANG_CURSES) || defined (HAVE_RESIZETERM)
@@ -1707,7 +1709,7 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
 	  index->current = extra->hdr->virtual;
 	}
 
-	SETCOLOR (MT_COLOR_NORMAL);
+	NORMAL_COLOR;
 	index->offset  = indexoffset + (option (OPTSTATUSONTOP) ? 1 : 0);
 
 	index->pagelen = indexlen - 1;
@@ -1763,7 +1765,6 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
       } while (force_redraw);
 
       SETCOLOR (MT_COLOR_TILDE);
-      BKGDSET (MT_COLOR_TILDE);
       while (lines < bodylen)
       {
 	clrtoeol ();
@@ -1772,6 +1773,8 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
 	addch ('\n');
 	lines++;
       }
+      NORMAL_COLOR;
+
       /* We are going to update the pager status bar, so it isn't
        * necessary to reset to normal color now. */
 
@@ -1792,9 +1795,8 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
 	strfcpy(pager_progress_str, (topline == 0) ? "all" : "end", sizeof(pager_progress_str));
 
       /* print out the pager status bar */
+      move (statusoffset, 0);
       SETCOLOR (MT_COLOR_STATUS);
-      BKGDSET (MT_COLOR_STATUS);
-      CLEARLINE (statusoffset);
 
       if (IsHeader (extra) || IsMsgAttach (extra))
       {
@@ -1810,8 +1812,14 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
 	snprintf (bn, sizeof (bn), "%s (%s)", banner, pager_progress_str);
 	mutt_paddstr (COLS, bn);
       }
-      BKGDSET (MT_COLOR_NORMAL);
-      SETCOLOR (MT_COLOR_NORMAL);
+      NORMAL_COLOR;
+      if (option(OPTTSENABLED) && TSSupported)
+      {
+	menu_status_line (buffer, sizeof (buffer), index, NONULL (TSStatusFormat));
+	mutt_ts_status(buffer);
+	menu_status_line (buffer, sizeof (buffer), index, NONULL (TSIconFormat));
+	mutt_ts_icon(buffer);
+      }
     }
 
     if ((redraw & REDRAW_INDEX) && index)
@@ -1825,10 +1833,8 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
  
       move (indexoffset + (option (OPTSTATUSONTOP) ? 0 : (indexlen - 1)), 0);
       SETCOLOR (MT_COLOR_STATUS);
-      BKGDSET (MT_COLOR_STATUS);
       mutt_paddstr (COLS, buffer);
-      SETCOLOR (MT_COLOR_NORMAL);
-      BKGDSET (MT_COLOR_NORMAL);
+      NORMAL_COLOR;
     }
 
     redraw = 0;
@@ -1927,6 +1933,15 @@ mutt_pager (const char *banner, const char *fname, int flags, pager_t *extra)
       case OP_EXIT:
 	rc = -1;
 	ch = -1;
+	break;
+
+      case OP_QUIT:
+	if (query_quadoption (OPT_QUIT, _("Quit Mutt?")) == M_YES)
+	{
+	  /* avoid prompting again in the index menu */
+	  set_quadoption (OPT_QUIT, M_YES);
+	  ch = -1;
+	}
 	break;
 
       case OP_NEXT_PAGE:
@@ -2339,7 +2354,8 @@ search_next:
       case OP_DELETE:
 	CHECK_MODE(IsHeader (extra));
 	CHECK_READONLY;
-	CHECK_ACL(M_ACL_DELETE, _("delete message"));
+        /* L10N: CHECK_ACL */
+	CHECK_ACL(M_ACL_DELETE, _("Cannot delete message"));
 
 	mutt_set_flag (Context, extra->hdr, M_DELETE, 1);
         if (option (OPTDELETEUNTAG))
@@ -2370,7 +2386,8 @@ search_next:
       case OP_DELETE_SUBTHREAD:
 	CHECK_MODE(IsHeader (extra));
 	CHECK_READONLY;
-	CHECK_ACL(M_ACL_DELETE, _("delete message(s)"));
+        /* L10N: CHECK_ACL */
+	CHECK_ACL(M_ACL_DELETE, _("Cannot delete message(s)"));
 
 	r = mutt_thread_set_flag (extra->hdr, M_DELETE, 1,
 				  ch == OP_DELETE_THREAD ? 0 : 1);
@@ -2490,7 +2507,8 @@ search_next:
       case OP_FLAG_MESSAGE:
 	CHECK_MODE(IsHeader (extra));
 	CHECK_READONLY;
-	CHECK_ACL(M_ACL_WRITE, "flag message");
+        /* L10N: CHECK_ACL */
+	CHECK_ACL(M_ACL_WRITE, "Cannot flag message");
 
 	mutt_set_flag (Context, extra->hdr, M_FLAG, !extra->hdr->flagged);
 	redraw = REDRAW_STATUS | REDRAW_INDEX;
@@ -2646,7 +2664,8 @@ search_next:
       case OP_TOGGLE_NEW:
 	CHECK_MODE(IsHeader (extra));
 	CHECK_READONLY;
-	CHECK_ACL(M_ACL_SEEN, _("toggle new"));
+        /* L10N: CHECK_ACL */
+	CHECK_ACL(M_ACL_SEEN, _("Cannot toggle new"));
 
 	if (extra->hdr->read || extra->hdr->old)
 	  mutt_set_flag (Context, extra->hdr, M_NEW, 1);
@@ -2665,7 +2684,8 @@ search_next:
       case OP_UNDELETE:
 	CHECK_MODE(IsHeader (extra));
 	CHECK_READONLY;
-	CHECK_ACL(M_ACL_DELETE, _("undelete message"));
+        /* L10N: CHECK_ACL */
+	CHECK_ACL(M_ACL_DELETE, _("Cannot undelete message"));
 
 	mutt_set_flag (Context, extra->hdr, M_DELETE, 0);
 	redraw = REDRAW_STATUS | REDRAW_INDEX;
@@ -2680,7 +2700,8 @@ search_next:
       case OP_UNDELETE_SUBTHREAD:
 	CHECK_MODE(IsHeader (extra));
 	CHECK_READONLY;
-	CHECK_ACL(M_ACL_DELETE, _("undelete message(s)"));
+        /* L10N: CHECK_ACL */
+	CHECK_ACL(M_ACL_DELETE, _("Cannot undelete message(s)"));
 
 	r = mutt_thread_set_flag (extra->hdr, M_DELETE, 0,
 				  ch == OP_UNDELETE_THREAD ? 0 : 1);

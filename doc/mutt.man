@@ -1,7 +1,7 @@
 .\" -*-nroff-*-
 .\"
 .\"
-.\"     Copyright (C) 1996-2004 Michael R. Elkins <me@cs.hmc.edu>
+.\"     Copyright (C) 1996-2016 Michael R. Elkins <me@cs.hmc.edu>
 .\" 
 .\"     This program is free software; you can redistribute it and/or modify
 .\"     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ mutt \- The Mutt Mail User Agent
 [\-e \fIcmd\fP] [\-F \fIfile\fP] [\-m \fItype\fP] [\-f \fIfile\fP]
 .PP
 .B mutt 
-[\-nx] 
+[\-Enx] 
 [\-e \fIcmd\fP] 
 [\-F \fIfile\fP]
 [\-H \fIfile\fP]
@@ -88,12 +88,15 @@ The \-a option must be placed at the end of command line options.
 Specify a blind-carbon-copy (BCC) recipient
 .IP "-c \fIaddress\fP"
 Specify a carbon-copy (CC) recipient
-.IP "-d \fIlevel\fp"
-If mutt was complied with +DEBUG log debugging output to ~/.muttdebug0.
+.IP "-d \fIlevel\fP"
+If mutt was compiled with +DEBUG log debugging output to ~/.muttdebug0.
 \fILevel\fP can range from 1-5 and effects verbosity. A value of 2 is
 recommended.
 .IP "-D"
 Print the value of all configuration options to stdout.
+.IP "-E"
+Causes the draft file specified by -H or include file specified by -i
+to be edited during message composition.
 .IP "-e \fIcommand\fP"
 Specify a configuration command to be run after processing of initialization
 files.
@@ -160,7 +163,10 @@ Path to search for mailcap files.
 .IP "MM_NOASK"
 If this variable is set, mailcap are always used without prompting first.
 .IP "PGPPATH"
-Directory in which the user's PGP public keyring can be found.
+Directory in which the user's PGP public keyring can be found.  When used with
+the original PGP program, mutt and
+.B pgpring (1)
+rely on this being set.
 .IP "TMPDIR"
 Directory in which temporary files are created.
 .IP "REPLYTO"

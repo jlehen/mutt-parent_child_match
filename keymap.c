@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002,2010-2011 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
 
 #include "functions.h"
 
-struct mapping_t Menus[] = {
+const struct mapping_t Menus[] = {
  { "alias",	MENU_ALIAS },
  { "attach",	MENU_ATTACH },
  { "browser",	MENU_FOLDER },
@@ -167,16 +167,17 @@ static int parse_fkey(char *s)
  */
 static int parse_keycode (const char *s)
 {
-    const char *endChar;
-    long int result = strtol(s+1, &endChar, 8);
-    /* allow trailing whitespace, eg.  < 1001 > */
-    while (ISSPACE(*endChar))
-	++endChar;
-    /* negative keycodes don't make sense, also detect overflow */
-    if (*endChar != '>' || result < 0 || result == LONG_MAX) {
-	return -1;
-    }
-    return result;
+  char *endChar;
+  long int result = strtol(s+1, &endChar, 8);
+  /* allow trailing whitespace, eg.  < 1001 > */
+  while (ISSPACE(*endChar))
+    ++endChar;
+  /* negative keycodes don't make sense, also detect overflow */
+  if (*endChar != '>' || result < 0 || result == LONG_MAX) {
+    return -1;
+  }
+
+  return result;
 }
 
 static int parsekeys (const char *str, keycode_t *d, int max)
@@ -297,7 +298,7 @@ void km_bindkey (char *s, int menu, int op)
   km_bind (s, menu, op, NULL, NULL);
 }
 
-static int get_op (struct binding_t *bindings, const char *start, size_t len)
+static int get_op (const struct binding_t *bindings, const char *start, size_t len)
 {
   int i;
 
@@ -311,7 +312,7 @@ static int get_op (struct binding_t *bindings, const char *start, size_t len)
   return OP_NULL;
 }
 
-static char *get_func (struct binding_t *bindings, int op)
+static char *get_func (const struct binding_t *bindings, int op)
 {
   int i;
 
@@ -324,7 +325,11 @@ static char *get_func (struct binding_t *bindings, int op)
   return NULL;
 }
 
-static void push_string (char *s)
+/* Parses s for <function> syntax and adds the whole sequence to
+ * either the macro or unget buffer.  This function is invoked by the next
+ * two defines below.
+ */
+static void generic_tokenize_push_string (char *s, void (*generic_push) (int, int))
 {
   char *pp, *p = s + mutt_strlen (s) - 1;
   size_t l;
@@ -342,7 +347,7 @@ static void push_string (char *s)
       {
 	if ((i = parse_fkey (pp)) > 0)
 	{
-	  mutt_ungetch (KEY_F (i), 0);
+	  generic_push (KEY_F (i), 0);
 	  p = pp - 1;
 	  continue;
 	}
@@ -356,7 +361,7 @@ static void push_string (char *s)
 	if (KeyNames[i].name)
 	{
 	  /* found a match */
-	  mutt_ungetch (KeyNames[i].value, 0);
+	  generic_push (KeyNames[i].value, 0);
 	  p = pp - 1;
 	  continue;
 	}
@@ -365,7 +370,7 @@ static void push_string (char *s)
 	 * skip the '<' and the '>' when comparing */
 	for (i = 0; Menus[i].name; i++)
 	{
-	  struct binding_t *binding = km_get_table (Menus[i].value);
+	  const struct binding_t *binding = km_get_table (Menus[i].value);
 	  if (binding)
 	  {
 	    op = get_op (binding, pp + 1, l - 2);
@@ -376,24 +381,29 @@ static void push_string (char *s)
 
 	if (op != OP_NULL)
 	{
-	  mutt_ungetch (0, op);
+	  generic_push (0, op);
 	  p = pp - 1;
 	  continue;
 	}
       }
     }
-    mutt_ungetch ((unsigned char)*p--, 0);	/* independent 8 bits chars */
+    generic_push ((unsigned char)*p--, 0);	/* independent 8 bits chars */
   }
 }
+
+/* This should be used for macros, push, and exec commands only. */
+#define tokenize_push_macro_string(s) generic_tokenize_push_string (s, mutt_push_macro_event)
+/* This should be used for other unget operations. */
+#define tokenize_unget_string(s) generic_tokenize_push_string (s, mutt_unget_event)
 
 static int retry_generic (int menu, keycode_t *keys, int keyslen, int lastkey)
 {
   if (menu != MENU_EDITOR && menu != MENU_GENERIC && menu != MENU_PAGER)
   {
     if (lastkey)
-      mutt_ungetch (lastkey, 0);
+      mutt_unget_event (lastkey, 0);
     for (; keyslen; keyslen--)
-      mutt_ungetch (keys[keyslen - 1], 0);
+      mutt_unget_event (keys[keyslen - 1], 0);
     return (km_dokey (MENU_GENERIC));
   }
   if (menu != MENU_EDITOR)
@@ -407,7 +417,7 @@ static int retry_generic (int menu, keycode_t *keys, int keyslen, int lastkey)
 /* return values:
  *	>0		function to execute
  *	OP_NULL		no function bound to key sequence
- *	-1		error occured while reading input
+ *	-1		error occurred while reading input
  */
 int km_dokey (int menu)
 {
@@ -435,8 +445,11 @@ int km_dokey (int menu)
 	  timeout (ImapKeepalive * 1000);
 	  tmp = mutt_getch ();
 	  timeout (-1);
-	  if (tmp.ch != -2)
-	    /* something other than timeout */
+	  /* If a timeout was not received, or the window was resized, exit the
+	   * loop now.  Otherwise, continue to loop until reaching a total of
+	   * $timeout seconds.
+	   */
+	  if (tmp.ch != -2 || SigWinch)
 	    goto gotkey;
 	  i -= ImapKeepalive;
 	  imap_keepalive ();
@@ -452,7 +465,9 @@ int km_dokey (int menu)
     if (menu == MENU_EDITOR && tmp.ch == -2)
       continue;
 
+#ifdef USE_IMAP
   gotkey:
+#endif
     LastKey = tmp.ch;
     if (LastKey < 0)
       return -1;
@@ -461,7 +476,7 @@ int km_dokey (int menu)
     if (tmp.op)
     {
       char *func = NULL;
-      struct binding_t *bindings;
+      const struct binding_t *bindings;
 
       /* is this a valid op for this menu? */
       if ((bindings = km_get_table (menu)) &&
@@ -489,11 +504,9 @@ int km_dokey (int menu)
 	  func = get_func (bindings, tmp.op);
 	  if (func)
 	  {
-	    /* careful not to feed the <..> as one token. otherwise 
-	    * push_string() will push the bogus op right back! */
-	    mutt_ungetch ('>', 0);
-	    push_string (func);
-	    mutt_ungetch ('<', 0);
+	    mutt_unget_event ('>', 0);
+	    mutt_unget_string (func);
+	    mutt_unget_event ('<', 0);
 	    break;
 	  }
 	}
@@ -520,6 +533,12 @@ int km_dokey (int menu)
       if (map->op != OP_MACRO)
 	return map->op;
 
+      if (option (OPTIGNOREMACROEVENTS))
+      {
+	mutt_error _("Macros are currently disabled.");
+	return -1;
+      }
+
       if (n++ == 10)
       {
 	mutt_flushinp ();
@@ -527,7 +546,7 @@ int km_dokey (int menu)
 	return -1;
       }
 
-      push_string (map->macro);
+      tokenize_push_macro_string (map->macro);
       map = Keymaps[menu];
       pos = 0;
     }
@@ -536,7 +555,7 @@ int km_dokey (int menu)
   /* not reached */
 }
 
-static void create_bindings (struct binding_t *map, int menu)
+static void create_bindings (const struct binding_t *map, int menu)
 {
   int i;
 
@@ -545,10 +564,10 @@ static void create_bindings (struct binding_t *map, int menu)
       km_bindkey (map[i].seq, menu, map[i].op);
 }
 
-char *km_keyname (int c)
+static const char *km_keyname (int c)
 {
   static char buf[10];
-  char *p;
+  const char *p;
 
   if ((p = mutt_getnamebyvalue (c, KeyNames)))
     return p;
@@ -686,7 +705,7 @@ void init_extended_keys(void)
 
       if (keyname)
       {
-	char *s = tigetstr(keyname);
+        char *s = tigetstr((char *)keyname);
 	if (s && (long)(s) != -1)
 	{
 	  int code = key_defined(s);
@@ -829,7 +848,7 @@ void km_error_key (int menu)
   }
 
   /* make sure the key is really the help key in this menu */
-  push_string (buf);
+  tokenize_unget_string (buf);
   if (km_dokey (menu) != OP_HELP)
   {
     mutt_error _("Key is not bound.");
@@ -851,7 +870,7 @@ int mutt_parse_push (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
     r = -1;
   }
   else
-    push_string (buf->data);
+    tokenize_push_macro_string (buf->data);
   return (r);
 }
 
@@ -862,7 +881,7 @@ static char *parse_keymap (int *menu, BUFFER *s, int maxmenus, int *nummenus, BU
   int i=0;
   char *p, *q;
 
-  memset (&buf, 0, sizeof (buf));
+  mutt_buffer_init (&buf);
 
   /* menu name */
   mutt_extract_token (&buf, s, 0);
@@ -907,7 +926,7 @@ error:
 }
 
 static int
-try_bind (char *key, int menu, char *func, struct binding_t *bindings)
+try_bind (char *key, int menu, char *func, const struct binding_t *bindings)
 {
   int i;
   
@@ -920,7 +939,7 @@ try_bind (char *key, int menu, char *func, struct binding_t *bindings)
   return (-1);
 }
 
-struct binding_t *km_get_table (int menu)
+const struct binding_t *km_get_table (int menu)
 {
   switch (menu)
   {
@@ -967,7 +986,7 @@ struct binding_t *km_get_table (int menu)
 /* bind menu-name '<key_sequence>' function-name */
 int mutt_parse_bind (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
 {
-  struct binding_t *bindings = NULL;
+  const struct binding_t *bindings = NULL;
   char *key;
   int menu[sizeof(Menus)/sizeof(struct mapping_t)-1], r = 0, nummenus, i;
 
@@ -1068,7 +1087,7 @@ int mutt_parse_exec (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
 {
   int ops[128]; 
   int nops = 0;
-  struct binding_t *bindings = NULL;
+  const struct binding_t *bindings = NULL;
   char *function;
 
   if (!MoreArgs (s))
@@ -1101,7 +1120,7 @@ int mutt_parse_exec (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
   while(MoreArgs(s) && nops < sizeof(ops)/sizeof(ops[0]));
 
   while(nops)
-    mutt_ungetch(0, ops[--nops]);
+    mutt_push_macro_event (0, ops[--nops]);
 
   return 0;
 }

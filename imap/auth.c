@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-8 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
+ * Copyright (C) 1996-1998 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-1999 Brandon Long <blong@fiction.net>
  * Copyright (C) 1999-2001 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 #include "imap_private.h"
 #include "auth.h"
 
-static imap_auth_t imap_authenticators[] = {
+static const imap_auth_t imap_authenticators[] = {
 #ifdef USE_SASL
   { imap_auth_sasl, NULL },
 #else
@@ -50,7 +50,7 @@ static imap_auth_t imap_authenticators[] = {
  *   authentication method if specified, or any. */
 int imap_authenticate (IMAP_DATA* idata)
 {
-  imap_auth_t* authenticator;
+  const imap_auth_t* authenticator;
   char* methods;
   char* method;
   char* delim;

@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2010,2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -47,3 +47,5 @@ void mutt_buffy_cleanup (const char *buf, struct stat *st);
 
 /* mark mailbox just left as already notified */
 void mutt_buffy_setnotified (const char *path);
+
+void mh_buffy (BUFFY *);

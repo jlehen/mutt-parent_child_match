@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2007,2010,2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@
 #include <errno.h>
 #include <locale.h>
 
-static struct mapping_t FolderHelp[] = {
+static const struct mapping_t FolderHelp[] = {
   { N_("Exit"),  OP_EXIT },
   { N_("Chdir"), OP_CHANGE_DIRECTORY },
   { N_("Mask"),  OP_ENTER_MASK },
@@ -325,7 +325,7 @@ folder_format_str (char *dest, size_t destlen, size_t col, char op, const char *
 }
 
 static void add_folder (MUTTMENU *m, struct browser_state *state,
-			const char *name, const struct stat *s, int new)
+			const char *name, const struct stat *s, unsigned int new)
 {
   if (state->entrylen == state->entrymax)
   {
@@ -896,7 +896,7 @@ void _mutt_select_file (char *f, size_t flen, int flags, char ***files, int *num
 	else
 	  set_option (OPTIMAPLSUB);
 
-	mutt_ungetch (0, OP_CHECK_NEW);
+	mutt_unget_event (0, OP_CHECK_NEW);
 	break;
 
       case OP_CREATE_MAILBOX:

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2010 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -55,9 +55,9 @@ enum
 /* MIME encoding/decoding global vars */
 
 #ifndef _SENDLIB_C
-extern int Index_hex[];
-extern int Index_64[];
-extern char B64Chars[];
+extern const int Index_hex[];
+extern const int Index_64[];
+extern const char B64Chars[];
 #endif
 
 #define hexval(c) Index_hex[(unsigned int)(c)]

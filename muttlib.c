@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2007,2010,2013 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2008 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -64,36 +64,28 @@ BODY *mutt_new_body (void)
  */
 void mutt_adv_mktemp (char *s, size_t l)
 {
-  char buf[_POSIX_PATH_MAX];
-  char tmp[_POSIX_PATH_MAX];
-  char *period;
-  size_t sl;
+  char prefix[_POSIX_PATH_MAX];
+  char *suffix;
   struct stat sb;
-  
-  strfcpy (buf, NONULL (Tempdir), sizeof (buf));
-  mutt_expand_path (buf, sizeof (buf));
+
   if (s[0] == '\0')
   {
-    snprintf (s, l, "%s/muttXXXXXX", buf);
-    mktemp (s);
+    mutt_mktemp (s, l);
   }
   else
   {
-    strfcpy (tmp, s, sizeof (tmp));
-    mutt_sanitize_filename (tmp, 1);
-    snprintf (s, l, "%s/%s", buf, tmp);
+    strfcpy (prefix, s, sizeof (prefix));
+    mutt_sanitize_filename (prefix, 1);
+    snprintf (s, l, "%s/%s", NONULL (Tempdir), prefix);
     if (lstat (s, &sb) == -1 && errno == ENOENT)
       return;
-    if ((period = strrchr (tmp, '.')) != NULL)
-      *period = 0;
-    snprintf (s, l, "%s/%s.XXXXXX", buf, tmp);
-    mktemp (s);
-    if (period != NULL)
+
+    if ((suffix = strrchr (prefix, '.')) != NULL)
     {
-      *period = '.';
-      sl = mutt_strlen(s);
-      strfcpy(s + sl, period, l - sl);
+      *suffix = 0;
+      ++suffix;
     }
+    mutt_mktemp_pfx_sfx (s, l, prefix, suffix);
   }
 }
 
@@ -779,10 +771,13 @@ void mutt_merge_envelopes(ENVELOPE* base, ENVELOPE** extra)
   mutt_free_envelope(extra);
 }
 
-void _mutt_mktemp (char *s, size_t slen, const char *src, int line)
+void _mutt_mktemp (char *s, size_t slen, const char *prefix, const char *suffix,
+                   const char *src, int line)
 {
-  size_t n = snprintf (s, slen, "%s/mutt-%s-%d-%d-%ld%ld", NONULL (Tempdir), NONULL (Hostname),
-      (int) getuid (), (int) getpid (), random (), random ());
+  size_t n = snprintf (s, slen, "%s/%s-%s-%d-%d-%ld%ld%s%s",
+      NONULL (Tempdir), NONULL (prefix), NONULL (Hostname),
+      (int) getuid (), (int) getpid (), random (), random (),
+      suffix ? "." : "", NONULL (suffix));
   if (n >= slen)
     dprint (1, (debugfile, "%s:%d: ERROR: insufficient buffer space to hold temporary filename! slen=%zu but need %zu\n",
 	    src, line, slen, n));
@@ -973,6 +968,9 @@ int mutt_check_overwrite (const char *attname, const char *path,
     if (directory)
     {
       switch (mutt_multi_choice
+      /* L10N:
+         Means "The path you specified as the destination file is a directory."
+         See the msgid "Save to file: " (alias.c, recvattach.c) */
 	      (_("File is a directory, save under it? [(y)es, (n)o, (a)ll]"), _("yna")))
       {
 	case 3:		/* all */
@@ -989,19 +987,17 @@ int mutt_check_overwrite (const char *attname, const char *path,
 	  return 1;
       }
     }
+    /* L10N:
+       Means "The path you specified as the destination file is a directory."
+       See the msgid "Save to file: " (alias.c, recvattach.c) */
     else if ((rc = mutt_yesorno (_("File is a directory, save under it?"), M_YES)) != M_YES)
       return (rc == M_NO) ? 1 : -1;
 
-    if (!attname || !attname[0])
-    {
-      tmp[0] = 0;
-      if (mutt_get_field (_("File under directory: "), tmp, sizeof (tmp),
-				      M_FILE | M_CLEAR) != 0 || !tmp[0])
-	return (-1);
-      mutt_concat_path (fname, path, tmp, flen);
-    }
-    else
-      mutt_concat_path (fname, path, mutt_basename (attname), flen);
+    strfcpy (tmp, mutt_basename (NONULL (attname)), sizeof (tmp));
+    if (mutt_get_field (_("File under directory: "), tmp, sizeof (tmp),
+                                    M_FILE | M_CLEAR) != 0 || !tmp[0])
+      return (-1);
+    mutt_concat_path (fname, path, tmp, flen);
   }
   
   if (*append == 0 && access (fname, F_OK) == 0)
@@ -1072,7 +1068,7 @@ void mutt_FormatString (char *dest,		/* output buffer */
 
   prefix[0] = '\0';
   destlen--; /* save room for the terminal \0 */
-  wlen = (flags & M_FORMAT_ARROWCURSOR && option (OPTARROWCURSOR)) ? 3 : 0;
+  wlen = ((flags & M_FORMAT_ARROWCURSOR) && option (OPTARROWCURSOR)) ? 3 : 0;
   col += wlen;
 
   if ((flags & M_FORMAT_NOFILTER) == 0)
@@ -1105,10 +1101,10 @@ void mutt_FormatString (char *dest,		/* output buffer */
       srccopy[n-1] = '\0';
 
       /* prepare BUFFERs */
-      srcbuf = mutt_buffer_from(NULL, srccopy);
+      srcbuf = mutt_buffer_from (srccopy);
       srcbuf->dptr = srcbuf->data;
-      word = mutt_buffer_init(NULL);
-      command = mutt_buffer_init(NULL);
+      word = mutt_buffer_new ();
+      command = mutt_buffer_new ();
 
       /* Iterate expansions across successive arguments */
       do {
@@ -1142,7 +1138,7 @@ void mutt_FormatString (char *dest,		/* output buffer */
 
       col -= wlen;	/* reset to passed in value */
       wptr = dest;      /* reset write ptr */
-      wlen = (flags & M_FORMAT_ARROWCURSOR && option (OPTARROWCURSOR)) ? 3 : 0;
+      wlen = ((flags & M_FORMAT_ARROWCURSOR) && option (OPTARROWCURSOR)) ? 3 : 0;
       if ((pid = mutt_create_filter(command->data, NULL, &filter, NULL)) != -1)
       {
 	int rc;
@@ -1312,7 +1308,7 @@ void mutt_FormatString (char *dest,		/* output buffer */
 	  }
 	  else if (soft && pad < 0)
 	  {
-	    int offset = (flags & M_FORMAT_ARROWCURSOR && option (OPTARROWCURSOR)) ? 3 : 0;
+	    int offset = ((flags & M_FORMAT_ARROWCURSOR) && option (OPTARROWCURSOR)) ? 3 : 0;
 	    /* \0-terminate dest for length computation in mutt_wstr_trunc() */
 	    *wptr = 0;
 	    /* make sure right part is at most as wide as display */
@@ -1643,28 +1639,22 @@ void mutt_sleep (short s)
   if (SleepTime > s)
     sleep (SleepTime);
   else if (s)
-    sleep (s);
+    sleep(s);
 }
 
-/*
- * Creates and initializes a BUFFER*. If passed an existing BUFFER*,
- * just initializes. Frees anything already in the buffer.
- *
- * Disregards the 'destroy' flag, which seems reserved for caller.
- * This is bad, but there's no apparent protocol for it.
- */
-BUFFER * mutt_buffer_init(BUFFER *b)
-{
-  if (!b)
-  {
-    b = safe_malloc(sizeof(BUFFER));
-    if (!b)
-      return NULL;
-  }
-  else
-  {
-    FREE(&b->data);
-  }
+/* creates and initializes a BUFFER */
+BUFFER *mutt_buffer_new(void) {
+  BUFFER *b;
+
+  b = safe_malloc(sizeof(BUFFER));
+
+  mutt_buffer_init(b);
+
+  return b;
+}
+
+/* initialize a new BUFFER */
+BUFFER *mutt_buffer_init (BUFFER *b) {
   memset(b, 0, sizeof(BUFFER));
   return b;
 }
@@ -1677,14 +1667,15 @@ BUFFER * mutt_buffer_init(BUFFER *b)
  * Disregards the 'destroy' flag, which seems reserved for caller.
  * This is bad, but there's no apparent protocol for it.
  */
-BUFFER * mutt_buffer_from(BUFFER *b, char *seed)
-{
+BUFFER *mutt_buffer_from (char *seed) {
+  BUFFER *b;
+
   if (!seed)
     return NULL;
 
-  b = mutt_buffer_init(b);
-  b->data = safe_strdup (seed);
-  b->dsize = mutt_strlen (seed);
+  b = mutt_buffer_new ();
+  b->data = safe_strdup(seed);
+  b->dsize = mutt_strlen(seed);
   b->dptr = (char *) b->data + b->dsize;
   return b;
 }
@@ -1749,7 +1740,7 @@ void mutt_buffer_free (BUFFER **p)
    FREE(p);		/* __FREE_CHECKED__ */
 }
 
-/* dynamically grows a BUFFER to accomodate s, in increments of 128 bytes.
+/* dynamically grows a BUFFER to accommodate s, in increments of 128 bytes.
  * Always one byte bigger than necessary for the null terminator, and
  * the buffer is always null-terminated */
 void mutt_buffer_add (BUFFER* buf, const char* s, size_t len)
@@ -1960,6 +1951,7 @@ void mutt_encode_path (char *dest, size_t dlen, const char *src)
 {
   char *p = safe_strdup (src);
   int rc = mutt_convert_string (&p, Charset, "utf-8", 0);
-  strfcpy (dest, rc == 0 ? p : src, dlen);
+  /* `src' may be NULL, such as when called from the pop3 driver. */
+  strfcpy (dest, (rc == 0) ? NONULL(p) : NONULL(src), dlen);
   FREE (&p);
 }

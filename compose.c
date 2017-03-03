@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2002,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002,2007,2010,2012 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 2004 g10 Code GmbH
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -74,7 +74,7 @@ enum
 #define TITLE_FMT "%10s" /* Used for Prompts, which are ASCII */
 #define W (COLS - HDR_XOFFSET)
 
-static char *Prompts[] =
+static const char * const Prompts[] =
 {
   "From: ",
   "To: ",
@@ -85,7 +85,7 @@ static char *Prompts[] =
   "Fcc: "
 };
 
-static struct mapping_t ComposeHelp[] = {
+static const struct mapping_t ComposeHelp[] = {
   { N_("Send"),    OP_COMPOSE_SEND_MESSAGE },
   { N_("Abort"),   OP_EXIT },
   { "To",      OP_COMPOSE_EDIT_TO },
@@ -110,8 +110,6 @@ static void snd_entry (char *b, size_t blen, MUTTMENU *menu, int num)
 
 static void redraw_crypt_lines (HEADER *msg)
 {
-  int off = 0;
-
   mvaddstr (HDR_CRYPT, 0, "Security: ");
 
   if ((WithCrypto & (APPLICATION_PGP | APPLICATION_SMIME)) == 0)
@@ -143,16 +141,19 @@ static void redraw_crypt_lines (HEADER *msg)
       addstr (_(" (S/MIME)"));
   }
 
+  if (option (OPTCRYPTOPPORTUNISTICENCRYPT) && (msg->security & OPPENCRYPT))
+      addstr (_(" (OppEnc mode)"));
+
   clrtoeol ();
   move (HDR_CRYPTINFO, 0);
   clrtoeol ();
 
   if ((WithCrypto & APPLICATION_PGP)
-      && msg->security & APPLICATION_PGP  && msg->security & SIGN)
+      && (msg->security & APPLICATION_PGP) && (msg->security & SIGN))
     printw ("%s%s", _(" sign as: "), PgpSignAs ? PgpSignAs : _("<default>"));
 
   if ((WithCrypto & APPLICATION_SMIME)
-      && msg->security & APPLICATION_SMIME  && msg->security & SIGN) {
+      && (msg->security & APPLICATION_SMIME) && (msg->security & SIGN)) {
       printw ("%s%s", _(" sign as: "), SmimeDefaultKey ? SmimeDefaultKey : _("<default>"));
   }
 
@@ -163,7 +164,6 @@ static void redraw_crypt_lines (HEADER *msg)
       && *SmimeCryptAlg) {
       mvprintw (HDR_CRYPTINFO, 40, "%s%s", _("Encrypt with: "),
 		NONULL(SmimeCryptAlg));
-      off = 20;
   }
 }
 
@@ -267,11 +267,9 @@ static void draw_envelope (HEADER *msg, char *fcc)
 
   SETCOLOR (MT_COLOR_STATUS);
   mvaddstr (HDR_ATTACH - 1, 0, _("-- Attachments"));
-  BKGDSET (MT_COLOR_STATUS);
   clrtoeol ();
 
-  BKGDSET (MT_COLOR_NORMAL);
-  SETCOLOR (MT_COLOR_NORMAL);
+  NORMAL_COLOR;
 }
 
 static int edit_address_list (int line, ADDRESS **addr)
@@ -294,7 +292,7 @@ static int edit_address_list (int line, ADDRESS **addr)
     return (REDRAW_FULL);
   }
 
-  if (mutt_addrlist_to_idna (*addr, &err) != 0)
+  if (mutt_addrlist_to_intl (*addr, &err) != 0)
   {
     mutt_error (_("Warning: '%s' is a bad IDN."), err);
     mutt_refresh();
@@ -340,6 +338,7 @@ static int delete_attachment (MUTTMENU *menu, short *idxlen, int x)
   FREE (&idx[x]);
   for (; x < *idxlen - 1; x++)
     idx[x] = idx[x+1];
+  idx[*idxlen - 1] = NULL;
   menu->max = --(*idxlen);
   
   return (0);
@@ -484,9 +483,10 @@ static void compose_status_line (char *buf, size_t buflen, size_t col, MUTTMENU 
  * -1	abort message
  */
 int mutt_compose_menu (HEADER *msg,   /* structure for new message */
-		    char *fcc,     /* where to save a copy of the message */
-		    size_t fcclen,
-		    HEADER *cur)   /* current message */
+                       char *fcc,     /* where to save a copy of the message */
+                       size_t fcclen,
+                       HEADER *cur,   /* current message */
+                       int flags)
 {
   char helpstr[LONG_STRING];
   char buf[LONG_STRING];
@@ -531,14 +531,29 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	break;
       case OP_COMPOSE_EDIT_TO:
 	menu->redraw = edit_address_list (HDR_TO, &msg->env->to);
+	if (option (OPTCRYPTOPPORTUNISTICENCRYPT))
+	{
+	  crypt_opportunistic_encrypt (msg);
+	  redraw_crypt_lines (msg);
+	}
         mutt_message_hook (NULL, msg, M_SEND2HOOK);
         break;
       case OP_COMPOSE_EDIT_BCC:
 	menu->redraw = edit_address_list (HDR_BCC, &msg->env->bcc);
+	if (option (OPTCRYPTOPPORTUNISTICENCRYPT))
+	{
+	  crypt_opportunistic_encrypt (msg);
+	  redraw_crypt_lines (msg);
+	}
         mutt_message_hook (NULL, msg, M_SEND2HOOK);
 	break;
       case OP_COMPOSE_EDIT_CC:
 	menu->redraw = edit_address_list (HDR_CC, &msg->env->cc);
+	if (option (OPTCRYPTOPPORTUNISTICENCRYPT))
+	{
+	  crypt_opportunistic_encrypt (msg);
+	  redraw_crypt_lines (msg);
+	}
         mutt_message_hook (NULL, msg, M_SEND2HOOK);	
         break;
       case OP_COMPOSE_EDIT_SUBJECT:
@@ -550,9 +565,10 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	{
 	  mutt_str_replace (&msg->env->subject, buf);
 	  move (HDR_SUBJECT, HDR_XOFFSET);
-	  clrtoeol ();
 	  if (msg->env->subject)
 	    mutt_paddstr (W, msg->env->subject);
+	  else
+	    clrtoeol();
 	}
         mutt_message_hook (NULL, msg, M_SEND2HOOK);
         break;
@@ -592,11 +608,13 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	  mutt_env_to_local (msg->env);
 	  mutt_edit_headers (NONULL (Editor), msg->content->filename, msg,
 			     fcc, fcclen);
-	  if (mutt_env_to_idna (msg->env, &tag, &err))
+	  if (mutt_env_to_intl (msg->env, &tag, &err))
 	  {
 	    mutt_error (_("Bad IDN in \"%s\": '%s'"), tag, err);
 	    FREE (&err);
 	  }
+	  if (option (OPTCRYPTOPPORTUNISTICENCRYPT))
+	    crypt_opportunistic_encrypt (msg);
 	}
 	else
 	{
@@ -612,7 +630,10 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	if (idxlen && idx[idxlen - 1]->content->next)
 	{
 	  for (i = 0; i < idxlen; i++)
+          {
+            FREE (&idx[i]->tree);
 	    FREE (&idx[i]);
+          }
 	  idxlen = 0;
 	  idx = mutt_gen_attach_list (msg->content, -1, idx, &idxlen, &idxmax, 0, 1);
 	  menu->data = idx;
@@ -738,7 +759,7 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	  ctx = mx_open_mailbox (fname, M_READONLY, NULL);
 	  if (ctx == NULL)
 	  {
-	    mutt_perror (fname);
+	    mutt_error (_("Unable to open mailbox %s"), fname);
 	    break;
 	  }
 
@@ -1007,6 +1028,8 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 	{
 	  if (stat(idx[menu->current]->content->filename, &st) == -1)
 	  {
+            /* L10N:
+               "stat" is a system call. Do "man 2 stat" for more information. */
 	    mutt_error (_("Can't stat %s: %s"), fname, strerror (errno));
 	    break;
 	  }
@@ -1137,20 +1160,25 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
       case OP_EXIT:
 	if ((i = query_quadoption (OPT_POSTPONE, _("Postpone this message?"))) == M_NO)
 	{
-	  while (idxlen-- > 0)
-	  {
-	    /* avoid freeing other attachments */
-	    idx[idxlen]->content->next = NULL;
-	    idx[idxlen]->content->parts = NULL;
-            if (idx[idxlen]->unowned)
-              idx[idxlen]->content->unlink = 0;
-	    mutt_free_body (&idx[idxlen]->content);
-	    FREE (&idx[idxlen]->tree);
-	    FREE (&idx[idxlen]);
-	  }
-	  FREE (&idx);
-	  idxlen = 0;
-	  idxmax = 0;
+          for (i = 0; i < idxlen; i++)
+            if (idx[i]->unowned)
+              idx[i]->content->unlink = 0;
+
+          if (!(flags & M_COMPOSE_NOFREEHEADER))
+          {
+            while (idxlen-- > 0)
+            {
+              /* avoid freeing other attachments */
+              idx[idxlen]->content->next = NULL;
+              idx[idxlen]->content->parts = NULL;
+              mutt_free_body (&idx[idxlen]->content);
+              FREE (&idx[idxlen]->tree);
+              FREE (&idx[idxlen]);
+            }
+            FREE (&idx);
+            idxlen = 0;
+            idxmax = 0;
+          }
 	  r = -1;
 	  loop = 0;
 	  break;
@@ -1216,15 +1244,22 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
         if (!(WithCrypto & APPLICATION_PGP))
           break;
 	if ((WithCrypto & APPLICATION_SMIME)
-            && msg->security & APPLICATION_SMIME)
+            && (msg->security & APPLICATION_SMIME))
 	{
-	  if (mutt_yesorno (_("S/MIME already selected. Clear & continue ? "),
-			     M_YES) != M_YES)
-	  {
-	    mutt_clear_error ();
-	    break;
-	  }
-	  msg->security = 0;
+          if (msg->security & (ENCRYPT | SIGN))
+          {
+            if (mutt_yesorno (_("S/MIME already selected. Clear & continue ? "),
+                              M_YES) != M_YES)
+            {
+              mutt_clear_error ();
+              break;
+            }
+            msg->security &= ~(ENCRYPT | SIGN);
+          }
+	  msg->security &= ~APPLICATION_SMIME;
+	  msg->security |= APPLICATION_PGP;
+          crypt_opportunistic_encrypt (msg);
+          redraw_crypt_lines (msg);
 	}
 	msg->security = crypt_pgp_send_menu (msg, &menu->redraw);
 	redraw_crypt_lines (msg);
@@ -1242,15 +1277,22 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
           break;
 
 	if ((WithCrypto & APPLICATION_PGP)
-            && msg->security & APPLICATION_PGP)
+            && (msg->security & APPLICATION_PGP))
 	{
-	  if (mutt_yesorno (_("PGP already selected. Clear & continue ? "),
-			      M_YES) != M_YES)
-	  {
-	     mutt_clear_error ();
-	     break;
-	  }
-	  msg->security = 0;
+          if (msg->security & (ENCRYPT | SIGN))
+          {
+            if (mutt_yesorno (_("PGP already selected. Clear & continue ? "),
+                                M_YES) != M_YES)
+            {
+              mutt_clear_error ();
+              break;
+            }
+            msg->security &= ~(ENCRYPT | SIGN);
+          }
+	  msg->security &= ~APPLICATION_PGP;
+	  msg->security |= APPLICATION_SMIME;
+          crypt_opportunistic_encrypt (msg);
+          redraw_crypt_lines (msg);
 	}
 	msg->security = crypt_smime_send_menu(msg, &menu->redraw);
 	redraw_crypt_lines (msg);
@@ -1268,16 +1310,14 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
 
     }
 
-    /* Draw formated compose status line */
+    /* Draw formatted compose status line */
     if (menu->redraw & REDRAW_STATUS) 
     {
 	compose_status_line (buf, sizeof (buf), 0, menu, NONULL(ComposeFormat));
-	CLEARLINE (option (OPTSTATUSONTOP) ? 0 : LINES-2);
+	move(option (OPTSTATUSONTOP) ? 0 : LINES-2, 0);
 	SETCOLOR (MT_COLOR_STATUS);
-	BKGDSET (MT_COLOR_STATUS);
 	mutt_paddstr (COLS, buf);
-	SETCOLOR (MT_COLOR_NORMAL);
-	BKGDSET (MT_COLOR_NORMAL);
+	NORMAL_COLOR;
 	menu->redraw &= ~REDRAW_STATUS;
     }
   }
@@ -1290,6 +1330,7 @@ int mutt_compose_menu (HEADER *msg,   /* structure for new message */
     for (i = 0; i < idxlen; i++)
     {
       idx[i]->content->aptr = NULL;
+      FREE (&idx[i]->tree);
       FREE (&idx[i]);
     }
   }

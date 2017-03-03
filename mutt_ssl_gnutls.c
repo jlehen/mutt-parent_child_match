@@ -43,10 +43,41 @@
 #define CERTERR_SIGNERNOTCA 32
 #define CERTERR_INSECUREALG 64
 
+/* deprecated types compatibility */
+
+#ifndef HAVE_GNUTLS_CERTIFICATE_CREDENTIALS_T
+typedef gnutls_certificate_credentials gnutls_certificate_credentials_t;
+#endif
+
+#ifndef HAVE_GNUTLS_CERTIFICATE_STATUS_T
+typedef gnutls_certificate_status gnutls_certificate_status_t;
+#endif
+
+#ifndef HAVE_GNUTLS_DATUM_T
+typedef gnutls_datum gnutls_datum_t;
+#endif
+
+#ifndef HAVE_GNUTLS_DIGEST_ALGORITHM_T
+typedef gnutls_digest_algorithm gnutls_digest_algorithm_t;
+#endif
+
+#ifndef HAVE_GNUTLS_SESSION_T
+typedef gnutls_session gnutls_session_t;
+#endif
+
+#ifndef HAVE_GNUTLS_TRANSPORT_PTR_T
+typedef gnutls_transport_ptr gnutls_transport_ptr_t;
+#endif
+
+#ifndef HAVE_GNUTLS_X509_CRT_T
+typedef gnutls_x509_crt gnutls_x509_crt_t;
+#endif
+
+
 typedef struct _tlssockdata
 {
-  gnutls_session state;
-  gnutls_certificate_credentials xcred;
+  gnutls_session_t state;
+  gnutls_certificate_credentials_t xcred;
 }
 tlssockdata;
 
@@ -238,9 +269,104 @@ err_crt:
   gnutls_x509_crt_deinit (clientcrt);
 }
 
-static int protocol_priority[] = {GNUTLS_TLS1, GNUTLS_SSL3, 0};
+#if HAVE_GNUTLS_PRIORITY_SET_DIRECT
+static int tls_set_priority(tlssockdata *data)
+{
+  size_t nproto = 4;
+  char *priority;
+  size_t priority_size;
+  int err;
 
-/* tls_negotiate: After TLS state has been initialised, attempt to negotiate
+  priority_size = SHORT_STRING + mutt_strlen (SslCiphers);
+  priority = safe_malloc (priority_size);
+
+  priority[0] = 0;
+  if (SslCiphers)
+    safe_strcat (priority, priority_size, SslCiphers);
+  else
+    safe_strcat (priority, priority_size, "NORMAL");
+
+  if (! option(OPTTLSV1_2))
+  {
+    nproto--;
+    safe_strcat (priority, priority_size, ":-VERS-TLS1.2");
+  }
+  if (! option(OPTTLSV1_1))
+  {
+    nproto--;
+    safe_strcat (priority, priority_size, ":-VERS-TLS1.1");
+  }
+  if (! option(OPTTLSV1))
+  {
+    nproto--;
+    safe_strcat (priority, priority_size, ":-VERS-TLS1.0");
+  }
+  if (! option(OPTSSLV3))
+  {
+    nproto--;
+    safe_strcat (priority, priority_size, ":-VERS-SSL3.0");
+  }
+
+  if (nproto == 0)
+  {
+    mutt_error (_("All available protocols for TLS/SSL connection disabled"));
+    FREE (&priority);
+    return -1;
+  }
+
+  if ((err = gnutls_priority_set_direct (data->state, priority, NULL)) < 0)
+  {
+    mutt_error ("gnutls_priority_set_direct(%s): %s", priority, gnutls_strerror(err));
+    mutt_sleep (2);
+    FREE (&priority);
+    return -1;
+  }
+
+  FREE (&priority);
+  return 0;
+}
+#else
+/* This array needs to be large enough to hold all the possible values support
+ * by Mutt.  The initialized values are just placeholders--the array gets
+ * overwrriten in tls_negotiate() depending on the $ssl_use_* options.
+ */
+static int protocol_priority[] = {GNUTLS_TLS1_2, GNUTLS_TLS1_1, GNUTLS_TLS1, GNUTLS_SSL3, 0};
+
+static int tls_set_priority(tlssockdata *data)
+{
+  size_t nproto = 0; /* number of tls/ssl protocols */
+
+  if (option(OPTTLSV1_2))
+    protocol_priority[nproto++] = GNUTLS_TLS1_2;
+  if (option(OPTTLSV1_1))
+    protocol_priority[nproto++] = GNUTLS_TLS1_1;
+  if (option(OPTTLSV1))
+    protocol_priority[nproto++] = GNUTLS_TLS1;
+  if (option(OPTSSLV3))
+    protocol_priority[nproto++] = GNUTLS_SSL3;
+  protocol_priority[nproto] = 0;
+
+  if (nproto == 0)
+  {
+    mutt_error (_("All available protocols for TLS/SSL connection disabled"));
+    return -1;
+  }
+
+  if (SslCiphers)
+  {
+    mutt_error (_("Explicit ciphersuite selection via $ssl_ciphers not supported"));
+    mutt_sleep (2);
+  }
+
+  /* We use default priorities (see gnutls documentation),
+     except for protocol version */
+  gnutls_set_default_priority (data->state);
+  gnutls_protocol_set_priority (data->state, protocol_priority);
+  return 0;
+}
+#endif
+
+/* tls_negotiate: After TLS state has been initialized, attempt to negotiate
  *   TLS over the wire, including certificate checks. */
 static int tls_negotiate (CONNECTION * conn)
 {
@@ -281,36 +407,19 @@ static int tls_negotiate (CONNECTION * conn)
   gnutls_certificate_set_verify_flags(data->xcred, GNUTLS_VERIFY_DISABLE_TIME_CHECKS);
 #endif
 
-  gnutls_init(&data->state, GNUTLS_CLIENT);
-
-  /* set socket */
-  gnutls_transport_set_ptr (data->state, (gnutls_transport_ptr)conn->fd);
-
-  /* disable TLS/SSL protocols as needed */
-  if (!option(OPTTLSV1) && !option(OPTSSLV3))
+  if ((err = gnutls_init(&data->state, GNUTLS_CLIENT)))
   {
-    mutt_error (_("All available protocols for TLS/SSL connection disabled"));
+    mutt_error ("gnutls_handshake: %s", gnutls_strerror(err));
+    mutt_sleep (2);
     goto fail;
   }
-  else if (!option(OPTTLSV1))
-  {
-    protocol_priority[0] = GNUTLS_SSL3;
-    protocol_priority[1] = 0;
-  }
-  else if (!option(OPTSSLV3))
-  {
-    protocol_priority[0] = GNUTLS_TLS1;
-    protocol_priority[1] = 0;
-  }
-  /*
-  else
-    use the list set above
-  */
 
-  /* We use default priorities (see gnutls documentation),
-     except for protocol version */
-  gnutls_set_default_priority (data->state);
-  gnutls_protocol_set_priority (data->state, protocol_priority);
+  /* set socket */
+  gnutls_transport_set_ptr (data->state, (gnutls_transport_ptr_t)(long)conn->fd);
+
+  if (tls_set_priority(data) < 0) {
+    goto fail;
+  }
 
   if (SslDHPrimeBits > 0)
   {
@@ -375,7 +484,15 @@ static int tls_socket_close (CONNECTION* conn)
   tlssockdata *data = conn->sockdata;
   if (data)
   {
-    gnutls_bye (data->state, GNUTLS_SHUT_RDWR);
+    /* shut down only the write half to avoid hanging waiting for the remote to respond.
+     *
+     * RFC5246 7.2.1. "Closure Alerts"
+     *
+     * It is not required for the initiator of the close to wait for the
+     * responding close_notify alert before closing the read side of the
+     * connection.
+     */
+    gnutls_bye (data->state, GNUTLS_SHUT_WR);
 
     gnutls_certificate_free_credentials (data->xcred);
     gnutls_deinit (data->state);
@@ -400,13 +517,13 @@ static int tls_starttls_close (CONNECTION* conn)
 #define CERT_SEP "-----BEGIN"
 
 /* this bit is based on read_ca_file() in gnutls */
-static int tls_compare_certificates (const gnutls_datum *peercert)
+static int tls_compare_certificates (const gnutls_datum_t *peercert)
 {
-  gnutls_datum cert;
+  gnutls_datum_t cert;
   unsigned char *ptr;
   FILE *fd1;
   int ret;
-  gnutls_datum b64_data;
+  gnutls_datum_t b64_data;
   unsigned char *b64_data_data;
   struct stat filestat;
 
@@ -434,8 +551,16 @@ static int tls_compare_certificates (const gnutls_datum *peercert)
       return 0;
     }
 
-    ptr = (unsigned char *)strstr((char*)b64_data.data, CERT_SEP) + 1;
-    ptr = (unsigned char *)strstr((char*)ptr, CERT_SEP);
+    /* find start of cert, skipping junk */
+    ptr = (unsigned char *)strstr((char*)b64_data.data, CERT_SEP);
+    if (!ptr)
+    {
+      gnutls_free(cert.data);
+      FREE (&b64_data_data);
+      return 0;
+    }
+    /* find start of next cert */
+    ptr = (unsigned char *)strstr((char*)ptr + 1, CERT_SEP);
 
     b64_data.size = b64_data.size - (ptr - b64_data.data);
     b64_data.data = ptr;
@@ -459,8 +584,8 @@ static int tls_compare_certificates (const gnutls_datum *peercert)
   return 0;
 }
 
-static void tls_fingerprint (gnutls_digest_algorithm algo,
-                             char* s, int l, const gnutls_datum* data)
+static void tls_fingerprint (gnutls_digest_algorithm_t algo,
+                             char* s, int l, const gnutls_datum_t* data)
 {
   unsigned char md[36];
   size_t n;
@@ -498,7 +623,7 @@ static char *tls_make_date (time_t t, char *s, size_t len)
   return (s);
 }
 
-static int tls_check_stored_hostname (const gnutls_datum *cert,
+static int tls_check_stored_hostname (const gnutls_datum_t *cert,
                                       const char *hostname)
 {
   char buf[80];
@@ -549,11 +674,11 @@ static int tls_check_stored_hostname (const gnutls_datum *cert,
 }
 
 static int tls_check_preauth (const gnutls_datum_t *certdata,
-                              gnutls_certificate_status certstat,
+                              gnutls_certificate_status_t certstat,
                               const char *hostname, int chainidx, int* certerr,
                               int* savedcert)
 {
-  gnutls_x509_crt cert;
+  gnutls_x509_crt_t cert;
 
   *certerr = CERTERR_VALID;
   *savedcert = 0;
@@ -591,21 +716,21 @@ static int tls_check_preauth (const gnutls_datum_t *certdata,
   {
     *savedcert = 1;
 
-    if (chainidx == 0 && certstat & GNUTLS_CERT_INVALID)
+    if (chainidx == 0 && (certstat & GNUTLS_CERT_INVALID))
     {
       /* doesn't matter - have decided is valid because server
        certificate is in our trusted cache */
       certstat ^= GNUTLS_CERT_INVALID;
     }
 
-    if (chainidx == 0 && certstat & GNUTLS_CERT_SIGNER_NOT_FOUND)
+    if (chainidx == 0 && (certstat & GNUTLS_CERT_SIGNER_NOT_FOUND))
     {
       /* doesn't matter that we haven't found the signer, since
        certificate is in our trusted cache */
       certstat ^= GNUTLS_CERT_SIGNER_NOT_FOUND;
     }
 
-    if (chainidx <= 1 && certstat & GNUTLS_CERT_SIGNER_NOT_CA)
+    if (chainidx <= 1 && (certstat & GNUTLS_CERT_SIGNER_NOT_CA))
     {
       /* Hmm. Not really sure how to handle this, but let's say
        that we don't care if the CA certificate hasn't got the
@@ -614,7 +739,7 @@ static int tls_check_preauth (const gnutls_datum_t *certdata,
       certstat ^= GNUTLS_CERT_SIGNER_NOT_CA;
     }
 
-    if (chainidx == 0 && certstat & GNUTLS_CERT_INSECURE_ALGORITHM)
+    if (chainidx == 0 && (certstat & GNUTLS_CERT_INSECURE_ALGORITHM))
     {
       /* doesn't matter that it was signed using an insecure
          algorithm, since certificate is in our trusted cache */
@@ -666,12 +791,15 @@ static int tls_check_preauth (const gnutls_datum_t *certdata,
   return -1;
 }
 
+/*
+ * Returns 0 on failure, nonzero on success.
+ */
 static int tls_check_one_certificate (const gnutls_datum_t *certdata,
-                                      gnutls_certificate_status certstat,
+                                      gnutls_certificate_status_t certstat,
                                       const char* hostname, int idx, int len)
 {
   int certerr, savedcert;
-  gnutls_x509_crt cert;
+  gnutls_x509_crt_t cert;
   char buf[SHORT_STRING];
   char fpbuf[SHORT_STRING];
   size_t buflen;
@@ -688,7 +816,7 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
   char helpstr[LONG_STRING];
   char title[STRING];
   FILE *fp;
-  gnutls_datum pemdata;
+  gnutls_datum_t pemdata;
   int i, row, done, ret;
 
   if (!tls_check_preauth (certdata, certstat, hostname, idx, &certerr,
@@ -719,10 +847,10 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
     mutt_error (_("Error processing certificate data"));
     mutt_sleep (2);
     gnutls_x509_crt_deinit (cert);
-    return -1;
+    return 0;
   }
 
-  menu = mutt_new_menu (-1);
+  menu = mutt_new_menu (MENU_GENERIC);
   menu->max = 25;
   menu->dialog = (char **) safe_calloc (1, menu->max * sizeof (char *));
   for (i = 0; i < menu->max; i++)
@@ -877,7 +1005,7 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
   menu->help = helpstr;
 
   done = 0;
-  set_option (OPTUNBUFFEREDINPUT);
+  set_option (OPTIGNOREMACROEVENTS);
   while (!done)
   {
     switch (mutt_menuLoop (menu))
@@ -929,7 +1057,7 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
         break;
     }
   }
-  unset_option (OPTUNBUFFEREDINPUT);
+  unset_option (OPTIGNOREMACROEVENTS);
   mutt_menuDestroy (&menu);
   gnutls_x509_crt_deinit (cert);
 
@@ -937,24 +1065,25 @@ static int tls_check_one_certificate (const gnutls_datum_t *certdata,
 }
 
 /* sanity-checking wrapper for gnutls_certificate_verify_peers */
-static gnutls_certificate_status tls_verify_peers (gnutls_session tlsstate)
+static gnutls_certificate_status_t tls_verify_peers (gnutls_session_t tlsstate)
 {
-  gnutls_certificate_status certstat;
+  int verify_ret;
+  unsigned int status;
 
-  certstat = gnutls_certificate_verify_peers (tlsstate);
-  if (!certstat)
-    return certstat;
+  verify_ret = gnutls_certificate_verify_peers2 (tlsstate, &status);
+  if (!verify_ret)
+    return status;
 
-  if (certstat == GNUTLS_E_NO_CERTIFICATE_FOUND)
+  if (status == GNUTLS_E_NO_CERTIFICATE_FOUND)
   {
     mutt_error (_("Unable to get certificate from peer"));
     mutt_sleep (2);
     return 0;
   }
-  if (certstat < 0)
+  if (verify_ret < 0)
   {
     mutt_error (_("Certificate verification error (%s)"),
-                gnutls_strerror (certstat));
+                gnutls_strerror (status));
     mutt_sleep (2);
     return 0;
   }
@@ -967,17 +1096,18 @@ static gnutls_certificate_status tls_verify_peers (gnutls_session tlsstate)
     return 0;
   }
 
-  return certstat;
+  return status;
 }
 
 static int tls_check_certificate (CONNECTION* conn)
 {
   tlssockdata *data = conn->sockdata;
-  gnutls_session state = data->state;
-  const gnutls_datum *cert_list;
+  gnutls_session_t state = data->state;
+  const gnutls_datum_t *cert_list;
   unsigned int cert_list_size = 0;
-  gnutls_certificate_status certstat;
+  gnutls_certificate_status_t certstat;
   int certerr, i, preauthrc, savedcert, rc = 0;
+  int rcpeer = -1; /* the result of tls_check_preauth() on the peer's EE cert */
 
   if (gnutls_auth_get_type (state) != GNUTLS_CRD_CERTIFICATE)
   {
@@ -1004,6 +1134,13 @@ static int tls_check_certificate (CONNECTION* conn)
     rc = tls_check_preauth(&cert_list[i], certstat, conn->account.host, i,
                            &certerr, &savedcert);
     preauthrc += rc;
+    if (i == 0)
+    {
+      /* This is the peer's end-entity X.509 certificate.  Stash the result
+       * to check later in this function.
+       */
+      rcpeer = rc;
+    }
 
     if (savedcert)
     {
@@ -1028,7 +1165,10 @@ static int tls_check_certificate (CONNECTION* conn)
         dprint (1, (debugfile, "error trusting certificate %d: %d\n", i, rc));
 
       certstat = tls_verify_peers (state);
-      if (!certstat)
+      /* If the cert chain now verifies, and the peer's cert was otherwise
+       * valid (rcpeer==0), we are done.
+       */
+      if (!certstat && !rcpeer)
         return 1;
     }
   }

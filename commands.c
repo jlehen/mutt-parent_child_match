@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 2000-4,2006 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 2000-2004,2006 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -228,7 +228,7 @@ int mutt_display_message (HEADER *cur)
       mutt_set_flag (Context, cur, M_READ, 1);
     if (r != -1 && option (OPTPROMPTAFTER))
     {
-      mutt_ungetch (mutt_any_key_to_continue _("Command: "), 0);
+      mutt_unget_event (mutt_any_key_to_continue _("Command: "), 0);
       rc = km_dokey (MENU_PAGER);
     }
     else
@@ -253,7 +253,7 @@ void ci_bounce_message (HEADER *h, int *redraw)
   {
     if (!h->env->from)
     {
-      mutt_error _("Warning: message has no From: header");
+      mutt_error _("Warning: message contains no From: header");
       mutt_sleep (2);
     }
   }
@@ -263,7 +263,7 @@ void ci_bounce_message (HEADER *h, int *redraw)
     {
       if (Context->hdrs[rc]->tagged && !Context->hdrs[rc]->env->from)
       {
-	mutt_error ("Warning: message has no From: header");
+	mutt_error _("Warning: message contains no From: header");
 	mutt_sleep (2);
 	break;
       }
@@ -286,7 +286,7 @@ void ci_bounce_message (HEADER *h, int *redraw)
   if (rc || !buf[0])
     return;
 
-  if (!(adr = rfc822_parse_adrlist (adr, buf)))
+  if (!(adr = mutt_parse_adrlist (adr, buf)))
   {
     mutt_error _("Error parsing address!");
     return;
@@ -294,7 +294,7 @@ void ci_bounce_message (HEADER *h, int *redraw)
 
   adr = mutt_expand_aliases (adr);
 
-  if (mutt_addrlist_to_idna (adr, &err) < 0)
+  if (mutt_addrlist_to_intl (adr, &err) < 0)
   {
     mutt_error (_("Bad IDN: '%s'"), err);
     FREE (&err);
@@ -611,27 +611,30 @@ void mutt_shell_escape (void)
 void mutt_enter_command (void)
 {
   BUFFER err, token;
-  char buffer[LONG_STRING], errbuf[LONG_STRING];
+  char buffer[LONG_STRING];
   int r;
 
   buffer[0] = 0;
   if (mutt_get_field (":", buffer, sizeof (buffer), M_COMMAND) != 0 || !buffer[0])
     return;
-  err.data = errbuf;
-  err.dsize = sizeof (errbuf);
-  memset (&token, 0, sizeof (token));
+  mutt_buffer_init (&err);
+  err.dsize = STRING;
+  err.data = safe_malloc(err.dsize);
+  mutt_buffer_init (&token);
   r = mutt_parse_rc_line (buffer, &token, &err);
   FREE (&token.data);
-  if (errbuf[0])
+  if (err.data[0])
   {
     /* since errbuf could potentially contain printf() sequences in it,
        we must call mutt_error() in this fashion so that vsprintf()
        doesn't expect more arguments that we passed */
     if (r == 0)
-      mutt_message ("%s", errbuf);
+      mutt_message ("%s", err.data);
     else
-      mutt_error ("%s", errbuf);
+      mutt_error ("%s", err.data);
   }
+
+  FREE (&err.data);
 }
 
 void mutt_display_address (ENVELOPE *env)

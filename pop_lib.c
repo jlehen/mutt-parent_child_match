@@ -32,6 +32,8 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <netdb.h>
+#include <errno.h>
+#include <netinet/in.h>
 
 /* given an POP mailbox name, return host, port, username and password */
 int pop_parse_path (const char* path, ACCOUNT* acct)
@@ -82,8 +84,7 @@ void pop_error (POP_DATA *pop_data, char *msg)
 
   if (!mutt_strncmp (msg, "-ERR ", 5))
   {
-    c2 = msg + 5;
-    SKIPWS (c2);
+    c2 = skip_email_wsp(msg + 5);
 
     if (*c2)
       c = c2;
@@ -102,8 +103,7 @@ static int fetch_capa (char *line, void *data)
   if (!ascii_strncasecmp (line, "SASL", 4))
   {
     FREE (&pop_data->auth_list);
-    c = line + 4;
-    SKIPWS (c);
+    c = skip_email_wsp(line + 4);
     pop_data->auth_list = safe_strdup (c);
   }
 
@@ -146,7 +146,7 @@ static int fetch_auth (char *line, void *data)
 /*
  * Get capabilities
  *  0 - successful,
- * -1 - conection lost,
+ * -1 - connection lost,
  * -2 - execution error.
 */
 static int pop_capabilities (POP_DATA *pop_data, int mode)
@@ -224,7 +224,7 @@ static int pop_capabilities (POP_DATA *pop_data, int mode)
 /*
  * Open connection
  *  0 - successful,
- * -1 - conection lost,
+ * -1 - connection lost,
  * -2 - invalid response.
 */
 int pop_connect (POP_DATA *pop_data)
@@ -257,7 +257,7 @@ int pop_connect (POP_DATA *pop_data)
 /*
  * Open connection and authenticate
  *  0 - successful,
- * -1 - conection lost,
+ * -1 - connection lost,
  * -2 - invalid command or execution error,
  * -3 - authentication canceled.
 */
@@ -413,7 +413,7 @@ void pop_logout (CONTEXT *ctx)
 /*
  * Send data from buffer and receive answer to the same buffer
  *  0 - successful,
- * -1 - conection lost,
+ * -1 - connection lost,
  * -2 - invalid command or execution error.
 */
 int pop_query_d (POP_DATA *pop_data, char *buf, size_t buflen, char *msg)
@@ -425,7 +425,7 @@ int pop_query_d (POP_DATA *pop_data, char *buf, size_t buflen, char *msg)
     return -1;
 
 #ifdef DEBUG
-    /* print msg instaed of real command */
+    /* print msg instead of real command */
     if (msg)
     {
       dbg = M_SOCK_LOG_FULL;
@@ -456,7 +456,7 @@ int pop_query_d (POP_DATA *pop_data, char *buf, size_t buflen, char *msg)
  * funct(NULL, *data)  if  rewind(*data)  needs, exits when fail or done.
  * Returned codes:
  *  0 - successful,
- * -1 - conection lost,
+ * -1 - connection lost,
  * -2 - invalid command or execution error,
  * -3 - error in funct(*line, *data)
  */
@@ -525,8 +525,16 @@ static int check_uidl (char *line, void *data)
   int i;
   unsigned int index;
   CONTEXT *ctx = (CONTEXT *)data;
+  char *endp;
 
-  sscanf (line, "%u %s", &index, line);
+  errno = 0;
+  index = strtoul(line, &endp, 10);
+  if (errno)
+      return -1;
+  while (*endp == ' ')
+      endp++;
+  memmove(line, endp, strlen(endp) + 1);
+
   for (i = 0; i < ctx->msgcount; i++)
   {
     if (!mutt_strcmp (ctx->hdrs[i]->data, line))

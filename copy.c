@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002,2014 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ mutt_copy_hdr (FILE *in, FILE *out, LOFF_T off_start, LOFF_T off_end, int flags,
       if ((fgets (buf, sizeof (buf), in)) == NULL)
 	break;
 
-      /* Is it the begining of a header? */
+      /* Is it the beginning of a header? */
       if (nl && buf[0] != ' ' && buf[0] != '\t')
       {
 	ignore = 1;
@@ -147,7 +147,7 @@ mutt_copy_hdr (FILE *in, FILE *out, LOFF_T off_start, LOFF_T off_end, int flags,
     if ((fgets (buf, sizeof (buf), in)) == NULL)
       break;
 
-    /* Is it the begining of a header? */
+    /* Is it the beginning of a header? */
     if (nl && buf[0] != ' ' && buf[0] != '\t')
     {
       /* Do we have anything pending? */
@@ -254,6 +254,7 @@ mutt_copy_hdr (FILE *in, FILE *out, LOFF_T off_start, LOFF_T off_end, int flags,
     {
       if (!address_header_decode (&this_one))
 	rfc2047_decode (&this_one);
+      this_one_len = mutt_strlen (this_one);
     }
     
     if (!headers[x])

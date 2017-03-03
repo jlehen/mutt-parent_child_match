@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 2011-2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -21,7 +22,6 @@
 #endif
 
 #include <string.h>
-#include <ctype.h>
 #include <stdlib.h>
 
 #ifndef TESTING
@@ -29,9 +29,7 @@
 #else
 #define safe_strdup strdup
 #define safe_malloc malloc
-#define SKIPWS(x) while(isspace(*x))x++
 #define FREE(x) safe_free(x)
-#define ISSPACE isspace
 #define strfcpy(a,b,c) {if (c) {strncpy(a,b,c);a[c-1]=0;}}
 #define LONG_STRING 1024
 #include "rfc822.h"
@@ -44,14 +42,13 @@
 
 #define terminate_buffer(a, b) terminate_string(a, b, sizeof (a) - 1)
 
-
 const char RFC822Specials[] = "@.,:;<>[]\\\"()";
 #define is_special(x) strchr(RFC822Specials,x)
 
 int RFC822Error = 0;
 
 /* these must defined in the same order as the numerated errors given in rfc822.h */
-const char *RFC822Errors[] = {
+const char * const RFC822Errors[] = {
   "out of memory",
   "mismatched parenthesis",
   "mismatched quotes",
@@ -205,7 +202,7 @@ next_token (const char *s, char *token, size_t *tokenlen, size_t tokenmax)
     return (parse_comment (s + 1, token, tokenlen, tokenmax));
   if (*s == '"')
     return (parse_quote (s + 1, token, tokenlen, tokenmax));
-  if (is_special (*s))
+  if (*s && is_special (*s))
   {
     if (*tokenlen < tokenmax)
       token[(*tokenlen)++] = *s;
@@ -213,7 +210,7 @@ next_token (const char *s, char *token, size_t *tokenlen, size_t tokenmax)
   }
   while (*s)
   {
-    if (ISSPACE ((unsigned char) *s) || is_special (*s))
+    if (is_email_wsp(*s) || is_special (*s))
       break;
     if (*tokenlen < tokenmax)
       token[(*tokenlen)++] = *s;
@@ -231,7 +228,10 @@ parse_mailboxdomain (const char *s, const char *nonspecial,
 
   while (*s)
   {
-    SKIPWS (s);
+    s = skip_email_wsp(s);
+    if (! *s)
+      return s;
+
     if (strchr (nonspecial, *s) == NULL && is_special (*s))
       return s;
 
@@ -294,7 +294,7 @@ parse_route_addr (const char *s,
   char token[LONG_STRING];
   size_t tokenlen = 0;
 
-  SKIPWS (s);
+  s = skip_email_wsp(s);
 
   /* find the end of the route */
   if (*s == '@')
@@ -373,7 +373,10 @@ add_addrspec (ADDRESS **top, ADDRESS **last, const char *phrase,
 ADDRESS *rfc822_parse_adrlist (ADDRESS *top, const char *s)
 {
   int ws_pending, nl;
-  const char *begin, *ps;
+#ifdef EXACT_ADDRESS
+  const char *begin;
+#endif
+  const char *ps;
   char comment[LONG_STRING], phrase[LONG_STRING];
   size_t phraselen = 0, commentlen = 0;
   ADDRESS *cur, *last = NULL;
@@ -384,12 +387,14 @@ ADDRESS *rfc822_parse_adrlist (ADDRESS *top, const char *s)
   while (last && last->next)
     last = last->next;
 
-  ws_pending = isspace ((unsigned char) *s);
+  ws_pending = is_email_wsp (*s);
   if ((nl = mutt_strlen (s)))
     nl = s[nl - 1] == '\n';
   
-  SKIPWS (s);
+  s = skip_email_wsp(s);
+#ifdef EXACT_ADDRESS
   begin = s;
+#endif
   while (*s)
   {
     if (*s == ',')
@@ -412,8 +417,9 @@ ADDRESS *rfc822_parse_adrlist (ADDRESS *top, const char *s)
       commentlen = 0;
       phraselen = 0;
       s++;
-      begin = s;
-      SKIPWS (begin);
+#ifdef EXACT_ADDRESS
+      begin = skip_email_wsp(s);
+#endif
     }
     else if (*s == '(')
     {
@@ -457,8 +463,9 @@ ADDRESS *rfc822_parse_adrlist (ADDRESS *top, const char *s)
       phraselen = 0;
       commentlen = 0;
       s++;
-      begin = s;
-      SKIPWS (begin);
+#ifdef EXACT_ADDRESS
+      begin = skip_email_wsp(s);
+#endif
     }
     else if (*s == ';')
     {
@@ -488,8 +495,9 @@ ADDRESS *rfc822_parse_adrlist (ADDRESS *top, const char *s)
       phraselen = 0;
       commentlen = 0;
       s++;
-      begin = s;
-      SKIPWS (begin);
+#ifdef EXACT_ADDRESS
+      begin = skip_email_wsp(s);
+#endif
     }
     else if (*s == '<')
     {
@@ -525,8 +533,8 @@ ADDRESS *rfc822_parse_adrlist (ADDRESS *top, const char *s)
       }
       s = ps;
     }
-    ws_pending = isspace ((unsigned char) *s);
-    SKIPWS (s);
+    ws_pending = is_email_wsp(*s);
+    s = skip_email_wsp(s);
   }
   
   if (phraselen)
@@ -793,6 +801,8 @@ ADDRESS *rfc822_cpy_adr_real (ADDRESS *addr)
   p->personal = safe_strdup (addr->personal);
   p->mailbox = safe_strdup (addr->mailbox);
   p->group = addr->group;
+  p->is_intl = addr->is_intl;
+  p->intl_checked = addr->intl_checked;
   return p;
 }
 
@@ -805,10 +815,9 @@ ADDRESS *rfc822_cpy_adr (ADDRESS *addr, int prune)
   {
     if (prune && addr->group && (!addr->next || !addr->next->mailbox))
     {
-      addr = addr->next;
-      continue;
+      /* ignore this element of the list */
     }
-    if (last)
+    else if (last)
     {
       last->next = rfc822_cpy_adr_real (addr);
       last = last->next;

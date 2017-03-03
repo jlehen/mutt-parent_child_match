@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
- * Copyright (C) 1999-2008 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1996-1999 Brandon Long <blong@fiction.net>
+ * Copyright (C) 1999-2009 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #ifdef USE_HCACHE
 #include "hcache.h"
 #endif
+#include "message.h"  /* for IMAP_HEADER_DATA */
 
 /* -- symbols -- */
 #define IMAP_PORT 143
@@ -114,6 +115,7 @@ enum
   LOGINDISABLED,		/*           LOGINDISABLED */
   IDLE,                         /* RFC 2177: IDLE */
   SASL_IR,                      /* SASL initial response draft */
+  ENABLE,                       /* RFC 5161 */
 
   CAPMAX
 };
@@ -143,7 +145,7 @@ typedef struct
 typedef struct
 {
   char* name;
-  
+
   char delim;
   /* if we end up storing a lot of these we could turn this into a bitfield */
   unsigned char noselect;
@@ -185,6 +187,10 @@ typedef struct
   char* buf;
   unsigned int blen;
   
+  /* If nonzero, we can send UTF-8, and the server will use UTF8 rather
+   * than mUTF7 */
+  int unicode;
+
   /* if set, the response parser will store results for complicated commands
    * here. */
   IMAP_COMMAND_TYPE cmdtype;
@@ -256,7 +262,7 @@ int imap_cmd_idle (IMAP_DATA* idata);
 
 /* message.c */
 void imap_add_keywords (char* s, HEADER* keywords, LIST* mailbox_flags, size_t slen);
-void imap_free_header_data (void** data);
+void imap_free_header_data (IMAP_HEADER_DATA** data);
 int imap_read_headers (IMAP_DATA* idata, int msgbegin, int msgend);
 char* imap_set_flags (IMAP_DATA* idata, HEADER* h, char* s);
 int imap_cache_del (IMAP_DATA* idata, HEADER* h);
@@ -288,13 +294,13 @@ void imap_make_date (char* buf, time_t timestamp);
 void imap_qualify_path (char *dest, size_t len, IMAP_MBOX *mx, char* path);
 void imap_quote_string (char* dest, size_t slen, const char* src);
 void imap_unquote_string (char* s);
-void imap_munge_mbox_name (char *dest, size_t dlen, const char *src);
-void imap_unmunge_mbox_name (char *s);
+void imap_munge_mbox_name (IMAP_DATA *idata, char *dest, size_t dlen, const char *src);
+void imap_unmunge_mbox_name (IMAP_DATA *idata, char *s);
 int imap_wordcasecmp(const char *a, const char *b);
 
 /* utf7.c */
-void imap_utf7_encode (char **s);
-void imap_utf7_decode (char **s);
+void imap_utf_encode (IMAP_DATA *idata, char **s);
+void imap_utf_decode (IMAP_DATA *idata, char **s);
 
 #if USE_HCACHE
 /* typedef size_t (*hcache_keylen_t)(const char* fn); */

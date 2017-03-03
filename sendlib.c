@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2009-2012 Michael R. Elkins <me@mutt.org>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@
 #endif
 
 /* If you are debugging this file, comment out the following line. */
-/*#define NDEBUG*/
+#define NDEBUG
 
 #ifdef NDEBUG
 #define assert(x)
@@ -65,7 +65,7 @@ extern char RFC822Specials[];
 
 const char MimeSpecials[] = "@.,;:<>[]\\\"()?/= \t";
 
-char B64Chars[64] = {
+const char B64Chars[64] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
   'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd',
   'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
@@ -1486,7 +1486,7 @@ char *mutt_make_date (char *s, size_t len)
   snprintf (s, len,  "Date: %s, %d %s %d %02d:%02d:%02d %+03d%02d\n",
 	    Weekdays[l->tm_wday], l->tm_mday, Months[l->tm_mon],
 	    l->tm_year + 1900, l->tm_hour, l->tm_min, l->tm_sec,
-	    (int) tz / 60, (int) abs (tz) % 60);
+	    (int) tz / 60, (int) abs ((int) tz) % 60);
   return (s);
 }
 
@@ -1664,7 +1664,7 @@ static int fold_one_header (FILE *fp, const char *tag, const char *value,
     /* find the next word and place it in `buf'. it may start with
      * whitespace we can fold before */
     next = find_word (p);
-    l = MIN(sizeof (buf), next - p);
+    l = MIN(sizeof (buf) - 1, next - p);
     memcpy (buf, p, l);
     buf[l] = 0;
 
@@ -1728,7 +1728,7 @@ static int fold_one_header (FILE *fp, const char *tag, const char *value,
 
   /* if we have printed something but didn't \n-terminate it, do it
    * except the last word we printed ended in \n already */
-  if (col && buf[l - 1] != '\n')
+  if (col && (l == 0 || buf[l - 1] != '\n'))
     if (putc ('\n', fp) == EOF)
       return -1;
 
@@ -1799,7 +1799,7 @@ static int write_one_header (FILE *fp, int pfxw, int max, int wraplen,
   else
   {
     t = strchr (start, ':');
-    if (t > end)
+    if (!t || t > end)
     {
       dprint (1, (debugfile, "mwoh: warning: header not in "
 		  "'key: value' format!\n"));
@@ -1813,8 +1813,15 @@ static int write_one_header (FILE *fp, int pfxw, int max, int wraplen,
     else
     {
       tagbuf = mutt_substrdup (start, t);
-      ++t; /* skip over the colon separating the header field name and value */
-      SKIPWS(t); /* skip over any leading whitespace */
+      /* skip over the colon separating the header field name and value */
+      ++t;
+
+      /* skip over any leading whitespace (WSP, as defined in RFC5322)
+       * NOTE: skip_email_wsp() does the wrong thing here.
+       *       See tickets 3609 and 3716. */
+      while (*t == ' ' || *t == '\t')
+        t++;
+
       valbuf = mutt_substrdup (t, end);
     }
     dprint(4,(debugfile,"mwoh: buf[%s%s] too long, "
@@ -2036,7 +2043,7 @@ int mutt_write_rfc822_header (FILE *fp, ENVELOPE *env, BODY *attach,
 
       *p = '\0';
 
-      p++; SKIPWS (p);
+      p = skip_email_wsp(p + 1);
       if (!*p)
       {
 	*q = ':';
@@ -2080,7 +2087,7 @@ static void encode_headers (LIST *h)
       continue;
 
     i = p - h->data;
-    ++p; SKIPWS (p);
+    p = skip_email_wsp(p + 1);
     tmp = safe_strdup (p);
 
     if (!tmp)
@@ -2139,7 +2146,7 @@ char *mutt_gen_msgid (void)
   return (safe_strdup (buf));
 }
 
-static RETSIGTYPE alarm_handler (int sig)
+static void alarm_handler (int sig)
 {
   SigAlrm = 1;
 }
@@ -2343,6 +2350,13 @@ mutt_invoke_sendmail (ADDRESS *from,	/* the sender */
   char **args = NULL;
   size_t argslen = 0, argsmax = 0;
   int i;
+
+  /* ensure that $sendmail is set to avoid a crash. http://dev.mutt.org/trac/ticket/3548 */
+  if (!s)
+  {
+    mutt_error(_("$sendmail must be set in order to send mail."));
+    return -1;
+  }
 
   ps = s;
   i = 0;
@@ -2566,7 +2580,7 @@ static int _mutt_bounce_message (FILE *fp, HEADER *h, ADDRESS *to, const char *r
 
 int mutt_bounce_message (FILE *fp, HEADER *h, ADDRESS *to)
 {
-  ADDRESS *from;
+  ADDRESS *from, *resent_to;
   const char *fqdn = mutt_fqdn (1);
   char resent_from[STRING];
   int ret;
@@ -2589,7 +2603,7 @@ int mutt_bounce_message (FILE *fp, HEADER *h, ADDRESS *to)
     rfc822_qualify (from, fqdn);
 
   rfc2047_encode_adrlist (from, "Resent-From");
-  if (mutt_addrlist_to_idna (from, &err))
+  if (mutt_addrlist_to_intl (from, &err))
   {
     mutt_error (_("Bad IDN %s while preparing resent-from."),
 		err);
@@ -2598,8 +2612,17 @@ int mutt_bounce_message (FILE *fp, HEADER *h, ADDRESS *to)
   }
   rfc822_write_address (resent_from, sizeof (resent_from), from, 0);
 
-  ret = _mutt_bounce_message (fp, h, to, resent_from, from);
+  /*
+   * prepare recipient list. idna conversion appears to happen before this
+   * function is called, since the user receives confirmation of the address
+   * list being bounced to.
+   */
+  resent_to = rfc822_cpy_adr(to, 0);
+  rfc2047_encode_adrlist(resent_to, "Resent-To");
 
+  ret = _mutt_bounce_message (fp, h, resent_to, resent_from, from);
+
+  rfc822_free_address (&resent_to);
   rfc822_free_address (&from);
 
   return ret;
@@ -2673,6 +2696,7 @@ int mutt_write_fcc (const char *path, HEADER *hdr, const char *msgid, int post, 
   int r, need_buffy_cleanup = 0;
   struct stat st;
   char buf[SHORT_STRING];
+  int onm_flags;
 
   if (post)
     set_noconv_flags (hdr->content, 1);
@@ -2702,7 +2726,10 @@ int mutt_write_fcc (const char *path, HEADER *hdr, const char *msgid, int post, 
   }
 
   hdr->read = !post; /* make sure to put it in the `cur' directory (maildir) */
-  if ((msg = mx_open_new_message (&f, hdr, M_ADD_FROM)) == NULL)
+  onm_flags = M_ADD_FROM;
+  if (post)
+    onm_flags |= M_SET_DRAFT;
+  if ((msg = mx_open_new_message (&f, hdr, onm_flags)) == NULL)
   {
     mx_close_mailbox (&f, NULL);
     return (-1);
@@ -2743,6 +2770,8 @@ int mutt_write_fcc (const char *path, HEADER *hdr, const char *msgid, int post, 
     fputs ("X-Mutt-PGP: ", msg->fp);
     if (hdr->security & ENCRYPT)
       fputc ('E', msg->fp);
+    if (hdr->security & OPPENCRYPT)
+      fputc ('O', msg->fp);
     if (hdr->security & SIGN)
     {
       fputc ('S', msg->fp);
@@ -2764,6 +2793,8 @@ int mutt_write_fcc (const char *path, HEADER *hdr, const char *msgid, int post, 
 	if (SmimeCryptAlg && *SmimeCryptAlg)
 	    fprintf (msg->fp, "C<%s>", SmimeCryptAlg);
     }
+    if (hdr->security & OPPENCRYPT)
+      fputc ('O', msg->fp);
     if (hdr->security & SIGN) {
 	fputc ('S', msg->fp);
 	if (SmimeDefaultKey && *SmimeDefaultKey)

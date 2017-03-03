@@ -185,7 +185,7 @@ void mutt_attach_bounce (FILE * fp, HEADER * hdr,
 
   adr = mutt_expand_aliases (adr);
   
-  if (mutt_addrlist_to_idna (adr, &err) < 0)
+  if (mutt_addrlist_to_intl (adr, &err) < 0)
   {
     mutt_error (_("Bad IDN: '%s'"), err);
     FREE (&err);
@@ -565,7 +565,7 @@ _("Can't decode all tagged attachments.  MIME-forward the others?"))) == -1)
 /* 
  * Forward one or several message-type attachments. This 
  * is different from the previous function
- * since we want to mimic the index menu's behaviour.
+ * since we want to mimic the index menu's behavior.
  *
  * Code reuse from ci_send_message is not possible here -
  * ci_send_message relies on a context structure to find messages,

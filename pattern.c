@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2006-7 Michael R. Elkins <me@mutt.org>, and others
+ * Copyright (C) 1996-2000,2006-2007,2010 Michael R. Elkins <me@mutt.org>, and others
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ static int eat_range (pattern_t *pat, BUFFER *, BUFFER *);
 static int patmatch (const pattern_t *pat, const char *buf);
 static int pattern_exec (struct pattern_t *pat, pattern_exec_flag flags, CONTEXT *ctx, HEADER *h);
 
-static struct pattern_flags
+static const struct pattern_flags
 {
   int tag;	/* character used to represent this op */
   int op;	/* operation to perform */
@@ -257,12 +257,14 @@ static int eat_regexp (pattern_t *pat, BUFFER *s, BUFFER *err)
   BUFFER buf;
   char errmsg[STRING];
   int r;
+  char *pexpr;
 
-  memset (&buf, 0, sizeof (buf));
+  mutt_buffer_init (&buf);
+  pexpr = s->dptr;
   if (mutt_extract_token (&buf, s, M_TOKEN_PATTERN | M_TOKEN_COMMENT) != 0 ||
       !buf.data)
   {
-    snprintf (err->data, err->dsize, _("Error in expression: %s"), s->dptr);
+    snprintf (err->data, err->dsize, _("Error in expression: %s"), pexpr);
     return (-1);
   }
   if (!*buf.data)
@@ -575,12 +577,19 @@ static int eat_date (pattern_t *pat, BUFFER *s, BUFFER *err)
 {
   BUFFER buffer;
   struct tm min, max;
+  char *pexpr;
 
-  memset (&buffer, 0, sizeof (buffer));
+  mutt_buffer_init (&buffer);
+  pexpr = s->dptr;
   if (mutt_extract_token (&buffer, s, M_TOKEN_COMMENT | M_TOKEN_PATTERN) != 0
       || !buffer.data)
   {
-    strfcpy (err->data, _("error in expression"), err->dsize);
+    snprintf (err->data, err->dsize, _("Error in expression: %s"), pexpr);
+    return (-1);
+  }
+  if (!*buffer.data)
+  {
+    snprintf (err->data, err->dsize, _("Empty expression"));
     return (-1);
   }
 
@@ -647,7 +656,7 @@ static int eat_date (pattern_t *pat, BUFFER *s, BUFFER *err)
     int untilNow = FALSE;
     if (isdigit ((unsigned char)*pc))
     {
-      /* mininum date specified */
+      /* minimum date specified */
       if ((pc = getDate (pc, &min, err)) == NULL)
       {
 	FREE (&buffer.data);
@@ -713,7 +722,7 @@ static int patmatch (const pattern_t* pat, const char* buf)
     return regexec (pat->p.rx, buf, 0, NULL, 0);
 }
 
-static struct pattern_flags *lookup_tag (char tag)
+static const struct pattern_flags *lookup_tag (char tag)
 {
   int i;
 
@@ -777,12 +786,12 @@ pattern_t *mutt_pattern_comp (/* const */ char *s, int flags, BUFFER *err)
   int childsmatch = 0;
   int or = 0;
   int implicit = 1;	/* used to detect logical AND operator */
-  struct pattern_flags *entry;
+  const struct pattern_flags *entry;
   char *p;
   char *buf;
   BUFFER ps;
 
-  memset (&ps, 0, sizeof (ps));
+  mutt_buffer_init (&ps);
   ps.dptr = s;
   ps.dsize = mutt_strlen (s);
 
@@ -1353,7 +1362,7 @@ void mutt_check_simple (char *s, size_t len, const char *simple)
 int mutt_pattern_func (int op, char *prompt)
 {
   pattern_t *pat;
-  char buf[LONG_STRING] = "", *simple, error[STRING];
+  char buf[LONG_STRING] = "", *simple;
   BUFFER err;
   int i;
   progress_t progress;
@@ -1367,13 +1376,14 @@ int mutt_pattern_func (int op, char *prompt)
   simple = safe_strdup (buf);
   mutt_check_simple (buf, sizeof (buf), NONULL (SimpleSearch));
 
-  memset (&err, 0, sizeof(err));
-  err.data = error;
-  err.dsize = sizeof (error);
+  mutt_buffer_init (&err);
+  err.dsize = STRING;
+  err.data = safe_malloc(err.dsize);
   if ((pat = mutt_pattern_comp (buf, M_FULL_MSG, &err)) == NULL)
   {
     FREE (&simple);
     mutt_error ("%s", err.data);
+    FREE (&err.data);
     return (-1);
   }
 
@@ -1461,6 +1471,8 @@ int mutt_pattern_func (int op, char *prompt)
   }
   FREE (&simple);
   mutt_pattern_free (&pat);
+  FREE (&err.data);
+
   return 0;
 }
 
@@ -1469,7 +1481,6 @@ int mutt_search_command (int cur, int op)
   int i, j;
   char buf[STRING];
   char temp[LONG_STRING];
-  char error[STRING];
   int incr;
   HEADER *h;
   progress_t progress;
@@ -1497,16 +1508,17 @@ int mutt_search_command (int cur, int op)
     if (!SearchPattern || mutt_strcmp (temp, LastSearchExpn))
     {
       BUFFER err;
-      memset(&err, 0, sizeof(err));
+      mutt_buffer_init (&err);
       set_option (OPTSEARCHINVALID);
       strfcpy (LastSearch, buf, sizeof (LastSearch));
       mutt_message _("Compiling search pattern...");
       mutt_pattern_free (&SearchPattern);
-      err.data = error;
-      err.dsize = sizeof (error);
+      err.dsize = STRING;
+      err.data = safe_malloc (err.dsize);
       if ((SearchPattern = mutt_pattern_comp (temp, M_FULL_MSG, &err)) == NULL)
       {
-	mutt_error ("%s", error);
+	mutt_error ("%s", err.data);
+	FREE (&err.data);
 	LastSearch[0] = '\0';
 	return (-1);
       }
@@ -1561,7 +1573,7 @@ int mutt_search_command (int cur, int op)
     h = Context->hdrs[Context->v2r[i]];
     if (h->searched)
     {
-      /* if we've already evaulated this message, use the cached value */
+      /* if we've already evaluated this message, use the cached value */
       if (h->matched)
       {
 	mutt_clear_error();
