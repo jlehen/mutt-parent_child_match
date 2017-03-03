@@ -253,6 +253,9 @@
 /* Define to 1 if you have the `iswxdigit' function. */
 #undef HAVE_ISWXDIGIT
 
+/* Kyoto Cabinet Support */
+#undef HAVE_KC
+
 /* Define if you have <langinfo.h> and nl_langinfo(CODESET). */
 #undef HAVE_LANGINFO_CODESET
 
@@ -285,6 +288,9 @@
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
+
+/* LMDB Support */
+#undef HAVE_LMDB
 
 /* Define to 1 if you have the <locale.h> header file. */
 #undef HAVE_LOCALE_H
@@ -591,6 +597,9 @@
 
 /* Define to enable Sun mailtool attachments support. */
 #undef SUN_ATTACHMENT
+
+/* Define to enable compressed folders support. */
+#undef USE_COMPRESSED
 
 /* Define to use dotlocking for mailboxes. */
 #undef USE_DOTLOCK

@@ -287,7 +287,7 @@ text/*; more
 The interpretation of shell meta-characters embedded in MIME parameters
 can lead to security problems in general.  Mutt tries to quote
 parameters in expansion of <code class="literal">%s</code> syntaxes properly, and
-avoids risky characters by substituting them, see the <a class="link" href="reference.html#mailcap-sanitize" title="3.127. mailcap_sanitize">$mailcap_sanitize</a> variable.
+avoids risky characters by substituting them, see the <a class="link" href="reference.html#mailcap-sanitize" title="3.128. mailcap_sanitize">$mailcap_sanitize</a> variable.
 </p><p>
 Although Mutt's procedures to invoke programs with mailcap seem to be
 safe, there are other applications parsing mailcap, maybe taking less
@@ -340,9 +340,9 @@ entries with this flag will be considered a handler for a MIME type
 — all other entries will be ignored.
 </p></dd><dt><span class="term">needsterminal</span></dt><dd><p>
 Mutt uses this flag when viewing attachments with <a class="link" href="mimesupport.html#auto-view" title="4. MIME Autoview"><span class="command"><strong>auto_view</strong></span></a>, in order to
-decide whether it should honor the setting of the <a class="link" href="reference.html#wait-key" title="3.338. wait_key">$wait_key</a> variable or not.  When an attachment
+decide whether it should honor the setting of the <a class="link" href="reference.html#wait-key" title="3.341. wait_key">$wait_key</a> variable or not.  When an attachment
 is viewed using an interactive program, and the corresponding mailcap
-entry has a <span class="emphasis"><em>needsterminal</em></span> flag, Mutt will use <a class="link" href="reference.html#wait-key" title="3.338. wait_key">$wait_key</a> and the exit status of the program
+entry has a <span class="emphasis"><em>needsterminal</em></span> flag, Mutt will use <a class="link" href="reference.html#wait-key" title="3.341. wait_key">$wait_key</a> and the exit status of the program
 to decide if it will ask you to press a key after the external program
 has exited.  In all other situations it will not prompt you for a key.
 </p></dd><dt><span class="term">compose=&lt;command&gt;</span></dt><dd><p>
@@ -360,7 +360,7 @@ Mutt supports this from the attachment and compose menus.
 </p></dd><dt><span class="term">edit=&lt;command&gt;</span></dt><dd><p>
 This flag specifies the command to use to edit a specific MIME type.
 Mutt supports this from the compose menu, and also uses it to compose
-new attachments.  Mutt will default to the defined <a class="link" href="reference.html#editor" title="3.60. editor">$editor</a> for text attachments.
+new attachments.  Mutt will default to the defined <a class="link" href="reference.html#editor" title="3.61. editor">$editor</a> for text attachments.
 </p></dd><dt><span class="term">nametemplate=&lt;template&gt;</span></dt><dd><p>
 This field specifies the format for the file denoted by
 <code class="literal">%s</code> in the command fields.  Certain programs will
