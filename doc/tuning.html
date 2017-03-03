@@ -34,13 +34,13 @@ message storage (Maildir and MH), Mutt's performance can be greatly
 improved using <a class="link" href="optionalfeatures.html#header-caching" title="7.1. Header Caching">header caching</a>.
 using a single database per folder.
 </p></li><li class="listitem"><p>
-Mutt provides the <a class="link" href="reference.html#read-inc" title="3.218. read_inc">$read_inc</a> and <a class="link" href="reference.html#write-inc" title="3.345. write_inc">$write_inc</a> variables to specify at which rate
+Mutt provides the <a class="link" href="reference.html#read-inc" title="3.220. read_inc">$read_inc</a> and <a class="link" href="reference.html#write-inc" title="3.348. write_inc">$write_inc</a> variables to specify at which rate
 to update progress counters. If these values are too low, Mutt may spend
 more time on updating the progress counter than it spends on actually
 reading/writing folders.
 </p><p>
 For example, when opening a maildir folder with a few thousand messages,
-the default value for <a class="link" href="reference.html#read-inc" title="3.218. read_inc">$read_inc</a> may be
+the default value for <a class="link" href="reference.html#read-inc" title="3.220. read_inc">$read_inc</a> may be
 too low. It can be tuned on on a folder-basis using <a class="link" href="configuration.html#folder-hook" title="7. Setting Variables Based Upon Mailbox"><span class="command"><strong>folder-hook</strong></span>s</a>:
 </p><pre class="screen">
 <span class="comment"># use very high $read_inc to speed up reading hcache'd maildirs</span>
@@ -54,7 +54,7 @@ greatly differ in size and certain operations are much faster than
 others, even per-folder settings of the increment variables may not be
 desirable as they produce either too few or too much progress updates.
 Thus, Mutt allows to limit the number of progress updates per second
-it'll actually send to the terminal using the <a class="link" href="reference.html#time-inc" title="3.321. time_inc">$time_inc</a> variable.
+it'll actually send to the terminal using the <a class="link" href="reference.html#time-inc" title="3.323. time_inc">$time_inc</a> variable.
 </p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="tuning-messages"></a>2. Reading Messages from Remote Folders</h2></div></div></div><p>
 Reading messages from remote folders such as IMAP an POP can be slow
 especially for large mailboxes since Mutt only caches a very limited

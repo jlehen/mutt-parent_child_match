@@ -29,6 +29,11 @@ macro generic,pager <F1> "<shell-escape> less /usr/local/share/doc/mutt/manual.t
 macro index,pager y "<change-folder>?<toggle-mailboxes>" "show incoming mailboxes list"
 bind browser y exit
 
+# Handler for gzip compressed mailboxes
+# open-hook   '\.gz$'  "gzip -cd  '%f' >  '%t'"
+# close-hook  '\.gz$'  "gzip -c   '%t' >  '%f'"
+# append-hook '\.gz$'  "gzip -c   '%t' >> '%f'"
+
 # If Mutt is unable to determine your site's domain name correctly, you can
 # set the default here.
 #
@@ -293,8 +298,9 @@ attachments   -I message/external-body
 # %C      charset
 # %c      requires charset conversion (``n'' or ``c'')
 # %D      deleted flag
-# %d      description
+# %d      description (if none, falls back to %F)
 # %e      MIME content-transfer-encoding
+# %F      filename in content-disposition header (if none, falls back to %f)
 # %f      filename
 # %I      disposition (``I'' for inline, ``A'' for attachment)
 # %m      major MIME type
@@ -350,6 +356,23 @@ attachments   -I message/external-body
 # This is the string that will precede a message which has been included
 # in a reply.  For a full listing of defined printf(3)-like sequences see
 # the section on $index_format.
+# 
+# 
+# set attribution_locale=""
+#
+# Name: attribution_locale
+# Type: string
+# Default: ""
+# 
+# 
+# The locale used by strftime(3) to format dates in the
+# attribution string.  Legal values are the strings your system
+# accepts for the locale environment variable $LC_TIME.
+# 
+# This variable is to allow the attribution date format to be
+# customized by recipient or folder using hooks.  By default, Mutt
+# will use your locale environment, so there is no need to set
+# this except to override that default.
 # 
 # 
 # set auto_tag=no
@@ -836,8 +859,8 @@ attachments   -I message/external-body
 # function to process the date, see the man page for the proper syntax.
 # 
 # Unless the first character in the string is a bang (``!''), the month
-# and week day names are expanded according to the locale specified in
-# the variable $locale. If the first character in the string is a
+# and week day names are expanded according to the locale.
+# If the first character in the string is a
 # bang, the bang is discarded, and the month and week day names in the
 # rest of the string are expanded in the C locale (that is in US
 # English).
@@ -1101,6 +1124,16 @@ attachments   -I message/external-body
 # (PGP only)
 # 
 # 
+# set flag_safe=no
+#
+# Name: flag_safe
+# Type: boolean
+# Default: no
+# 
+# 
+# If set, flagged messages cannot be deleted.
+# 
+# 
 # set folder="~/Mail"
 #
 # Name: folder
@@ -1340,8 +1373,8 @@ attachments   -I message/external-body
 # Default: yes
 # 
 # 
-# When mutt is compiled with qdbm or tokyocabinet as header cache backend,
-# this option determines whether the database will be compressed.
+# When mutt is compiled with qdbm, tokyocabinet, or kyotocabinet as header
+# cache backend, this option determines whether the database will be compressed.
 # Compression results in database files roughly being one fifth
 # of the usual diskspace, but the decompression can result in a
 # slower opening of cached folder(s) which in general is still
@@ -1943,17 +1976,6 @@ attachments   -I message/external-body
 # a ``mbox-hook'' command.
 # 
 # 
-# set locale="C"
-#
-# Name: locale
-# Type: string
-# Default: "C"
-# 
-# 
-# The locale used by strftime(3) to format dates. Legal values are
-# the strings your system accepts for the locale environment variable $LC_TIME.
-# 
-# 
 # set mail_check=5
 #
 # Name: mail_check
@@ -2072,6 +2094,18 @@ attachments   -I message/external-body
 # messages to the cur directory.  Note that setting this option may
 # slow down polling for new messages in large folders, since mutt has
 # to scan all cur messages.
+# 
+# 
+# set mark_macro_prefix="'"
+#
+# Name: mark_macro_prefix
+# Type: string
+# Default: "'"
+# 
+# 
+# Prefix for macros created using mark-message.  A new macro
+# automatically generated with <mark-message>a will be composed
+# from this prefix and the letter a.
 # 
 # 
 # set mark_old=yes
@@ -3794,7 +3828,10 @@ attachments   -I message/external-body
 # 
 # Specifies the program and arguments used to deliver mail sent by Mutt.
 # Mutt expects that the specified program interprets additional
-# arguments as recipient addresses.
+# arguments as recipient addresses.  Mutt appends all recipients after
+# adding a -- delimiter (if not already present).  Additional
+# flags, such as for $use_8bitmime, $use_envelope_from,
+# $dsn_notify, or $dsn_return will be added before the delimiter.
 # 
 # 
 # set sendmail_wait=0
@@ -3884,7 +3921,7 @@ attachments   -I message/external-body
 # sequences:
 # %B      Name of the mailbox
 # %S      * Size of mailbox (total number of messages)
-# %N      * Number of New messages in the mailbox
+# %N      * Number of unread messages in the mailbox
 # %n      N if mailbox has new mail, blank otherwise
 # %F      * Number of Flagged messages in the mailbox
 # %!      ``!'' : one flagged message;
@@ -3978,7 +4015,10 @@ attachments   -I message/external-body
 # - alpha (alphabetically)
 # - count (all message count)
 # - flagged (flagged message count)
-# - new (new message count)
+# - name (alphabetically)
+# - new (unread message count)
+# - path (alphabetically)
+# - unread (unread message count)
 # - unsorted
 # 
 # 
@@ -5116,6 +5156,19 @@ attachments   -I message/external-body
 # 
 # When set, Mutt will jump to the next unread message, if any,
 # when the current thread is uncollapsed.
+# 
+# 
+# set uncollapse_new=yes
+#
+# Name: uncollapse_new
+# Type: boolean
+# Default: yes
+# 
+# 
+# When set, Mutt will automatically uncollapse any collapsed thread
+# that receives a new message. When unset, collapsed threads will
+# remain collapsed. the presence of the new message will still affect
+# index sorting, though.
 # 
 # 
 # set use_8bitmime=no
