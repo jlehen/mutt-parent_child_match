@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2007,2010,2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -39,8 +39,9 @@ struct hdr_format_info
 void mutt_make_string_info (char *, size_t, const char *, struct hdr_format_info *, format_flag);
 
 int mutt_extract_token (BUFFER *, BUFFER *, int);
+BUFFER *mutt_buffer_new (void);
 BUFFER * mutt_buffer_init (BUFFER *);
-BUFFER * mutt_buffer_from (BUFFER *, char *);
+BUFFER * mutt_buffer_from (char *);
 void mutt_buffer_free(BUFFER **);
 int mutt_buffer_printf (BUFFER*, const char*, ...);
 void mutt_buffer_add (BUFFER*, const char*, size_t);
@@ -145,7 +146,7 @@ char *mutt_gen_msgid (void);
 char *mutt_get_body_charset (char *, size_t, BODY *);
 const char *mutt_get_name (ADDRESS *);
 char *mutt_get_parameter (const char *, PARAMETER *);
-char *mutt_crypt_hook (ADDRESS *);
+LIST *mutt_crypt_hook (ADDRESS *);
 char *mutt_make_date (char *, size_t);
 
 const char *mutt_make_version (void);
@@ -185,6 +186,7 @@ void mutt_edit_headers (const char *, const char *, HEADER *, char *, size_t);
 int mutt_filter_unprintable (char **);
 void mutt_curses_error (const char *, ...);
 void mutt_curses_message (const char *, ...);
+void mutt_encode_descriptions (BODY *, short);
 void mutt_encode_path (char *, size_t, const char *);
 void mutt_enter_command (void);
 void mutt_expand_aliases_env (ENVELOPE *);
@@ -212,13 +214,14 @@ void mutt_draw_tree (CONTEXT *);
 void mutt_check_lookup_list (BODY *, char *, int);
 void mutt_make_attribution (CONTEXT *ctx, HEADER *cur, FILE *out);
 void mutt_make_forward_subject (ENVELOPE *env, CONTEXT *ctx, HEADER *cur);
-void mutt_make_help (char *, size_t, char *, int, int);
+void mutt_make_help (char *, size_t, const char *, int, int);
 void mutt_make_misc_reply_headers (ENVELOPE *env, CONTEXT *ctx, HEADER *cur, ENVELOPE *curenv);
 void mutt_make_post_indent (CONTEXT *ctx, HEADER *cur, FILE *out);
 void mutt_merge_envelopes(ENVELOPE* base, ENVELOPE** extra);
 void mutt_message_to_7bit (BODY *, FILE *);
-#define mutt_mktemp(a,b) _mutt_mktemp (a, b, __FILE__, __LINE__)
-void _mutt_mktemp (char *, size_t, const char *, int);
+#define mutt_mktemp(a,b) mutt_mktemp_pfx_sfx (a, b, "mutt", NULL)
+#define mutt_mktemp_pfx_sfx(a,b,c,d)  _mutt_mktemp (a, b, c, d, __FILE__, __LINE__)
+void _mutt_mktemp (char *, size_t, const char *, const char *, const char *, int);
 void mutt_normalize_time (struct tm *);
 void mutt_paddstr (int, const char *);
 void mutt_parse_mime_message (CONTEXT *ctx, HEADER *);
@@ -249,6 +252,7 @@ void mutt_signal_init (void);
 void mutt_stamp_attachment (BODY *a);
 void mutt_tabs_to_spaces (char *);
 void mutt_tag_set_flag (int, int);
+short mutt_ts_capability (void);
 void mutt_unblock_signals (void);
 void mutt_unblock_signals_system (int);
 void mutt_update_encoding (BODY *a);
@@ -300,7 +304,7 @@ int _mutt_enter_fname (const char *, char *, size_t, int *, int, int, char ***, 
 int  mutt_enter_string (char *buf, size_t buflen, int y, int x, int flags);
 int _mutt_enter_string (char *, size_t, int, int, int, int, char ***, int *, ENTER_STATE *);
 #define mutt_get_field(A,B,C,D) _mutt_get_field(A,B,C,D,0,NULL,NULL)
-int _mutt_get_field (char *, char *, size_t, int, int, char ***, int *);
+int _mutt_get_field (const char *, char *, size_t, int, int, char ***, int *);
 int mutt_get_hook_type (const char *);
 int mutt_get_field_unbuffered (char *, char *, size_t, int);
 #define mutt_get_password(A,B,C) mutt_get_field_unbuffered(A,B,C,M_PASS)
@@ -308,7 +312,6 @@ int mutt_get_postponed (CONTEXT *, HEADER *, HEADER **, char *, size_t);
 int mutt_get_tmp_attachment (BODY *);
 int mutt_index_menu (void);
 int mutt_invoke_sendmail (ADDRESS *, ADDRESS *, ADDRESS *, ADDRESS *, const char *, int);
-int mutt_is_autoview (BODY *, const char *);
 int mutt_is_mail_list (ADDRESS *);
 int mutt_is_message_type(int, const char *);
 int mutt_is_list_cc (int, ADDRESS *, ADDRESS *);
@@ -353,10 +356,10 @@ int mutt_search_command (int, int);
 int mutt_smtp_send (const ADDRESS *, const ADDRESS *, const ADDRESS *,
                     const ADDRESS *, const char *, int);
 #endif
-int mutt_wstr_trunc (const char *, size_t, size_t, size_t *);
+size_t mutt_wstr_trunc (const char *, size_t, size_t, size_t *);
 int mutt_charlen (const char *s, int *);
 int mutt_strwidth (const char *);
-int mutt_compose_menu (HEADER *, char *, size_t, HEADER *);
+int mutt_compose_menu (HEADER *, char *, size_t, HEADER *, int);
 int mutt_thread_set_flag (HEADER *, int, int, int);
 int mutt_user_is_recipient (HEADER *);
 void mutt_update_num_postponed (void);
@@ -507,7 +510,6 @@ extern void srand48 ();
 extern time_t mktime ();
 extern int vsprintf ();
 extern int ungetc ();
-extern char *mktemp ();
 extern int ftruncate ();
 extern void *memset ();
 extern int pclose ();

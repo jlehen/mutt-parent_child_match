@@ -572,7 +572,7 @@ static int compare_threads (const void *a, const void *b)
 {
   static sort_t *sort_func = NULL;
 
-  if (a || b)
+  if (a && b)
     return ((*sort_func) (&(*((THREAD **) a))->sort_key,
 			  &(*((THREAD **) b))->sort_key));
   /* a hack to let us reset sort_func even though we can't
@@ -580,7 +580,6 @@ static int compare_threads (const void *a, const void *b)
    */
   else
   {
-    sort_func = NULL;
     sort_func = mutt_get_sort_func (Sort);
     return (sort_func ? 1 : 0);
   }
@@ -1368,7 +1367,7 @@ static void clean_references (THREAD *brk, THREAD *cur)
 
     /* Looking for the first bad reference according to the new threading.
      * Optimal since Mutt stores the references in reverse order, and the
-     * first loop should match immediatly for mails respecting RFC2822. */
+     * first loop should match immediately for mails respecting RFC2822. */
     for (p = brk; !done && p; p = p->parent)
       for (ref = cur->message->env->references; p->message && ref; ref = ref->next)
 	if (!mutt_strcasecmp (ref->data, p->message->env->message_id))

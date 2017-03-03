@@ -52,8 +52,8 @@ int mutt_parse_hook (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
   pattern_t *pat = NULL;
   char path[_POSIX_PATH_MAX];
 
-  memset (&pattern, 0, sizeof (pattern));
-  memset (&command, 0, sizeof (command));
+  mutt_buffer_init (&pattern);
+  mutt_buffer_init (&command);
 
   if (*s->dptr == '!')
   {
@@ -86,8 +86,25 @@ int mutt_parse_hook (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
 
   if (data & (M_FOLDERHOOK | M_MBOXHOOK))
   {
+    /* Accidentally using the ^ mailbox shortcut in the .muttrc is a
+     * common mistake */
+    if ((*pattern.data == '^') && (! CurrentFolder))
+    {
+      strfcpy (err->data, _("current mailbox shortcut '^' is unset"), err->dsize);
+      goto error;
+    }
+
     strfcpy (path, pattern.data, sizeof (path));
     _mutt_expand_path (path, sizeof (path), 1);
+
+    /* Check for other mailbox shortcuts that expand to the empty string.
+     * This is likely a mistake too */
+    if (!*path && *pattern.data)
+    {
+      strfcpy (err->data, _("mailbox shortcut expanded to empty regexp"), err->dsize);
+      goto error;
+    }
+
     FREE (&pattern.data);
     memset (&pattern, 0, sizeof (pattern));
     pattern.data = safe_strdup (path);
@@ -125,7 +142,7 @@ int mutt_parse_hook (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
 	ptr->rx.not == not &&
 	!mutt_strcmp (pattern.data, ptr->rx.pattern))
     {
-      if (data & (M_FOLDERHOOK | M_SENDHOOK | M_SEND2HOOK | M_MESSAGEHOOK | M_ACCOUNTHOOK | M_REPLYHOOK))
+      if (data & (M_FOLDERHOOK | M_SENDHOOK | M_SEND2HOOK | M_MESSAGEHOOK | M_ACCOUNTHOOK | M_REPLYHOOK | M_CRYPTHOOK))
       {
 	/* these hooks allow multiple commands with the same
 	 * pattern, so if we've already seen this pattern/command pair, just
@@ -279,13 +296,13 @@ void mutt_folder_hook (char *path)
 {
   HOOK *tmp = Hooks;
   BUFFER err, token;
-  char buf[STRING];
 
   current_hook_type = M_FOLDERHOOK;
-  
-  err.data = buf;
-  err.dsize = sizeof (buf);
-  memset (&token, 0, sizeof (token));
+
+  mutt_buffer_init (&err);
+  err.dsize = STRING;
+  err.data = safe_malloc (err.dsize);
+  mutt_buffer_init (&token);
   for (; tmp; tmp = tmp->next)
   {
     if(!tmp->command)
@@ -301,12 +318,15 @@ void mutt_folder_hook (char *path)
 	  FREE (&token.data);
 	  mutt_sleep (1);	/* pause a moment to let the user see the error */
 	  current_hook_type = 0;
+	  FREE (&err.data);
+
 	  return;
 	}
       }
     }
   }
   FREE (&token.data);
+  FREE (&err.data);
   
   current_hook_type = 0;
 }
@@ -328,13 +348,13 @@ void mutt_message_hook (CONTEXT *ctx, HEADER *hdr, int type)
 {
   BUFFER err, token;
   HOOK *hook;
-  char buf[STRING];
 
   current_hook_type = type;
-  
-  err.data = buf;
-  err.dsize = sizeof (buf);
-  memset (&token, 0, sizeof (token));
+
+  mutt_buffer_init (&err);
+  err.dsize = STRING;
+  err.data = safe_malloc (err.dsize);
+  mutt_buffer_init (&token);
   for (hook = Hooks; hook; hook = hook->next)
   {
     if(!hook->command)
@@ -348,10 +368,14 @@ void mutt_message_hook (CONTEXT *ctx, HEADER *hdr, int type)
 	  mutt_error ("%s", err.data);
 	  mutt_sleep (1);
 	  current_hook_type = 0;
+	  FREE (&err.data);
+
 	  return;
 	}
   }
   FREE (&token.data);
+  FREE (&err.data);
+
   current_hook_type = 0;
 }
 
@@ -441,6 +465,20 @@ static char *_mutt_string_hook (const char *match, int hook)
   return (NULL);
 }
 
+static LIST *_mutt_list_hook (const char *match, int hook)
+{
+  HOOK *tmp = Hooks;
+  LIST *matches = NULL;
+
+  for (; tmp; tmp = tmp->next)
+  {
+    if ((tmp->type & hook) &&
+        ((match && regexec (tmp->rx.rx, match, 0, NULL, 0) == 0) ^ tmp->rx.not))
+      matches = mutt_add_list (matches, tmp->command);
+  }
+  return (matches);
+}
+
 char *mutt_charset_hook (const char *chs)
 {
   return _mutt_string_hook (chs, M_CHARSETHOOK);
@@ -451,9 +489,9 @@ char *mutt_iconv_hook (const char *chs)
   return _mutt_string_hook (chs, M_ICONVHOOK);
 }
 
-char *mutt_crypt_hook (ADDRESS *adr)
+LIST *mutt_crypt_hook (ADDRESS *adr)
 {
-  return _mutt_string_hook (adr->mailbox, M_CRYPTHOOK);
+  return _mutt_list_hook (adr->mailbox, M_CRYPTHOOK);
 }
 
 #ifdef USE_SOCKET
@@ -467,14 +505,14 @@ void mutt_account_hook (const char* url)
   HOOK* hook;
   BUFFER token;
   BUFFER err;
-  char buf[STRING];
 
   if (inhook)
     return;
 
-  err.data = buf;
-  err.dsize = sizeof (buf);
-  memset (&token, 0, sizeof (token));
+  mutt_buffer_init (&err);
+  err.dsize = STRING;
+  err.data = safe_malloc (err.dsize);
+  mutt_buffer_init (&token);
 
   for (hook = Hooks; hook; hook = hook->next)
   {
@@ -489,6 +527,7 @@ void mutt_account_hook (const char* url)
       {
 	FREE (&token.data);
 	mutt_error ("%s", err.data);
+	FREE (&err.data);
 	mutt_sleep (1);
 
         inhook = 0;
@@ -500,5 +539,6 @@ void mutt_account_hook (const char* url)
   }
 
   FREE (&token.data);
+  FREE (&err.data);
 }
 #endif

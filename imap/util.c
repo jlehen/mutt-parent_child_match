@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 1996-8 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
- * Copyright (C) 1999-2009 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1996-1998,2010,2012-2013 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-1999 Brandon Long <blong@fiction.net>
+ * Copyright (C) 1999-2009,2012 Brendan Cully <brendan@kublai.com>
  *
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 #include "url.h"
 #include "imap_private.h"
 #ifdef USE_HCACHE
-#include "message.h"
 #include "hcache.h"
 #endif
 
@@ -146,7 +145,7 @@ int imap_hcache_put (IMAP_DATA* idata, HEADER* h)
 
   sprintf (key, "/%u", HEADER_DATA (h)->uid);
   return mutt_hcache_store (idata->hcache, key, h, idata->uid_validity,
-                            imap_hcache_keylen);
+                            imap_hcache_keylen, 0);
 }
 
 int imap_hcache_del (IMAP_DATA* idata, unsigned int uid)
@@ -162,7 +161,7 @@ int imap_hcache_del (IMAP_DATA* idata, unsigned int uid)
 #endif
 
 /* imap_parse_path: given an IMAP mailbox name, return host, port
- *   and a path IMAP servers will recognise.
+ *   and a path IMAP servers will recognize.
  * mx.mbox is malloc'd, caller must free it */
 int imap_parse_path (const char* path, IMAP_MBOX* mx)
 {
@@ -374,7 +373,7 @@ IMAP_DATA* imap_new_idata (void)
   if (!idata)
     return NULL;
 
-  if (!(idata->cmdbuf = mutt_buffer_init (NULL)))
+  if (!(idata->cmdbuf = mutt_buffer_new ()))
     FREE (&idata);
 
   idata->cmdslots = ImapPipelineDepth + 2;
@@ -592,7 +591,7 @@ void imap_make_date (char *buf, time_t timestamp)
   snprintf (buf, IMAP_DATELEN, "%02d-%s-%d %02d:%02d:%02d %+03d%02d",
       tm->tm_mday, Months[tm->tm_mon], tm->tm_year + 1900,
       tm->tm_hour, tm->tm_min, tm->tm_sec,
-      (int) tz / 60, (int) abs (tz) % 60);
+      (int) tz / 60, (int) abs ((int) tz) % 60);
 }
 
 /* imap_qualify_path: make an absolute IMAP folder target, given IMAP_MBOX
@@ -612,7 +611,8 @@ void imap_qualify_path (char *dest, size_t len, IMAP_MBOX *mx, char* path)
  *   surround string with quotes, escape " and \ with \ */
 void imap_quote_string (char *dest, size_t dlen, const char *src)
 {
-  char quote[] = "\"\\", *pt;
+  static const char quote[] = "\"\\";
+  char *pt;
   const char *s;
 
   pt = dest;
@@ -673,23 +673,24 @@ void imap_unquote_string (char *s)
   *d = '\0';
 }
 
+
 /*
  * Quoting and UTF-7 conversion
  */
 
-void imap_munge_mbox_name (char *dest, size_t dlen, const char *src)
+void imap_munge_mbox_name (IMAP_DATA *idata, char *dest, size_t dlen, const char *src)
 {
   char *buf;
 
   buf = safe_strdup (src);
-  imap_utf7_encode (&buf);
+  imap_utf_encode (idata, &buf);
 
   imap_quote_string (dest, dlen, buf);
 
   FREE (&buf);
 }
 
-void imap_unmunge_mbox_name (char *s)
+void imap_unmunge_mbox_name (IMAP_DATA *idata, char *s)
 {
   char *buf;
 
@@ -698,7 +699,7 @@ void imap_unmunge_mbox_name (char *s)
   buf = safe_strdup (s);
   if (buf)
   {
-    imap_utf7_decode (&buf);
+    imap_utf_decode (idata, &buf);
     strncpy (s, buf, strlen (s));
   }
 
@@ -733,7 +734,7 @@ int imap_wordcasecmp(const char *a, const char *b)
  *
  */
 
-static RETSIGTYPE alrm_handler (int sig)
+static void alrm_handler (int sig)
 {
   /* empty */
 }

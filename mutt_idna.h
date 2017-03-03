@@ -22,8 +22,10 @@
 #include "rfc822.h"
 #include "charset.h"
 
-#ifdef HAVE_LIBIDN
+#ifdef HAVE_IDNA_H
 #include <idna.h>
+#elif defined(HAVE_IDN_IDNA_H)
+#include <idn/idna.h>
 #endif
 
 #define MI_MAY_BE_IRREVERSIBLE		(1 << 0)
@@ -31,14 +33,6 @@
 /* Work around incompatibilities in the libidn API */
 
 #ifdef HAVE_LIBIDN
-int mutt_addrlist_to_idna (ADDRESS *, char **);
-int mutt_addrlist_to_local (ADDRESS *);
-
-void mutt_env_to_local (ENVELOPE *);
-int mutt_env_to_idna (ENVELOPE *, char **, char **);
-
-const char *mutt_addr_for_display (ADDRESS *a);
-
 # if (!defined(HAVE_IDNA_TO_ASCII_8Z) && defined(HAVE_IDNA_TO_ASCII_FROM_UTF8))
 #  define idna_to_ascii_8z(a,b,c) idna_to_ascii_from_utf8(a,b,(c)&1,((c)&2)?1:0)
 # endif
@@ -48,9 +42,19 @@ const char *mutt_addr_for_display (ADDRESS *a);
 # if (!defined(HAVE_IDNA_TO_UNICODE_8Z8Z) && defined(HAVE_IDNA_TO_UNICODE_UTF8_FROM_UTF8))
 #  define idna_to_unicode_8z8z(a,b,c) idna_to_unicode_utf8_from_utf8(a,b,(c)&1,((c)&2)?1:0)
 # endif
-#else
+#endif /* HAVE_LIBIDN */
 
-static inline int mutt_addrlist_to_idna (ADDRESS *addr, char **err)
+
+#ifdef HAVE_ICONV
+int mutt_addrlist_to_intl (ADDRESS *, char **);
+int mutt_addrlist_to_local (ADDRESS *);
+
+void mutt_env_to_local (ENVELOPE *);
+int mutt_env_to_intl (ENVELOPE *, char **, char **);
+
+const char *mutt_addr_for_display (ADDRESS *a);
+#else
+static inline int mutt_addrlist_to_intl (ADDRESS *addr, char **err)
 {
   return 0;
 }
@@ -65,7 +69,7 @@ static inline void mutt_env_to_local (ENVELOPE *env)
   return;
 }
 
-static inline int mutt_env_to_idna (ENVELOPE *env, char **tag, char **err)
+static inline int mutt_env_to_intl (ENVELOPE *env, char **tag, char **err)
 {
   return 0;
 }
@@ -74,7 +78,7 @@ static inline const char *mutt_addr_for_display (ADDRESS *a)
 {
   return a->mailbox;
 }
+#endif /* HAVE_LIBICONV */
 
-#endif /* HAVE_LIBIDN */
 
 #endif

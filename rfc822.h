@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 2012 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -41,8 +42,8 @@ typedef struct address_t
   char *mailbox;	/* mailbox and host address */
   int group;		/* group mailbox? */
   struct address_t *next;
-  unsigned is_idn      : 1;
-  unsigned idn_checked : 1;
+  unsigned is_intl      : 1;
+  unsigned intl_checked : 1;
 }
 ADDRESS;
 
@@ -61,7 +62,7 @@ int rfc822_valid_msgid (const char *msgid);
 int rfc822_remove_from_adrlist (ADDRESS **a, const char *mailbox);
 
 extern int RFC822Error;
-extern const char *RFC822Errors[];
+extern const char * const RFC822Errors[];
 
 #define rfc822_error(x) RFC822Errors[x]
 #define rfc822_new_address() safe_calloc(1,sizeof(ADDRESS))

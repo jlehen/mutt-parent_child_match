@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002,2013 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2004,2006 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -293,49 +293,6 @@ int mutt_edit_attachment (BODY *a)
 }
 
 
-/* for compatibility with metamail */
-static int is_mmnoask (const char *buf)
-{
-  char tmp[LONG_STRING], *p, *q;
-  int lng;
-
-  if ((p = getenv ("MM_NOASK")) != NULL && *p)
-  {
-    if (mutt_strcmp (p, "1") == 0)
-      return (1);
-
-    strfcpy (tmp, p, sizeof (tmp));
-    p = tmp;
-
-    while ((p = strtok (p, ",")) != NULL)
-    {
-      if ((q = strrchr (p, '/')) != NULL)
-      {
-	if (*(q+1) == '*')
-	{
-	  if (ascii_strncasecmp (buf, p, q-p) == 0)
-	    return (1);
-	}
-	else
-	{
-	  if (ascii_strcasecmp (buf, p) == 0)
-	    return (1);
-	}
-      }
-      else
-      {
-	lng = mutt_strlen (p);
-	if (buf[lng] == '/' && mutt_strncasecmp (buf, p, lng) == 0)
-	  return (1);
-      }
-
-      p = NULL;
-    }
-  }
-
-  return (0);
-}
-
 void mutt_check_lookup_list (BODY *b, char *type, int len)
 {
   LIST *t = MimeLookupList;
@@ -369,40 +326,6 @@ void mutt_check_lookup_list (BODY *b, char *type, int len)
       FREE (&tmp.xtype);
     }
   }
-}
-
-int mutt_is_autoview (BODY *b, const char *type)
-{
-  LIST *t = AutoViewList;
-  char _type[SHORT_STRING];
-  int i;
-
-  if (!type)
-    snprintf (_type, sizeof (_type), "%s/%s", TYPE (b), b->subtype);
-  else
-    strncpy (_type, type, sizeof(_type));
-
-  mutt_check_lookup_list (b, _type, sizeof(_type));
-  type = _type;
-
-  if (mutt_needs_mailcap (b))
-  {
-    if (option (OPTIMPLICITAUTOVIEW))
-      return 1;
-    
-    if (is_mmnoask (type))
-      return 1;
-  }
-
-  for (; t; t = t->next) {
-    i = mutt_strlen (t->data) - 1;
-    if ((i > 0 && t->data[i-1] == '/' && t->data[i] == '*' && 
-	 ascii_strncasecmp (type, t->data, i) == 0) ||
-	ascii_strcasecmp (type, t->data) == 0)
-      return 1;
-  }
-
-  return 0;
 }
 
 /* returns -1 on error, 0 or the return code from mutt_do_pager() on success */
@@ -582,8 +505,39 @@ int mutt_view_attachment (FILE *fp, BODY *a, int flag, HEADER *hdr,
     if (flag == M_AS_TEXT)
     {
       /* just let me see the raw data */
-      if (mutt_save_attachment (fp, a, pagerfile, 0, NULL))
-	goto return_error;
+      if (fp)
+      {
+	/* Viewing from a received message.
+	 *
+	 * Don't use mutt_save_attachment() because we want to perform charset
+	 * conversion since this will be displayed by the internal pager.
+	 */
+	STATE decode_state;
+
+	memset(&decode_state, 0, sizeof(decode_state));
+	decode_state.fpout = safe_fopen(pagerfile, "w");
+	if (!decode_state.fpout)
+	{
+	  dprint(1, (debugfile, "mutt_view_attachment:%d safe_fopen(%s) errno=%d %s\n", __LINE__, pagerfile, errno, strerror(errno)));
+	  mutt_perror(pagerfile);
+	  mutt_sleep(1);
+	  goto return_error;
+	}
+	decode_state.fpin = fp;
+	decode_state.flags = M_CHARCONV;
+	mutt_decode_attachment(a, &decode_state);
+	if (fclose(decode_state.fpout) == EOF)
+	  dprint(1, (debugfile, "mutt_view_attachment:%d fclose errno=%d %s\n", __LINE__, pagerfile, errno, strerror(errno)));
+      }
+      else
+      {
+	/* in compose mode, just copy the file.  we can't use
+	 * mutt_decode_attachment() since it assumes the content-encoding has
+	 * already been applied
+	 */
+	if (mutt_save_attachment(fp, a, pagerfile, 0, NULL))
+	  goto return_error;
+      }
     }
     else
     {
@@ -798,12 +752,10 @@ int mutt_save_attachment (FILE *fp, BODY *m, char *path, int flags, HEADER *hdr)
     else
     {
       /* In recv mode, extract from folder and decode */
-
+      
       STATE s;
-
+      
       memset (&s, 0, sizeof (s));
-      s.flags |= M_CHARCONV;
-
       if ((s.fpout = mutt_save_attachment_open (path, flags)) == NULL)
       {
 	mutt_perror ("fopen");
@@ -812,7 +764,7 @@ int mutt_save_attachment (FILE *fp, BODY *m, char *path, int flags, HEADER *hdr)
       }
       fseeko ((s.fpin = fp), m->offset, 0);
       mutt_decode_attachment (m, &s);
-
+      
       if (fclose (s.fpout) != 0)
       {
 	mutt_perror ("fclose");

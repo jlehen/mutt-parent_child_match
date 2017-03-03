@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000,2002,2007 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2002,2007,2010 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2006 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -49,7 +49,7 @@ static const char *Mailbox_is_read_only = N_("Mailbox is read-only.");
     break; \
 }
 
-static struct mapping_t AttachHelp[] = {
+static const struct mapping_t AttachHelp[] = {
   { N_("Exit"),  OP_EXIT },
   { N_("Save"),  OP_SAVE },
   { N_("Pipe"),  OP_PIPE },
@@ -707,7 +707,7 @@ static int can_print (BODY *top, int tag)
 	{
 	  if (!mutt_can_decode (top))
 	  {
-	    mutt_error (_("I dont know how to print %s attachments!"), type);
+	    mutt_error (_("I don't know how to print %s attachments!"), type);
 	    return (0);
 	  }
 	}
@@ -996,7 +996,8 @@ void mutt_view_attachments (HEADER *hdr)
     }
     if ((WithCrypto & APPLICATION_PGP) && (hdr->security & APPLICATION_PGP))
     {
-      if (mutt_is_multipart_encrypted(hdr->content))
+      if (mutt_is_multipart_encrypted(hdr->content) ||
+          mutt_is_malformed_multipart_pgp_encrypted(hdr->content))
 	secured = !crypt_pgp_decrypt_mime (msg->fp, &fp, hdr->content, &cur);
       else
 	need_secured = 0;
@@ -1119,50 +1120,53 @@ void mutt_view_attachments (HEADER *hdr)
 	}
 #endif
 
-        if (WithCrypto && hdr->security & ~PGP_TRADITIONAL_CHECKED)
+        if (WithCrypto && (hdr->security & ENCRYPT))
         {
-	  mutt_message _(
-	    "Deletion of attachments from encrypted messages is unsupported.");
-	}
+          mutt_message _(
+            "Deletion of attachments from encrypted messages is unsupported.");
+          break;
+        }
+        if (WithCrypto && (hdr->security & (SIGN | PARTSIGN)))
+        {
+          mutt_message _(
+            "Deletion of attachments from signed messages may invalidate the signature.");
+        }
+        if (!menu->tagprefix)
+        {
+          if (idx[menu->current]->parent_type == TYPEMULTIPART)
+          {
+            idx[menu->current]->content->deleted = 1;
+            if (option (OPTRESOLVE) && menu->current < menu->max - 1)
+            {
+              menu->current++;
+              menu->redraw = REDRAW_MOTION_RESYNCH;
+            }
+            else
+              menu->redraw = REDRAW_CURRENT;
+          }
+          else
+            mutt_message _(
+              "Only deletion of multipart attachments is supported.");
+        }
         else
         {
-	  if (!menu->tagprefix)
-	  {
-	    if (idx[menu->current]->parent_type == TYPEMULTIPART)
-	    {
-	      idx[menu->current]->content->deleted = 1;
-	      if (option (OPTRESOLVE) && menu->current < menu->max - 1)
-	      {
-		menu->current++;
-		menu->redraw = REDRAW_MOTION_RESYNCH;
-	      }
-	      else
-		menu->redraw = REDRAW_CURRENT;
-	    }
-	    else
-	      mutt_message _(
-	        "Only deletion of multipart attachments is supported.");
-	  }
-	  else
-	  {
-	    int x;
+          int x;
 
-	    for (x = 0; x < menu->max; x++)
-	    {
-	      if (idx[x]->content->tagged)
-	      {
-		if (idx[x]->parent_type == TYPEMULTIPART)
-		{
-		  idx[x]->content->deleted = 1;
-		  menu->redraw = REDRAW_INDEX;
-		}
-		else
-		  mutt_message _(
-		    "Only deletion of multipart attachments is supported.");
-	      }
-	    }
-	  }
-	}
+          for (x = 0; x < menu->max; x++)
+          {
+            if (idx[x]->content->tagged)
+            {
+              if (idx[x]->parent_type == TYPEMULTIPART)
+              {
+                idx[x]->content->deleted = 1;
+                menu->redraw = REDRAW_INDEX;
+              }
+              else
+                mutt_message _(
+                  "Only deletion of multipart attachments is supported.");
+            }
+          }
+        }
         break;
 
       case OP_UNDELETE:

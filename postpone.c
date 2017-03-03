@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2012-2013 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2002,2004 Thomas Roessler <roessler@does-not-exist.org>
  *
  *     This program is free software; you can redistribute it and/or modify
@@ -37,7 +37,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-static struct mapping_t PostponeHelp[] = {
+static const struct mapping_t PostponeHelp[] = {
   { N_("Exit"),  OP_EXIT },
   { N_("Del"),   OP_DELETE },
   { N_("Undel"), OP_UNDELETE },
@@ -233,7 +233,7 @@ int mutt_get_postponed (CONTEXT *ctx, HEADER *hdr, HEADER **cur, char *fcc, size
   LIST *tmp;
   LIST *last = NULL;
   LIST *next;
-  char *p;
+  const char *p;
   int opt_delete;
 
   if (!Postponed)
@@ -296,8 +296,7 @@ int mutt_get_postponed (CONTEXT *ctx, HEADER *hdr, HEADER **cur, char *fcc, size
       {
 	/* if a mailbox is currently open, look to see if the orignal message
 	   the user attempted to reply to is in this mailbox */
-	p = tmp->data + 18;
-	SKIPWS (p);
+	p = skip_email_wsp(tmp->data + 18);
 	if (!ctx->id_hash)
 	  ctx->id_hash = mutt_make_id_hash (ctx);
 	*cur = hash_find (ctx->id_hash, p);
@@ -317,8 +316,7 @@ int mutt_get_postponed (CONTEXT *ctx, HEADER *hdr, HEADER **cur, char *fcc, size
     }
     else if (ascii_strncasecmp ("X-Mutt-Fcc:", tmp->data, 11) == 0)
     {
-      p = tmp->data + 11;
-      SKIPWS (p);
+      p = skip_email_wsp(tmp->data + 11);
       strfcpy (fcc, p, fcclen);
       mutt_pretty_mailbox (fcc, fcclen);
 
@@ -331,6 +329,12 @@ int mutt_get_postponed (CONTEXT *ctx, HEADER *hdr, HEADER **cur, char *fcc, size
       tmp->next = NULL;
       mutt_free_list (&tmp);
       tmp = next;
+     /* note that x-mutt-fcc was present.  we do this because we want to add a
+      * default fcc if the header was missing, but preserve the request of the
+      * user to not make a copy if the header field is present, but empty.
+      * see http://dev.mutt.org/trac/ticket/3653
+      */
+      code |= SENDPOSTPONEDFCC;
     }
     else if ((WithCrypto & APPLICATION_PGP)
              && (mutt_strncmp ("Pgp:", tmp->data, 4) == 0 /* this is generated
@@ -400,12 +404,16 @@ int mutt_get_postponed (CONTEXT *ctx, HEADER *hdr, HEADER **cur, char *fcc, size
       tmp = tmp->next;
     }
   }
+
+  if (option (OPTCRYPTOPPORTUNISTICENCRYPT))
+    crypt_opportunistic_encrypt (hdr);
+
   return (code);
 }
 
 
 
-int mutt_parse_crypt_hdr (char *p, int set_signas, int crypt_app)
+int mutt_parse_crypt_hdr (const char *p, int set_empty_signas, int crypt_app)
 {
   char smime_cryptalg[LONG_STRING] = "\0";
   char sign_as[LONG_STRING] = "\0", *q;
@@ -414,7 +422,7 @@ int mutt_parse_crypt_hdr (char *p, int set_signas, int crypt_app)
   if (!WithCrypto)
     return 0;
 
-  SKIPWS (p);
+  p = skip_email_wsp(p);
   for (; *p; p++)
   {
 
@@ -423,6 +431,11 @@ int mutt_parse_crypt_hdr (char *p, int set_signas, int crypt_app)
       case 'e':
       case 'E':
         flags |= ENCRYPT;
+        break;
+
+      case 'o':
+      case 'O':
+        flags |= OPPENCRYPT;
         break;
 
       case 's':
@@ -507,11 +520,13 @@ int mutt_parse_crypt_hdr (char *p, int set_signas, int crypt_app)
   /* Set {Smime,Pgp}SignAs, if desired. */
 
   if ((WithCrypto & APPLICATION_PGP) && (crypt_app == APPLICATION_PGP)
-      && (set_signas || *sign_as))
+      && (flags & SIGN)
+      && (set_empty_signas || *sign_as))
     mutt_str_replace (&PgpSignAs, sign_as);
 
   if ((WithCrypto & APPLICATION_SMIME) && (crypt_app == APPLICATION_SMIME)
-      && (set_signas || *sign_as))
+      && (flags & SIGN)
+      && (set_empty_signas || *sign_as))
     mutt_str_replace (&SmimeDefaultKey, sign_as);
 
   return flags;
@@ -526,9 +541,9 @@ int mutt_prepare_template (FILE *fp, CONTEXT *ctx, HEADER *newhdr, HEADER *hdr,
   char file[_POSIX_PATH_MAX];
   BODY *b;
   FILE *bfp;
-
   int rv = -1;
   STATE s;
+  int sec_type;
 
   memset (&s, 0, sizeof (s));
 
@@ -547,22 +562,27 @@ int mutt_prepare_template (FILE *fp, CONTEXT *ctx, HEADER *newhdr, HEADER *hdr,
   newhdr->content->length = hdr->content->length;
   mutt_parse_part (fp, newhdr->content);
 
-  FREE (&newhdr->env->message_id);
-  FREE (&newhdr->env->mail_followup_to); /* really? */
+  /* If message_id is set, then we are resending a message and don't want
+   * message_id or mail_followup_to. Otherwise, we are resuming a
+   * postponed message, and want to keep the mail_followup_to.
+   */
+  if (newhdr->env->message_id != NULL)
+  {
+    FREE (&newhdr->env->message_id);
+    FREE (&newhdr->env->mail_followup_to);
+  }
 
   /* decrypt pgp/mime encoded messages */
 
-  if ((WithCrypto & (APPLICATION_PGP|APPLICATION_SMIME) & hdr->security)
-      && mutt_is_multipart_encrypted (newhdr->content))
+  if ((WithCrypto & APPLICATION_PGP) &&
+      (sec_type = mutt_is_multipart_encrypted (newhdr->content)))
   {
-    int ccap = WithCrypto & (APPLICATION_PGP|APPLICATION_SMIME) & hdr->security;
-    newhdr->security |= ENCRYPT | ccap;
-    if (!crypt_valid_passphrase (ccap))
+    newhdr->security |= sec_type;
+    if (!crypt_valid_passphrase (sec_type))
       goto err;
 
     mutt_message _("Decrypting message...");
-    if (((ccap & APPLICATION_PGP) && crypt_pgp_decrypt_mime (fp, &bfp, newhdr->content, &b) == -1)
-	|| ((ccap & APPLICATION_SMIME) && crypt_smime_decrypt_mime (fp, &bfp, newhdr->content, &b) == -1)
+    if ((crypt_pgp_decrypt_mime (fp, &bfp, newhdr->content, &b) == -1)
 	|| b == NULL)
     {
  err:
@@ -656,17 +676,25 @@ int mutt_prepare_template (FILE *fp, CONTEXT *ctx, HEADER *newhdr, HEADER *hdr,
       goto bail;
 
 
-    if ((WithCrypto & APPLICATION_PGP)
-	&& (mutt_is_application_pgp (b) & (ENCRYPT|SIGN)))
+    if ((WithCrypto & APPLICATION_PGP) &&
+	((sec_type = mutt_is_application_pgp (b)) & (ENCRYPT|SIGN)))
     {
-
       mutt_body_handler (b, &s);
 
-      newhdr->security |= mutt_is_application_pgp (newhdr->content);
+      newhdr->security |= sec_type;
 
       b->type = TYPETEXT;
       mutt_str_replace (&b->subtype, "plain");
       mutt_delete_parameter ("x-action", &b->parameter);
+    }
+    else if ((WithCrypto & APPLICATION_SMIME) &&
+             ((sec_type = mutt_is_application_smime (b)) & (ENCRYPT|SIGN)))
+    {
+      mutt_body_handler (b, &s);
+
+      newhdr->security |= sec_type;
+      b->type = TYPETEXT;
+      mutt_str_replace (&b->subtype, "plain");
     }
     else
       mutt_decode_attachment (b, &s);

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 1996-2000,2007 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 2000-1 Edmund Grimley Evans <edmundo@rano.org>
+ * Copyright (C) 1996-2000,2007,2011,2013 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 2000-2001 Edmund Grimley Evans <edmundo@rano.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -166,24 +166,32 @@ static void replace_part (ENTER_STATE *state, size_t from, char *buf)
 {
   /* Save the suffix */
   size_t savelen = state->lastchar - state->curpos;
-  wchar_t *savebuf = safe_calloc (savelen, sizeof (wchar_t));
-  memcpy (savebuf, state->wbuf + state->curpos, savelen * sizeof (wchar_t));
+  wchar_t *savebuf = NULL;
+
+  if (savelen)
+  {
+    savebuf = safe_calloc (savelen, sizeof (wchar_t));
+    memcpy (savebuf, state->wbuf + state->curpos, savelen * sizeof (wchar_t));
+  }
 
   /* Convert to wide characters */
   state->curpos = my_mbstowcs (&state->wbuf, &state->wbuflen, from, buf);
 
-  /* Make space for suffix */
-  if (state->curpos + savelen > state->wbuflen)
+  if (savelen)
   {
-    state->wbuflen = state->curpos + savelen;
-    safe_realloc (&state->wbuf, state->wbuflen * sizeof (wchar_t));
+    /* Make space for suffix */
+    if (state->curpos + savelen > state->wbuflen)
+    {
+      state->wbuflen = state->curpos + savelen;
+      safe_realloc (&state->wbuf, state->wbuflen * sizeof (wchar_t));
+    }
+
+    /* Restore suffix */
+    memcpy (state->wbuf + state->curpos, savebuf, savelen * sizeof (wchar_t));
+    FREE (&savebuf);
   }
 
-  /* Restore suffix */
-  memcpy (state->wbuf + state->curpos, savebuf, savelen * sizeof (wchar_t));
   state->lastchar = state->curpos + savelen;
-
-  FREE (&savebuf);
 }
 
 /*
@@ -191,7 +199,7 @@ static void replace_part (ENTER_STATE *state, size_t from, char *buf)
  */
 static inline int is_shell_char(wchar_t ch)
 {
-  static wchar_t shell_chars[] = L"<>&()$?*;{}| "; /* ! not included because it can be part of a pathname in Mutt */
+  static const wchar_t shell_chars[] = L"<>&()$?*;{}| "; /* ! not included because it can be part of a pathname in Mutt */
   return wcschr(shell_chars, ch) != NULL;
 }
 
@@ -302,12 +310,22 @@ int _mutt_enter_string (char *buf, size_t buflen, int y, int x,
       {
 	case OP_EDITOR_HISTORY_UP:
 	  state->curpos = state->lastchar;
+	  if (mutt_history_at_scratch (hclass))
+	  {
+	    my_wcstombs (buf, buflen, state->wbuf, state->curpos);
+	    mutt_history_save_scratch (hclass, buf);
+	  }
 	  replace_part (state, 0, mutt_history_prev (hclass));
 	  redraw = M_REDRAW_INIT;
 	  break;
 
 	case OP_EDITOR_HISTORY_DOWN:
 	  state->curpos = state->lastchar;
+	  if (mutt_history_at_scratch (hclass))
+	  {
+	    my_wcstombs (buf, buflen, state->wbuf, state->curpos);
+	    mutt_history_save_scratch (hclass, buf);
+	  }
 	  replace_part (state, 0, mutt_history_next (hclass));
 	  redraw = M_REDRAW_INIT;
 	  break;
@@ -435,7 +453,7 @@ int _mutt_enter_string (char *buf, size_t buflen, int y, int x,
 	  break;
 
 	case OP_EDITOR_KILL_WORD:
-	  /* delete to begining of word */
+	  /* delete to beginning of word */
 	  if (state->curpos != 0)
 	  {
 	    i = state->curpos;
@@ -460,11 +478,29 @@ int _mutt_enter_string (char *buf, size_t buflen, int y, int x,
 
 	case OP_EDITOR_KILL_EOW:
 	  /* delete to end of word */
+
+	  /* first skip over whitespace */
 	  for (i = state->curpos;
 	       i < state->lastchar && iswspace (state->wbuf[i]); i++)
 	    ;
-	  for (; i < state->lastchar && !iswspace (state->wbuf[i]); i++)
-	    ;
+
+	  /* if there are any characters left.. */
+	  if (i < state->lastchar)
+	  {
+	    /* if the current character is alphanumeric.. */
+	    if (iswalnum (state->wbuf[i]))
+	    {
+	      /* skip over the rest of the word consistent of only alphanumerics */
+	      for (; i < state->lastchar && iswalnum (state->wbuf[i]); i++)
+		;
+	    }
+	    else
+	    {
+	      /* skip over one non-alphanumeric character */
+	      ++i;
+	    }
+	  }
+
 	  memmove (state->wbuf + state->curpos, state->wbuf + i,
 		   (state->lastchar - i) * sizeof (wchar_t));
 	  state->lastchar += state->curpos - i;
@@ -714,6 +750,7 @@ self_insert:
   
   bye:
   
+  mutt_reset_history_state (hclass);
   FREE (&tempbuf);
   return rv;
 }

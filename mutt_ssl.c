@@ -95,19 +95,57 @@ int mutt_ssl_starttls (CONNECTION* conn)
 {
   sslsockdata* ssldata;
   int maxbits;
+  long ssl_options = 0;
 
   if (ssl_init())
     goto bail;
 
   ssldata = (sslsockdata*) safe_calloc (1, sizeof (sslsockdata));
-  /* the ssl_use_xxx protocol options don't apply. We must use TLS in TLS. */
-  if (! (ssldata->ctx = SSL_CTX_new (TLSv1_client_method ())))
+  /* the ssl_use_xxx protocol options don't apply. We must use TLS in TLS.
+   *
+   * However, we need to be able to negotiate amongst various TLS versions,
+   * which at present can only be done with the SSLv23_client_method;
+   * TLSv1_client_method gives us explicitly TLSv1.0, not 1.1 or 1.2 (True as
+   * of OpenSSL 1.0.1c)
+   */
+  if (! (ssldata->ctx = SSL_CTX_new (SSLv23_client_method())))
   {
     dprint (1, (debugfile, "mutt_ssl_starttls: Error allocating SSL_CTX\n"));
     goto bail_ssldata;
   }
+#ifdef SSL_OP_NO_TLSv1_2
+  if (!option(OPTTLSV1_2))
+    ssl_options |= SSL_OP_NO_TLSv1_2;
+#endif
+#ifdef SSL_OP_NO_TLSv1_1
+  if (!option(OPTTLSV1_1))
+    ssl_options |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1
+  if (!option(OPTTLSV1))
+    ssl_options |= SSL_OP_NO_TLSv1;
+#endif
+  /* these are always set */
+#ifdef SSL_OP_NO_SSLv3
+  ssl_options |= SSL_OP_NO_SSLv3;
+#endif
+#ifdef SSL_OP_NO_SSLv2
+  ssl_options |= SSL_OP_NO_SSLv2;
+#endif
+  if (! SSL_CTX_set_options(ssldata->ctx, ssl_options))
+  {
+    dprint(1, (debugfile, "mutt_ssl_starttls: Error setting options to %ld\n", ssl_options));
+    goto bail_ctx;
+  }
 
   ssl_get_client_cert(ssldata, conn);
+
+  if (SslCiphers) {
+    if (!SSL_CTX_set_cipher_list (ssldata->ctx, SslCiphers)) {
+      dprint (1, (debugfile, "mutt_ssl_starttls: Could not select preferred ciphers\n"));
+      goto bail_ctx;
+    }
+  }
 
   if (! (ssldata->ssl = SSL_new (ssldata->ctx)))
   {
@@ -235,7 +273,7 @@ static int add_entropy (const char *file)
 
 static int ssl_socket_open_err (CONNECTION *conn)
 {
-  mutt_error (_("SSL disabled due the lack of entropy"));
+  mutt_error (_("SSL disabled due to the lack of entropy"));
   mutt_sleep (2);
   return -1;
 }
@@ -303,6 +341,21 @@ static int ssl_socket_open (CONNECTION * conn)
   {
     SSL_CTX_set_options(data->ctx, SSL_OP_NO_TLSv1);
   }
+  /* TLSv1.1/1.2 support was added in OpenSSL 1.0.1, but some OS distros such
+   * as Fedora 17 are on OpenSSL 1.0.0.
+   */
+#ifdef SSL_OP_NO_TLSv1_1
+  if (!option(OPTTLSV1_1))
+  {
+    SSL_CTX_set_options(data->ctx, SSL_OP_NO_TLSv1_1);
+  }
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
+  if (!option(OPTTLSV1_2))
+  {
+    SSL_CTX_set_options(data->ctx, SSL_OP_NO_TLSv1_2);
+  }
+#endif
   if (!option(OPTSSLV2))
   {
     SSL_CTX_set_options(data->ctx, SSL_OP_NO_SSLv2);
@@ -313,6 +366,10 @@ static int ssl_socket_open (CONNECTION * conn)
   }
 
   ssl_get_client_cert(data, conn);
+
+  if (SslCiphers) {
+    SSL_CTX_set_cipher_list (data->ctx, SslCiphers);
+  }
 
   data->ssl = SSL_new (data->ctx);
   SSL_set_fd (data->ssl, conn->fd);
@@ -331,7 +388,7 @@ static int ssl_socket_open (CONNECTION * conn)
   return 0;
 }
 
-/* ssl_negotiate: After SSL state has been initialised, attempt to negotiate
+/* ssl_negotiate: After SSL state has been initialized, attempt to negotiate
  *   SSL over the wire, including certificate checks. */
 static int ssl_negotiate (CONNECTION *conn, sslsockdata* ssldata)
 {
@@ -375,8 +432,12 @@ static int ssl_negotiate (CONNECTION *conn, sslsockdata* ssldata)
   if (!ssl_check_certificate (conn, ssldata))
     return -1;
 
-  mutt_message (_("SSL connection using %s (%s)"),
-    SSL_get_cipher_version (ssldata->ssl), SSL_get_cipher_name (ssldata->ssl));
+  /* L10N:
+     %1$s is version (e.g. "TLSv1.2")
+     %2$s is cipher_version (e.g. "TLSv1/SSLv3")
+     %3$s is cipher_name (e.g. "ECDHE-RSA-AES128-GCM-SHA256") */
+  mutt_message (_("%s connection using %s (%s)"),
+    SSL_get_version(ssldata->ssl), SSL_get_cipher_version (ssldata->ssl), SSL_get_cipher_name (ssldata->ssl));
   mutt_sleep (0);
 
   return 0;
@@ -911,12 +972,12 @@ static int ssl_check_certificate (CONNECTION *conn, sslsockdata *data)
 
 static int interactive_check_cert (X509 *cert, int idx, int len)
 {
-  char *part[] =
+  static const char * const part[] =
     {"/CN=", "/Email=", "/O=", "/OU=", "/L=", "/ST=", "/C="};
   char helpstr[LONG_STRING];
   char buf[STRING];
   char title[STRING];
-  MUTTMENU *menu = mutt_new_menu (-1);
+  MUTTMENU *menu = mutt_new_menu (MENU_GENERIC);
   int done, row, i;
   FILE *fp;
   char *name = NULL, *c;
@@ -990,7 +1051,7 @@ static int interactive_check_cert (X509 *cert, int idx, int len)
   menu->help = helpstr;
 
   done = 0;
-  set_option(OPTUNBUFFEREDINPUT);
+  set_option(OPTIGNOREMACROEVENTS);
   while (!done)
   {
     switch (mutt_menuLoop (menu))
@@ -1025,7 +1086,7 @@ static int interactive_check_cert (X509 *cert, int idx, int len)
         break;
     }
   }
-  unset_option(OPTUNBUFFEREDINPUT);
+  unset_option(OPTIGNOREMACROEVENTS);
   mutt_menuDestroy (&menu);
   dprint (2, (debugfile, "ssl interactive_check_cert: done=%d\n", done));
   return (done == 2);

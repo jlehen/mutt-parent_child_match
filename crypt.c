@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 1996,1997 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1999-2000,2002-4,2006 Thomas Roessler <roessler@does-not-exist.org>
- * Copyright (C) 2001  Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 1996-1997 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1999-2000,2002-2004,2006 Thomas Roessler <roessler@does-not-exist.org>
+ * Copyright (C) 2001 Thomas Roessler <roessler@does-not-exist.org>
  *                     Oliver Ehli <elmy@acm.org>
- * Copyright (C) 2003  Werner Koch <wk@gnupg.org>
+ * Copyright (C) 2003 Werner Koch <wk@gnupg.org>
  * Copyright (C) 2004 g10code GmbH
  *
  *     This program is free software; you can redistribute it and/or modify
@@ -137,26 +137,42 @@ int mutt_protect (HEADER *msg, char *keylist)
   if (!WithCrypto)
     return -1;
 
+  if (!(msg->security & (ENCRYPT | SIGN)))
+    return 0;
+
   if ((msg->security & SIGN) && !crypt_valid_passphrase (msg->security))
     return (-1);
 
   if ((WithCrypto & APPLICATION_PGP) && ((msg->security & PGPINLINE) == PGPINLINE))
   {
-    /* they really want to send it inline... go for it */
-    if (!isendwin ()) mutt_endwin _("Invoking PGP...");
-    pbody = crypt_pgp_traditional_encryptsign (msg->content, flags, keylist);
-    if (pbody)
+    if ((msg->content->type != TYPETEXT) ||
+        ascii_strcasecmp (msg->content->subtype, "plain"))
     {
-      msg->content = pbody;
-      return 0;
-    }
-
-    /* otherwise inline won't work...ask for revert */
-    if ((i = query_quadoption (OPT_PGPMIMEAUTO, _("Message can't be sent inline.  Revert to using PGP/MIME?"))) != M_YES)
+      if ((i = query_quadoption (OPT_PGPMIMEAUTO,
+              _("Inline PGP can't be used with attachments.  Revert to PGP/MIME?"))) != M_YES)
       {
-	mutt_error _("Mail not sent.");
-	return -1;
+        mutt_error _("Mail not sent: inline PGP can't be used with attachments.");
+        return -1;
       }
+    }
+    else
+    {
+      /* they really want to send it inline... go for it */
+      if (!isendwin ()) mutt_endwin _("Invoking PGP...");
+      pbody = crypt_pgp_traditional_encryptsign (msg->content, flags, keylist);
+      if (pbody)
+      {
+        msg->content = pbody;
+        return 0;
+      }
+
+      /* otherwise inline won't work...ask for revert */
+      if ((i = query_quadoption (OPT_PGPMIMEAUTO, _("Message can't be sent inline.  Revert to using PGP/MIME?"))) != M_YES)
+      {
+        mutt_error _("Mail not sent.");
+        return -1;
+      }
+    }
 
     /* go ahead with PGP/MIME */
   }
@@ -224,7 +240,7 @@ int mutt_protect (HEADER *msg, char *keylist)
       /* free tmp_body if messages was signed AND encrypted ... */
       if (tmp_smime_pbody != msg->content && tmp_smime_pbody != tmp_pbody)
       {
-	/* detatch and dont't delete msg->content,
+	/* detatch and don't delete msg->content,
 	   which tmp_smime_pbody->parts after signing. */
 	tmp_smime_pbody->parts = tmp_smime_pbody->parts->next;
 	msg->content->next = NULL;
@@ -314,10 +330,71 @@ int mutt_is_multipart_encrypted (BODY *b)
         ascii_strcasecmp (p, "application/pgp-encrypted"))
       return 0;
   
-     return PGPENCRYPT;
+    return PGPENCRYPT;
   }
 
   return 0;
+}
+
+
+int mutt_is_valid_multipart_pgp_encrypted (BODY *b)
+{
+  if (! mutt_is_multipart_encrypted (b))
+    return 0;
+
+  b = b->parts;
+  if (!b || b->type != TYPEAPPLICATION ||
+      !b->subtype || ascii_strcasecmp (b->subtype, "pgp-encrypted"))
+    return 0;
+
+  b = b->next;
+  if (!b || b->type != TYPEAPPLICATION ||
+      !b->subtype || ascii_strcasecmp (b->subtype, "octet-stream"))
+    return 0;
+
+  return PGPENCRYPT;
+}
+
+
+/*
+ * This checks for the malformed layout caused by MS Exchange in
+ * some cases:
+ *  <multipart/mixed>
+ *     <text/plain>
+ *     <application/pgp-encrypted> [BASE64-encoded]
+ *     <application/octet-stream> [BASE64-encoded]
+ * See ticket #3742
+ */
+int mutt_is_malformed_multipart_pgp_encrypted (BODY *b)
+{
+  if (!(WithCrypto & APPLICATION_PGP))
+    return 0;
+
+  if (!b || b->type != TYPEMULTIPART ||
+      !b->subtype || ascii_strcasecmp (b->subtype, "mixed"))
+    return 0;
+
+  b = b->parts;
+  if (!b || b->type != TYPETEXT ||
+      !b->subtype || ascii_strcasecmp (b->subtype, "plain") ||
+       b->length != 0)
+    return 0;
+
+  b = b->next;
+  if (!b || b->type != TYPEAPPLICATION ||
+      !b->subtype || ascii_strcasecmp (b->subtype, "pgp-encrypted"))
+    return 0;
+
+  b = b->next;
+  if (!b || b->type != TYPEAPPLICATION ||
+      !b->subtype || ascii_strcasecmp (b->subtype, "octet-stream"))
+    return 0;
+
+  b = b->next;
+  if (b)
+    return 0;
+
+  return PGPENCRYPT;
 }
 
 
@@ -469,6 +546,7 @@ int crypt_query (BODY *m)
   {
     t |= mutt_is_multipart_encrypted(m);
     t |= mutt_is_multipart_signed (m);
+    t |= mutt_is_malformed_multipart_pgp_encrypted (m);
 
     if (t && m->goodsig) 
       t |= GOODSIGN;
@@ -707,8 +785,11 @@ void crypt_extract_keys_from_messages (HEADER * h)
 
 
 
-int crypt_get_keys (HEADER *msg, char **keylist)
+int crypt_get_keys (HEADER *msg, char **keylist, int oppenc_mode)
 {
+  ADDRESS *adrlist = NULL, *last = NULL;
+  const char *fqdn = mutt_fqdn (1);
+
   /* Do a quick check to make sure that we can find all of the encryption
    * keys if the user has requested this service.
    */
@@ -719,28 +800,70 @@ int crypt_get_keys (HEADER *msg, char **keylist)
   if ((WithCrypto & APPLICATION_PGP))
     set_option (OPTPGPCHECKTRUST);
 
+  last = rfc822_append (&adrlist, msg->env->to, 0);
+  last = rfc822_append (last ? &last : &adrlist, msg->env->cc, 0);
+  rfc822_append (last ? &last : &adrlist, msg->env->bcc, 0);
+
+  if (fqdn)
+    rfc822_qualify (adrlist, fqdn);
+  adrlist = mutt_remove_duplicates (adrlist);
+
   *keylist = NULL;
 
-  if (msg->security & ENCRYPT)
+  if (oppenc_mode || (msg->security & ENCRYPT))
   {
      if ((WithCrypto & APPLICATION_PGP)
          && (msg->security & APPLICATION_PGP))
      {
-       if ((*keylist = crypt_pgp_findkeys (msg->env->to, msg->env->cc,
-      			       msg->env->bcc)) == NULL)
+       if ((*keylist = crypt_pgp_findkeys (adrlist, oppenc_mode)) == NULL)
+       {
+           rfc822_free_address (&adrlist);
            return (-1);
+       }
        unset_option (OPTPGPCHECKTRUST);
      }
      if ((WithCrypto & APPLICATION_SMIME)
          && (msg->security & APPLICATION_SMIME))
      {
-       if ((*keylist = crypt_smime_findkeys (msg->env->to, msg->env->cc,
-      				             msg->env->bcc)) == NULL)
+       if ((*keylist = crypt_smime_findkeys (adrlist, oppenc_mode)) == NULL)
+       {
+           rfc822_free_address (&adrlist);
            return (-1);
+       }
      }
   }
+
+  rfc822_free_address (&adrlist);
     
   return (0);
+}
+
+
+/*
+ * Check if all recipients keys can be automatically determined.
+ * Enable encryption if they can, otherwise disable encryption.
+ */
+
+void crypt_opportunistic_encrypt(HEADER *msg)
+{
+  char *pgpkeylist = NULL;
+
+  if (!WithCrypto)
+    return;
+
+  if (! (option (OPTCRYPTOPPORTUNISTICENCRYPT) && (msg->security & OPPENCRYPT)) )
+    return;
+
+  crypt_get_keys (msg, &pgpkeylist, 1);
+  if (pgpkeylist != NULL )
+  {
+    msg->security |= ENCRYPT;
+    FREE (&pgpkeylist);
+  }
+  else
+  {
+    msg->security &= ~ENCRYPT;
+  }
 }
 
 
@@ -772,9 +895,8 @@ static void crypt_fetch_signatures (BODY ***signatures, BODY *a, int *n)
 int mutt_signed_handler (BODY *a, STATE *s)
 {
   char tempfile[_POSIX_PATH_MAX];
-  char *protocol;
-  int protocol_major = TYPEOTHER;
-  char *protocol_minor = NULL;
+  int signed_type;
+  int inconsistent = 0;
   
   BODY *b = a;
   BODY **signatures = NULL;
@@ -786,29 +908,44 @@ int mutt_signed_handler (BODY *a, STATE *s)
   if (!WithCrypto)
     return -1;
 
-  protocol = mutt_get_parameter ("protocol", a->parameter);
   a = a->parts;
-
-  /* extract the protocol information */
-  
-  if (protocol)
+  signed_type = mutt_is_multipart_signed (b);
+  if (!signed_type)
   {
-    char major[STRING];
-    char *t;
-
-    if ((protocol_minor = strchr (protocol, '/'))) protocol_minor++;
-    
-    strfcpy (major, protocol, sizeof(major));
-    if((t = strchr(major, '/')))
-      *t = '\0';
-    
-    protocol_major = mutt_check_mime_type (major);
+    /* A null protocol value is already checked for in mutt_body_handler() */
+    state_printf (s, _("[-- Error: "
+                       "Unknown multipart/signed protocol %s! --]\n\n"),
+                  mutt_get_parameter ("protocol", b->parameter));
+    return mutt_body_handler (a, s);
   }
 
-  /* consistency check */
-
-  if (!(a && a->next && a->next->type == protocol_major && 
-      !mutt_strcasecmp (a->next->subtype, protocol_minor)))
+  if (!(a && a->next))
+    inconsistent = 1;
+  else
+  {
+    switch (signed_type)
+    {
+      case SIGN:
+        if (a->next->type != TYPEMULTIPART ||
+            ascii_strcasecmp (a->next->subtype, "mixed"))
+          inconsistent = 1;
+        break;
+      case PGPSIGN:
+        if (a->next->type != TYPEAPPLICATION ||
+            ascii_strcasecmp (a->next->subtype, "pgp-signature"))
+          inconsistent = 1;
+        break;
+      case SMIMESIGN:
+        if (a->next->type != TYPEAPPLICATION ||
+            (ascii_strcasecmp (a->next->subtype, "x-pkcs7-signature") &&
+             ascii_strcasecmp (a->next->subtype, "pkcs7-signature")))
+          inconsistent = 1;
+        break;
+      default:
+        inconsistent = 1;
+    }
+  }
+  if (inconsistent)
   {
     state_attach_puts (_("[-- Error: "
                          "Inconsistent multipart/signed structure! --]\n\n"),
@@ -816,27 +953,6 @@ int mutt_signed_handler (BODY *a, STATE *s)
     return mutt_body_handler (a, s);
   }
 
-  
-  if ((WithCrypto & APPLICATION_PGP)
-      && protocol_major == TYPEAPPLICATION
-      && !ascii_strcasecmp (protocol_minor, "pgp-signature"))
-    ;
-  else if ((WithCrypto & APPLICATION_SMIME)
-           && protocol_major == TYPEAPPLICATION
-	   && !(ascii_strcasecmp (protocol_minor, "x-pkcs7-signature")
-	       && ascii_strcasecmp (protocol_minor, "pkcs7-signature")))
-    ;
-  else if (protocol_major == TYPEMULTIPART
-	   && !ascii_strcasecmp (protocol_minor, "mixed"))
-    ;
-  else
-  {
-    state_printf (s, _("[-- Error: "
-                       "Unknown multipart/signed protocol %s! --]\n\n"),
-                  protocol);
-    return mutt_body_handler (a, s);
-  }
-  
   if (s->flags & M_DISPLAY)
   {
     
@@ -897,6 +1013,108 @@ int mutt_signed_handler (BODY *a, STATE *s)
     state_attach_puts (_("\n[-- End of signed data --]\n"), s);
   
   return rc;
+}
+
+
+/* Obtain pointers to fingerprint or short or long key ID, if any.
+ * See mutt_crypt.h for details.
+ */
+const char* crypt_get_fingerprint_or_id (char *p, const char **pphint,
+    const char **ppl, const char **pps)
+{
+  const char *ps, *pl, *phint;
+  char *pfcopy, *pf, *s1, *s2;
+  char c;
+  int isid;
+  size_t hexdigits;
+
+  /* User input may be partial name, fingerprint or short or long key ID,
+   * independent of OPTPGPLONGIDS.
+   * Fingerprint without spaces is 40 hex digits (SHA-1) or 32 hex digits (MD5).
+   * Strip leading "0x" for key ID detection and prepare pl and ps to indicate
+   * if an ID was found and to simplify logic in the key loop's inner
+   * condition of the caller. */
+
+  pf = mutt_skip_whitespace (p);
+  if (!mutt_strncasecmp (pf, "0x", 2))
+    pf += 2;
+
+  /* Check if a fingerprint is given, must be hex digits only, blanks
+   * separating groups of 4 hex digits are allowed. Also pre-check for ID. */
+  isid = 2;             /* unknown */
+  hexdigits = 0;
+  s1 = pf;
+  do
+  {
+    c = *(s1++);
+    if (('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f'))
+    {
+      ++hexdigits;
+      if (isid == 2)
+        isid = 1;       /* it is an ID so far */
+    }
+    else if (c)
+    {
+      isid = 0;         /* not an ID */
+      if (c == ' ' && ((hexdigits % 4) == 0))
+        ;               /* skip blank before or after 4 hex digits */
+      else
+        break;          /* any other character or position */
+    }
+  } while (c);
+
+  /* If at end of input, check for correct fingerprint length and copy if. */
+  pfcopy = (!c && ((hexdigits == 40) || (hexdigits == 32)) ? safe_strdup (pf) : NULL);
+
+  if (pfcopy)
+  {
+    /* Use pfcopy to strip all spaces from fingerprint and as hint. */
+    s1 = s2 = pfcopy;
+    do
+    {
+      *(s1++) = *(s2 = mutt_skip_whitespace (s2));
+    } while (*(s2++));
+
+    phint = pfcopy;
+    ps = pl = NULL;
+  }
+  else
+  {
+    phint = p;
+    ps = pl = NULL;
+    if (isid == 1)
+    {
+      if (mutt_strlen (pf) == 16)
+        pl = pf;        /* long key ID */
+      else if (mutt_strlen (pf) == 8)
+        ps = pf;        /* short key ID */
+    }
+  }
+
+  *pphint = phint;
+  *ppl = pl;
+  *pps = ps;
+  return pfcopy;
+}
+
+
+/*
+ * Used by pgp_findKeys and find_keys to check if a crypt-hook
+ * value is a key id.
+ */
+
+short crypt_is_numerical_keyid (const char *s)
+{
+  /* or should we require the "0x"? */
+  if (strncmp (s, "0x", 2) == 0)
+    s += 2;
+  if (strlen (s) % 8)
+    return 0;
+  while (*s)
+    if (strchr ("0123456789ABCDEFabcdef", *s++) == NULL)
+      return 0;
+
+  return 1;
 }
 
 

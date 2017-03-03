@@ -50,7 +50,7 @@ typedef struct menu_t
   int pagelen;	/* number of entries per screen */
   int tagprefix;
 
-  /* Setting dialog != NULL overrides normal menu behaviour. 
+  /* Setting dialog != NULL overrides normal menu behavior. 
    * In dialog mode menubar is hidden and prompt keys are checked before
    * normal menu movement keys. This can cause problems with scrolling, if 
    * prompt keys override movement keys.
@@ -103,6 +103,9 @@ void menu_current_middle (MUTTMENU *);
 void menu_current_bottom (MUTTMENU *);
 void menu_check_recenter (MUTTMENU *);
 void menu_status_line (char *, size_t, MUTTMENU *, const char *);
+short mutt_ts_capability (void);
+void mutt_ts_status (char *);
+void mutt_ts_icon (char *);
 
 MUTTMENU *mutt_new_menu (int);
 void mutt_menuDestroy (MUTTMENU **);

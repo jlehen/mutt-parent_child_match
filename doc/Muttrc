@@ -686,6 +686,45 @@ attachments   -I message/external-body
 # $crypt_autosign, $crypt_replysign and $smime_is_default.
 # 
 # 
+# set crypt_confirmhook=yes
+#
+# Name: crypt_confirmhook
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set, then you will be prompted for confirmation of keys when using
+# the crypt-hook command.  If unset, no such confirmation prompt will
+# be presented.  This is generally considered unsafe, especially where
+# typos are concerned.
+# 
+# 
+# set crypt_opportunistic_encrypt=no
+#
+# Name: crypt_opportunistic_encrypt
+# Type: boolean
+# Default: no
+# 
+# 
+# Setting this variable will cause Mutt to automatically enable and
+# disable encryption, based on whether all message recipient keys
+# can be located by mutt.
+# 
+# When this option is enabled, mutt will determine the encryption
+# setting each time the TO, CC, and BCC lists are edited.  If
+# $edit_headers is set, mutt will also do so each time the message
+# is edited.
+# 
+# While this is set, encryption settings can't be manually changed.
+# The pgp or smime menus provide an option to disable the option for
+# a particular message.
+# 
+# If $crypt_autoencrypt or $crypt_replyencrypt enable encryption for
+# a message, this option will be disabled for the message.  It can
+# be manually re-enabled in the pgp or smime menus.
+# (Crypto only)
+# 
+# 
 # set crypt_replyencrypt=yes
 #
 # Name: crypt_replyencrypt
@@ -755,6 +794,9 @@ attachments   -I message/external-body
 # S/MIME and PGP will be used instead of the classic code.  Note that
 # you need to set this option in .muttrc; it won't have any effect when
 # used interactively.
+# 
+# Note that the GPGME backend does not support creating old-style inline
+# (traditional) PGP encrypted or signed messages (see $pgp_autoinline).
 # 
 # 
 # set crypt_use_pka=no
@@ -963,6 +1005,15 @@ attachments   -I message/external-body
 # This variable specifies which editor is used by mutt.
 # It defaults to the value of the $VISUAL, or $EDITOR, environment
 # variable, or to the string ``vi'' if neither of those are set.
+# 
+# The $editor string may contain a %s escape, which will be replaced by the name
+# of the file to be edited.  If the %s escape does not appear in $editor, a
+# space and the name to be edited are appended.
+# 
+# The resulting string is then executed by running
+# sh -c 'string'
+# 
+# where string is the expansion of $editor described above.
 # 
 # 
 # set encode_from=no
@@ -1451,15 +1502,39 @@ attachments   -I message/external-body
 # as the domain part (after ``@'') for local email addresses as well as
 # Message-Id headers.
 # 
-# Its value is determined at startup as follows: If the node's name
-# as returned by the uname(3) function contains the hostname and the
-# domain, these are used to construct $hostname. If there is no
-# domain part returned, Mutt will look for a ``domain'' or ``search''
-# line in /etc/resolv.conf to determine the domain. Optionally, Mutt
-# can be compiled with a fixed domain name in which case a detected
-# one is not used.
+# Its value is determined at startup as follows: the node's
+# hostname is first determined by the uname(3) function.  The
+# domain is then looked up using the gethostname(2) and
+# getaddrinfo(3) functions.  If those calls are unable to
+# determine the domain, the full value returned by uname is used.
+# Optionally, Mutt can be compiled with a fixed domain name in
+# which case a detected one is not used.
 # 
 # Also see $use_domain and $hidden_host.
+# 
+# 
+# set idn_decode=yes
+#
+# Name: idn_decode
+# Type: boolean
+# Default: yes
+# 
+# 
+# When set, Mutt will show you international domain names decoded.
+# Note: You can use IDNs for addresses even if this is unset.
+# This variable only affects decoding. (IDN only)
+# 
+# 
+# set idn_encode=yes
+#
+# Name: idn_encode
+# Type: boolean
+# Default: yes
+# 
+# 
+# When set, Mutt will encode international domain names using
+# IDN.  Unset this if your SMTP server can handle newer (RFC 6531)
+# UTF-8 encoded domains. (IDN only)
 # 
 # 
 # set ignore_linear_white_space=no
@@ -1573,11 +1648,11 @@ attachments   -I message/external-body
 # up periodically, try unsetting this.
 # 
 # 
-# set imap_keepalive=900
+# set imap_keepalive=300
 #
 # Name: imap_keepalive
 # Type: number
-# Default: 900
+# Default: 300
 # 
 # 
 # This variable specifies the maximum amount of time in seconds that mutt
@@ -1795,6 +1870,8 @@ attachments   -I message/external-body
 #         stashed the message: list name or recipient name
 #         if not sent to a list
 # %P      progress indicator for the built-in pager (how much of the file has been displayed)
+# %r      comma separated list of ``To:'' recipients
+# %R      comma separated list of ``Cc:'' recipients
 # %s      subject of the message
 # %S      status of the message (``N''/``D''/``d''/``!''/``r''/*)
 # %t      ``To:'' field (recipients)
@@ -1946,6 +2023,21 @@ attachments   -I message/external-body
 # trashed flag instead of unlinked.  Note: this only applies
 # to maildir-style mailboxes.  Setting it will have no effect on other
 # mailbox types.
+# 
+# 
+# set maildir_check_cur=no
+#
+# Name: maildir_check_cur
+# Type: boolean
+# Default: no
+# 
+# 
+# If set, mutt will poll both the new and cur directories of
+# a maildir folder for new messages.  This might be useful if other
+# programs interacting with the folder (e.g. dovecot) are moving new
+# messages to the cur directory.  Note that setting this option may
+# slow down polling for new messages in large folders, since mutt has
+# to scan all cur messages.
 # 
 # 
 # set mark_old=yes
@@ -2376,7 +2468,8 @@ attachments   -I message/external-body
 # This option controls whether Mutt generates old-style inline
 # (traditional) PGP encrypted or signed messages under certain
 # circumstances.  This can be overridden by use of the pgp menu,
-# when inline is not required.
+# when inline is not required.  The GPGME backend does not support
+# this option.
 # 
 # Note that Mutt might automatically use PGP/MIME for messages
 # which consist of more than a single MIME part.  Mutt can be
@@ -2436,7 +2529,7 @@ attachments   -I message/external-body
 # %s      Expands to the name of a file containing the signature part
 #                    of a multipart/signed attachment when verifying it.
 # %a      The value of $pgp_sign_as.
-# %r      One or more key IDs.
+# %r      One or more key IDs (or fingerprints if available).
 # 
 # 
 # For examples on how to configure these formats for the various versions
@@ -2457,6 +2550,22 @@ attachments   -I message/external-body
 # 
 # This is a format string, see the $pgp_decode_command command for
 # possible printf(3)-like sequences.
+# (PGP only)
+# 
+# 
+# set pgp_decryption_okay=""
+#
+# Name: pgp_decryption_okay
+# Type: regular expression
+# Default: ""
+# 
+# 
+# If you assign text to this variable, then an encrypted PGP
+# message is only considered successfully decrypted if the output
+# from $pgp_decrypt_command contains the text.  This is used to
+# protect against a spoofed encrypted message, with multipart/encrypted
+# headers but containing a block that is not actually encrypted.
+# (e.g. simply signed and ascii armored text).
 # (PGP only)
 # 
 # 
@@ -2534,9 +2643,11 @@ attachments   -I message/external-body
 # Default: ""
 # 
 # 
-# This command is invoked whenever mutt will need public key information.
-# Of the sequences supported by $pgp_decode_command, %r is the only
-# printf(3)-like sequence used with this format.
+# This command is invoked whenever Mutt needs to fetch the public key associated with
+# an email address.  Of the sequences supported by $pgp_decode_command, %r is
+# the only printf(3)-like sequence used with this format.  Note that
+# in this case, %r expands to the email address, not the public key ID (the key ID is
+# unknown, which is why Mutt is invoking this command).
 # (PGP only)
 # 
 # 
@@ -2591,10 +2702,14 @@ attachments   -I message/external-body
 # 
 # This command is used to list the public key ring's contents.  The
 # output format must be analogous to the one used by
-# gpg --list-keys --with-colons.
+# gpg --list-keys --with-colons --with-fingerprint
 # 
 # This format is also generated by the pgpring utility which comes
 # with mutt.
+# 
+# Note: gpg's fixed-list-mode option should not be used.  It
+# produces a different date format which may result in mutt showing
+# incorrect key generation dates.
 # 
 # This is a format string, see the $pgp_decode_command command for
 # possible printf(3)-like sequences.
@@ -2610,24 +2725,31 @@ attachments   -I message/external-body
 # 
 # This command is used to list the secret key ring's contents.  The
 # output format must be analogous to the one used by:
-# gpg --list-keys --with-colons.
+# gpg --list-keys --with-colons --with-fingerprint
 # 
 # This format is also generated by the pgpring utility which comes
 # with mutt.
+# 
+# Note: gpg's fixed-list-mode option should not be used.  It
+# produces a different date format which may result in mutt showing
+# incorrect key generation dates.
 # 
 # This is a format string, see the $pgp_decode_command command for
 # possible printf(3)-like sequences.
 # (PGP only)
 # 
 # 
-# set pgp_long_ids=no
+# set pgp_long_ids=yes
 #
 # Name: pgp_long_ids
 # Type: boolean
-# Default: no
+# Default: yes
 # 
 # 
 # If set, use 64 bit PGP key IDs, if unset use the normal 32 bit key IDs.
+# NOTE: Internally, Mutt has transitioned to using fingerprints (or long key IDs
+# as a fallback).  This option now only controls the display of key IDs
+# in the key selection menu and a few other places.
 # (PGP only)
 # 
 # 
@@ -2785,6 +2907,8 @@ attachments   -I message/external-body
 # 
 # 
 # If set, mutt will use a possibly-running gpg-agent(1) process.
+# Note that as of version 2.1, GnuPG no longer exports GPG_AGENT_INFO, so
+# mutt no longer verifies if the agent is running.
 # (PGP only)
 # 
 # 
@@ -3013,6 +3137,31 @@ attachments   -I message/external-body
 # Also see the $postpone variable.
 # 
 # 
+# set postpone_encrypt=no
+#
+# Name: postpone_encrypt
+# Type: boolean
+# Default: no
+# 
+# 
+# When set, postponed messages that are marked for encryption will be
+# encrypted using the key in $postpone_encrypt_as before saving.
+# (Crypto only)
+# 
+# 
+# set postpone_encrypt_as=""
+#
+# Name: postpone_encrypt_as
+# Type: string
+# Default: ""
+# 
+# 
+# This is the key used to encrypt postponed messages.  It should be in
+# keyid or fingerprint form (e.g. 0x00112233 for PGP or the
+# hash-value that OpenSSL generates for S/MIME).
+# (Crypto only)
+# 
+# 
 # set preconnect=""
 #
 # Name: preconnect
@@ -3232,8 +3381,9 @@ attachments   -I message/external-body
 # Controls whether or not Mutt recalls postponed messages
 # when composing a new message.
 # 
-# Setting this variable to is not generally useful, and thus not
-# recommended.
+# Setting this variable to yes is not generally useful, and thus not
+# recommended.  Note that the <recall-message> function can be used
+# to manually recall postponed messages.
 # 
 # Also see $postponed variable.
 # 
@@ -3252,6 +3402,53 @@ attachments   -I message/external-body
 # 
 # The value of $record is overridden by the $force_name and
 # $save_name variables, and the ``fcc-hook'' command.
+# 
+# 
+# set reflow_space_quotes=yes
+#
+# Name: reflow_space_quotes
+# Type: boolean
+# Default: yes
+# 
+# 
+# This option controls how quotes from format=flowed messages are displayed
+# in the pager and when replying (with $text_flowed unset).
+# When set, this option adds spaces after each level of quote marks, turning
+# ">>>foo" into "> > > foo".
+# 
+# Note: If $reflow_text is unset, this option has no effect.
+# Also, this option does not affect replies when $text_flowed is set.
+# 
+# 
+# set reflow_text=yes
+#
+# Name: reflow_text
+# Type: boolean
+# Default: yes
+# 
+# 
+# When set, Mutt will reformat paragraphs in text/plain
+# parts marked format=flowed.  If unset, Mutt will display paragraphs
+# unaltered from how they appear in the message body.  See RFC3676 for
+# details on the format=flowed format.
+# 
+# Also see $reflow_wrap, and $wrap.
+# 
+# 
+# set reflow_wrap=78
+#
+# Name: reflow_wrap
+# Type: number
+# Default: 78
+# 
+# 
+# This variable controls the maximum paragraph width when reformatting text/plain
+# parts when $reflow_text is set.  When the value is 0, paragraphs will
+# be wrapped at the terminal's right margin.  A positive value sets the
+# paragraph width relative to the left margin.  A negative value set the
+# paragraph width relative to the right margin.
+# 
+# Also see $wrap.
 # 
 # 
 # set reply_regexp="^(re([\\[0-9\\]+])*|aw):[ \t]*"
@@ -3305,6 +3502,41 @@ attachments   -I message/external-body
 # When set, the cursor will be automatically advanced to the next
 # (possibly undeleted) message whenever a command that modifies the
 # current message is executed.
+# 
+# 
+# set resume_draft_files=no
+#
+# Name: resume_draft_files
+# Type: boolean
+# Default: no
+# 
+# 
+# If set, draft files (specified by -H on the command
+# line) are processed similarly to when resuming a postponed
+# message.  Recipients are not prompted for; send-hooks are not
+# evaluated; no alias expansion takes place; user-defined headers
+# and signatures are not added to the message.
+# 
+# 
+# set resume_edited_draft_files=yes
+#
+# Name: resume_edited_draft_files
+# Type: boolean
+# Default: yes
+# 
+# 
+# If set, draft files previously edited (via -E -H on
+# the command line) will have $resume_draft_files automatically
+# set when they are used as a draft file again.
+# 
+# The first time a draft file is saved, mutt will add a header,
+# X-Mutt-Resume-Draft to the saved file.  The next time the draft
+# file is read in, if mutt sees the header, it will set
+# $resume_draft_files.
+# 
+# This option is designed to prevent multiple signatures,
+# user-defined headers, and other processing effects from being
+# made multiple times to the draft file.
 # 
 # 
 # set reverse_alias=no
@@ -3720,6 +3952,7 @@ attachments   -I message/external-body
 # %k      The key-pair specified with $smime_default_key
 # %c      One or more certificate IDs.
 # %a      The algorithm used for encryption.
+# %d      The message digest algorithm specified with $smime_sign_digest_alg.
 # %C      CA location:  Depending on whether $smime_ca_location
 #                    points to a directory or file, this expands to
 #                    ``-CApath $smime_ca_location'' or ``-CAfile $smime_ca_location''.
@@ -3770,16 +4003,15 @@ attachments   -I message/external-body
 # (S/MIME only)
 # 
 # 
-# set smime_encrypt_with=""
+# set smime_encrypt_with="aes256"
 #
 # Name: smime_encrypt_with
 # Type: string
-# Default: ""
+# Default: "aes256"
 # 
 # 
 # This sets the algorithm that should be used for encryption.
-# Valid choices are ``des'', ``des3'', ``rc2-40'', ``rc2-64'', ``rc2-128''.
-# If unset, ``3des'' (TripleDES) is used.
+# Valid choices are ``aes128'', ``aes192'', ``aes256'', ``des'', ``des3'', ``rc2-40'', ``rc2-64'', ``rc2-128''.
 # (S/MIME only)
 # 
 # 
@@ -3901,6 +4133,18 @@ attachments   -I message/external-body
 # 
 # This is a format string, see the $smime_decrypt_command command for
 # possible printf(3)-like sequences.
+# (S/MIME only)
+# 
+# 
+# set smime_sign_digest_alg="sha256"
+#
+# Name: smime_sign_digest_alg
+# Type: string
+# Default: "sha256"
+# 
+# 
+# This sets the algorithm that should be used for the signature message digest.
+# Valid choices are ``md5'', ``sha1'', ``sha224'', ``sha256'', ``sha384'', ``sha512''.
 # (S/MIME only)
 # 
 # 
@@ -4212,18 +4456,20 @@ attachments   -I message/external-body
 # 
 # 
 # This variable specifies whether to attempt to use SSLv2 in the
-# SSL authentication process.
+# SSL authentication process. Note that SSLv2 and SSLv3 are now
+# considered fundamentally insecure and are no longer recommended.
 # 
 # 
-# set ssl_use_sslv3=yes
+# set ssl_use_sslv3=no
 #
 # Name: ssl_use_sslv3
 # Type: boolean
-# Default: yes
+# Default: no
 # 
 # 
 # This variable specifies whether to attempt to use SSLv3 in the
-# SSL authentication process.
+# SSL authentication process. Note that SSLv2 and SSLv3 are now
+# considered fundamentally insecure and are no longer recommended.
 # 
 # 
 # set ssl_use_tlsv1=yes
@@ -4233,7 +4479,29 @@ attachments   -I message/external-body
 # Default: yes
 # 
 # 
-# This variable specifies whether to attempt to use TLSv1 in the
+# This variable specifies whether to attempt to use TLSv1.0 in the
+# SSL authentication process.
+# 
+# 
+# set ssl_use_tlsv1_1=yes
+#
+# Name: ssl_use_tlsv1_1
+# Type: boolean
+# Default: yes
+# 
+# 
+# This variable specifies whether to attempt to use TLSv1.1 in the
+# SSL authentication process.
+# 
+# 
+# set ssl_use_tlsv1_2=yes
+#
+# Name: ssl_use_tlsv1_2
+# Type: boolean
+# Default: yes
+# 
+# 
+# This variable specifies whether to attempt to use TLSv1.2 in the
 # SSL authentication process.
 # 
 # 
@@ -4273,6 +4541,22 @@ attachments   -I message/external-body
 # certificate whose host name does not match the host used in your folder
 # URL. You should only unset this for particular known hosts, using
 # the <account-hook> function.
+# 
+# 
+# set ssl_ciphers=""
+#
+# Name: ssl_ciphers
+# Type: string
+# Default: ""
+# 
+# 
+# Contains a colon-seperated list of ciphers to use when using SSL.
+# For OpenSSL, see ciphers(1) for the syntax of the string.
+# 
+# For GnuTLS, this option will be used in place of "NORMAL" at the
+# start of the priority string.  See gnutls_priority_init(3) for the
+# syntax and more details. (Note: GnuTLS version 2.1.7 or higher is
+# required.)
 # 
 # 
 # set status_chars="-*%A"
@@ -4537,6 +4821,41 @@ attachments   -I message/external-body
 # was sent to a mailing-list you subscribe to.
 # 
 # 
+# set ts_icon_format="M%?n?AIL&ail?"
+#
+# Name: ts_icon_format
+# Type: string
+# Default: "M%?n?AIL&ail?"
+# 
+# 
+# Controls the format of the icon title, as long as ``$ts_enabled'' is set.
+# This string is identical in formatting to the one used by
+# ``$status_format''.
+# 
+# 
+# set ts_enabled=no
+#
+# Name: ts_enabled
+# Type: boolean
+# Default: no
+# 
+# 
+# Controls whether mutt tries to set the terminal status line and icon name.
+# Most terminal emulators emulate the status line in the window title.
+# 
+# 
+# set ts_status_format="Mutt with %?m?%m messages&no messages?%?n? [%n NEW]?"
+#
+# Name: ts_status_format
+# Type: string
+# Default: "Mutt with %?m?%m messages&no messages?%?n? [%n NEW]?"
+# 
+# 
+# Controls the format of the terminal status line (or window title),
+# provided that ``$ts_enabled'' has been set. This string is identical in
+# formatting to the one used by ``$status_format''.
+# 
+# 
 # set tunnel=""
 #
 # Name: tunnel
@@ -4626,18 +4945,6 @@ attachments   -I message/external-body
 # command.
 # 
 # 
-# set use_idn=yes
-#
-# Name: use_idn
-# Type: boolean
-# Default: yes
-# 
-# 
-# When set, Mutt will show you international domain names decoded.
-# Note: You can use IDNs for addresses even if this is unset.
-# This variable only affects decoding.
-# 
-# 
 # set use_ipv6=yes
 #
 # Name: use_ipv6
@@ -4715,6 +5022,8 @@ attachments   -I message/external-body
 # When set to a negative value, mutt will wrap text so that there are $wrap
 # characters of empty space on the right side of the terminal. Setting it
 # to zero makes mutt wrap at the terminal width.
+# 
+# Also see $reflow_wrap.
 # 
 # 
 # set wrap_headers=78

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2012-2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ char *mutt_read_rfc822_line (FILE *f, char *line, size_t *linelen)
   char *buf = line;
   int ch;
   size_t offset = 0;
+  size_t len = 0;
 
   FOREVER
   {
@@ -53,7 +54,11 @@ char *mutt_read_rfc822_line (FILE *f, char *line, size_t *linelen)
       return (line);
     }
 
-    buf += strlen (buf) - 1;
+    len = mutt_strlen (buf);
+    if (! len)
+      return (line);
+
+    buf += len - 1;
     if (*buf == '\n')
     {
       /* we did get a full line. remove trailing space */
@@ -152,19 +157,25 @@ static PARAMETER *parse_parameters (const char *s)
     if (*p != ';')
     {
       i = p - s;
-
-      new = mutt_new_parameter ();
-
-      new->attribute = safe_malloc (i + 1);
-      memcpy (new->attribute, s, i);
-      new->attribute[i] = 0;
-
       /* remove whitespace from the end of the attribute name */
-      while (ISSPACE (new->attribute[--i]))
-	new->attribute[i] = 0;
+      while (i > 0 && is_email_wsp(s[i-1]))
+	--i;
 
-      s = p + 1; /* skip over the = */
-      SKIPWS (s);
+      /* the check for the missing parameter token is here so that we can skip
+       * over any quoted value that may be present.
+       */
+      if (i == 0)
+      {
+	dprint(1, (debugfile, "parse_parameters: missing attribute: %s\n", s));
+	new = NULL;
+      }
+      else
+      {
+	new = mutt_new_parameter ();
+	new->attribute = mutt_substrdup(s, s + i);
+      }
+
+      s = skip_email_wsp(p + 1); /* skip over the = */
 
       if (*s == '"')
       {
@@ -173,7 +184,7 @@ static PARAMETER *parse_parameters (const char *s)
 	for (i=0; *s && i < sizeof (buffer) - 1; i++, s++)
 	{
 	  if (AssumedCharset && *AssumedCharset) {
-            /* As iso-2022-* has a characer of '"' with non-ascii state,
+            /* As iso-2022-* has a character of '"' with non-ascii state,
 	     * ignore it. */
             if (*s == 0x1b && i < sizeof (buffer) - 2)
             {
@@ -206,20 +217,24 @@ static PARAMETER *parse_parameters (const char *s)
 	buffer[i] = 0;
       }
 
-      new->value = safe_strdup (buffer);
-
-      dprint (2, (debugfile, "parse_parameter: `%s' = `%s'\n",
-		  new->attribute ? new->attribute : "",
-		  new->value ? new->value : ""));
-      
-      /* Add this parameter to the list */
-      if (head)
+      /* if the attribute token was missing, 'new' will be NULL */
+      if (new)
       {
-	cur->next = new;
-	cur = cur->next;
+	new->value = safe_strdup (buffer);
+
+	dprint (2, (debugfile, "parse_parameter: `%s' = `%s'\n",
+	      new->attribute ? new->attribute : "",
+	      new->value ? new->value : ""));
+
+	/* Add this parameter to the list */
+	if (head)
+	{
+	  cur->next = new;
+	  cur = cur->next;
+	}
+	else
+	  head = cur = new;
       }
-      else
-	head = cur = new;
     }
     else
     {
@@ -229,19 +244,17 @@ static PARAMETER *parse_parameters (const char *s)
 
     /* Find the next parameter */
     if (*s != ';' && (s = strchr (s, ';')) == NULL)
-	break; /* no more parameters */
+      break; /* no more parameters */
 
     do
     {
-      s++;
-
-      /* Move past any leading whitespace */
-      SKIPWS (s);
+      /* Move past any leading whitespace. the +1 skips over the semicolon */
+      s = skip_email_wsp(s + 1);
     }
     while (*s == ';'); /* skip empty parameters */
   }    
 
-  bail:
+bail:
 
   rfc2231_decode_parameters (&head);
   return (head);
@@ -364,7 +377,7 @@ void mutt_parse_content_type (char *s, BODY *ct)
 
 }
 
-static void parse_content_disposition (char *s, BODY *ct)
+static void parse_content_disposition (const char *s, BODY *ct)
 {
   PARAMETER *parms;
 
@@ -378,8 +391,7 @@ static void parse_content_disposition (char *s, BODY *ct)
   /* Check to see if a default filename was given */
   if ((s = strchr (s, ';')) != NULL)
   {
-    s++;
-    SKIPWS (s);
+    s = skip_email_wsp(s + 1);
     if ((s = mutt_get_parameter ("filename", (parms = parse_parameters (s)))))
       mutt_str_replace (&ct->filename, s);
     if ((s = mutt_get_parameter ("name", parms)))
@@ -414,8 +426,7 @@ BODY *mutt_read_mime_header (FILE *fp, int digest)
     if ((c = strchr (line, ':')))
     {
       *c = 0;
-      c++;
-      SKIPWS (c);
+      c = skip_email_wsp(c + 1);
       if (!*c)
       {
 	dprint (1, (debugfile, "mutt_read_mime_header(): skipping empty header field: %s\n", line));
@@ -660,8 +671,7 @@ static const char *uncomment_timezone (char *buf, size_t buflen, const char *tz)
 
   if (*tz != '(')
     return tz; /* no need to do anything */
-  tz++;
-  SKIPWS (tz);
+  tz = skip_email_wsp(tz + 1);
   if ((p = strpbrk (tz, " )")) == NULL)
     return tz;
   len = p - tz;
@@ -672,7 +682,7 @@ static const char *uncomment_timezone (char *buf, size_t buflen, const char *tz)
   return buf;
 }
 
-static struct tz_t
+static const struct tz_t
 {
   char tzname[5];
   unsigned char zhours;
@@ -764,7 +774,7 @@ time_t mutt_parse_date (const char *s, HEADER *h)
     t++;
   else
     t = scratch;
-  SKIPWS (t);
+  t = skip_email_wsp(t);
 
   memset (&tm, 0, sizeof (tm));
 
@@ -1170,7 +1180,7 @@ int mutt_parse_rfc822_line (ENVELOPE *e, HEADER *hdr, char *line, char *p, short
     {
       if (hdr && !hdr->received)
       {
-	char *d = strchr (p, ';');
+	char *d = strrchr (p, ';');
 	
 	if (d)
 	  hdr->received = mutt_parse_date (d + 1, NULL);
@@ -1215,7 +1225,10 @@ int mutt_parse_rfc822_line (ENVELOPE *e, HEADER *hdr, char *line, char *p, short
     }
     else if ((!ascii_strcasecmp ("upersedes", line + 1) ||
 	      !ascii_strcasecmp ("upercedes", line + 1)) && hdr)
+    {
+      FREE(&e->supersedes);
       e->supersedes = safe_strdup (p);
+    }
     break;
     
     case 't':
@@ -1254,6 +1267,7 @@ int mutt_parse_rfc822_line (ENVELOPE *e, HEADER *hdr, char *line, char *p, short
     }
     else if (ascii_strcasecmp (line+1, "-label") == 0)
     {
+      FREE(&e->x_label);
       e->x_label = safe_strdup(p);
       matched = 1;
     }
@@ -1317,7 +1331,6 @@ ENVELOPE *mutt_read_rfc822_header (FILE *f, HEADER *hdr, short user_hdrs,
   char *line = safe_malloc (LONG_STRING);
   char *p;
   LOFF_T loc;
-  int matched;
   size_t linelen = LONG_STRING;
   char buf[LONG_STRING+1];
 
@@ -1341,8 +1354,6 @@ ENVELOPE *mutt_read_rfc822_header (FILE *f, HEADER *hdr, short user_hdrs,
   while ((loc = ftello (f)),
 	  *(line = mutt_read_rfc822_line (f, line, &linelen)) != 0)
   {
-    matched = 0;
-
     if ((p = strpbrk (line, ": \t")) == NULL || *p != ':')
     {
       char return_path[LONG_STRING];
@@ -1353,7 +1364,7 @@ ENVELOPE *mutt_read_rfc822_header (FILE *f, HEADER *hdr, short user_hdrs,
 	continue; /* just ignore */
       else if (is_from (line, return_path, sizeof (return_path), &t))
       {
-	/* MH somtimes has the From_ line in the middle of the header! */
+	/* MH sometimes has the From_ line in the middle of the header! */
 	if (hdr && !hdr->received)
 	  hdr->received = t - mutt_local_tz (t);
 	continue;
@@ -1392,13 +1403,13 @@ ENVELOPE *mutt_read_rfc822_header (FILE *f, HEADER *hdr, short user_hdrs,
 	/* spam tag is new, and match expr is non-empty; copy */
 	else if (!e->spam && *buf)
 	{
-	  e->spam = mutt_buffer_from(NULL, buf);
+	  e->spam = mutt_buffer_from (buf);
 	}
 
 	/* match expr is empty; plug in null string if no existing tag */
 	else if (!e->spam)
 	{
-	  e->spam = mutt_buffer_from(NULL, "");
+	  e->spam = mutt_buffer_from("");
 	}
 
 	if (e->spam && e->spam->data)
@@ -1407,13 +1418,11 @@ ENVELOPE *mutt_read_rfc822_header (FILE *f, HEADER *hdr, short user_hdrs,
     }
 
     *p = 0;
-    p++;
-    SKIPWS (p);
+    p = skip_email_wsp(p + 1);
     if (!*p)
       continue; /* skip empty header fields */
 
-    matched = mutt_parse_rfc822_line (e, hdr, line, p, user_hdrs, weed, 1, &last);
-    
+    mutt_parse_rfc822_line (e, hdr, line, p, user_hdrs, weed, 1, &last);
   }
 
   FREE (&line);

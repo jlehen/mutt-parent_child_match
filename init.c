@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2010,2013 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -254,12 +254,12 @@ int mutt_extract_token (BUFFER *dest, BUFFER *tok, int flags)
       tok->dptr = pc + 1;
 
       /* read line */
-      memset (&expn, 0, sizeof (expn));
+      mutt_buffer_init (&expn);
       expn.data = mutt_read_line (NULL, &expn.dsize, fp, &line, 0);
       safe_fclose (&fp);
       mutt_wait_filter (pid);
 
-      /* if we got output, make a new string consiting of the shell ouptput
+      /* if we got output, make a new string consisting of the shell output
 	 plus whatever else was left on the original line */
       /* BUT: If this is inside a quoted string, directly add output to 
        * the token */
@@ -706,7 +706,7 @@ static int parse_spam_list (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *
 {
   BUFFER templ;
 
-  memset(&templ, 0, sizeof(templ));
+  mutt_buffer_init (&templ);
 
   /* Insist on at least one parameter */
   if (!MoreArgs(s))
@@ -874,7 +874,7 @@ static int parse_group (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
 	case ADDR:
 	  if ((addr = mutt_parse_adrlist (NULL, buf->data)) == NULL)
 	    goto bail;
-	  if (mutt_addrlist_to_idna (addr, &estr))
+	  if (mutt_addrlist_to_intl (addr, &estr))
 	  { 
 	    snprintf (err->data, err->dsize, _("%sgroup: warning: bad IDN '%s'.\n"),
 		      data == 1 ? "un" : "", estr);
@@ -1339,7 +1339,7 @@ static int parse_alias (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err)
     last->next = tmp;
   else
     Aliases = tmp;
-  if (mutt_addrlist_to_idna (tmp->addr, &estr))
+  if (mutt_addrlist_to_intl (tmp->addr, &estr))
   {
     snprintf (err->data, err->dsize, _("Warning: Bad IDN '%s' in alias '%s'.\n"),
 	      estr, tmp->name);
@@ -1444,7 +1444,7 @@ static int parse_my_hdr (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err
 	/* replace the old value */
 	FREE (&tmp->data);
 	tmp->data = buf->data;
-	memset (buf, 0, sizeof (BUFFER));
+	mutt_buffer_init (buf);
 	return 0;
       }
       if (!tmp->next)
@@ -1459,7 +1459,7 @@ static int parse_my_hdr (BUFFER *buf, BUFFER *s, unsigned long data, BUFFER *err
     UserHeader = tmp;
   }
   tmp->data = buf->data;
-  memset (buf, 0, sizeof (BUFFER));
+  mutt_buffer_init (buf);
   return 0;
 }
 
@@ -1672,6 +1672,9 @@ static int check_charset (struct option_t *opt, const char *val)
   char *p, *q = NULL, *s = safe_strdup (val);
   int rc = 0, strict = strcmp (opt->option, "send_charset") == 0;
 
+  if (!s)
+    return rc;
+
   for (p = strtok_r (s, ":", &q); p; p = strtok_r (NULL, ":", &q))
   {
     if (!*p)
@@ -1691,7 +1694,8 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
 {
   int query, unset, inv, reset, r = 0;
   int idx = -1;
-  char *p, scratch[_POSIX_PATH_MAX];
+  const char *p;
+  char scratch[_POSIX_PATH_MAX];
   char* myvar;
 
   while (MoreArgs (s))
@@ -2113,7 +2117,7 @@ static int parse_set (BUFFER *tmp, BUFFER *s, unsigned long data, BUFFER *err)
     {
       if (query)
       {
-	char *vals[] = { "no", "yes", "ask-no", "ask-yes" };
+	static const char * const vals[] = { "no", "yes", "ask-no", "ask-yes" };
 
 	snprintf (err->data, err->dsize, "%s=%s", MuttVars[idx].option,
 		  vals [ quadoption (MuttVars[idx].data) ]);
@@ -2250,7 +2254,7 @@ static int source_rc (const char *rcfile, BUFFER *err)
     return (-1);
   }
 
-  memset (&token, 0, sizeof (token));
+  mutt_buffer_init (&token);
   while ((linebuf = mutt_read_line (linebuf, &buflen, f, &line, M_CONT)) != NULL)
   {
     conv=ConfigCharset && (*ConfigCharset) && Charset;
@@ -2289,7 +2293,7 @@ static int source_rc (const char *rcfile, BUFFER *err)
   {
     /* the muttrc source keyword */
     snprintf (err->data, err->dsize, rc >= -MAXERRS ? _("source: errors in %s")
-      : _("source: reading aborted due too many errors in %s"), rcfile);
+      : _("source: reading aborted due to too many errors in %s"), rcfile);
     rc = -1;
   }
   return (rc);
@@ -2334,7 +2338,7 @@ int mutt_parse_rc_line (/* const */ char *line, BUFFER *token, BUFFER *err)
   if (!line || !*line)
     return 0;
 
-  memset (&expn, 0, sizeof (expn));
+  mutt_buffer_init (&expn);
   expn.data = expn.dptr = line;
   expn.dsize = mutt_strlen (line);
 
@@ -2456,7 +2460,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
       Matches[Num_matched++] = User_typed;
 
       /* All matches are stored. Longest non-ambiguous string is ""
-       * i.e. dont change 'buffer'. Fake successful return this time */
+       * i.e. don't change 'buffer'. Fake successful return this time */
       if (User_typed[0] == 0)
 	return 1;
     }
@@ -2464,7 +2468,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
     if (Completed[0] == 0 && User_typed[0])
       return 0;
 
-     /* Num_matched will _always_ be atleast 1 since the initial
+     /* Num_matched will _always_ be at least 1 since the initial
       * user-typed string is always stored */
     if (numtabs == 1 && Num_matched == 2)
       snprintf(Completed, sizeof(Completed),"%s", Matches[0]);
@@ -2481,7 +2485,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
 	   || !mutt_strncmp (buffer, "reset", 5)
 	   || !mutt_strncmp (buffer, "toggle", 6))
   { 		/* complete variables */
-    char *prefixes[] = { "no", "inv", "?", "&", 0 };
+    static const char * const prefixes[] = { "no", "inv", "?", "&", 0 };
     
     pt++;
     /* loop through all the possible prefixes (no, inv, ...) */
@@ -2512,7 +2516,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
       Matches[Num_matched++] = User_typed;
 
       /* All matches are stored. Longest non-ambiguous string is ""
-       * i.e. dont change 'buffer'. Fake successful return this time */
+       * i.e. don't change 'buffer'. Fake successful return this time */
       if (User_typed[0] == 0)
 	return 1;
     }
@@ -2520,7 +2524,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
     if (Completed[0] == 0 && User_typed[0])
       return 0;
 
-    /* Num_matched will _always_ be atleast 1 since the initial
+    /* Num_matched will _always_ be at least 1 since the initial
      * user-typed string is always stored */
     if (numtabs == 1 && Num_matched == 2)
       snprintf(Completed, sizeof(Completed),"%s", Matches[0]);
@@ -2533,7 +2537,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
   }
   else if (!mutt_strncmp (buffer, "exec", 4))
   {
-    struct binding_t *menu = km_get_table (CurrentMenu);
+    const struct binding_t *menu = km_get_table (CurrentMenu);
 
     if (!menu && CurrentMenu != MENU_PAGER)
       menu = OpGeneric;
@@ -2559,7 +2563,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
       Matches[Num_matched++] = User_typed;
 
       /* All matches are stored. Longest non-ambiguous string is ""
-       * i.e. dont change 'buffer'. Fake successful return this time */
+       * i.e. don't change 'buffer'. Fake successful return this time */
       if (User_typed[0] == 0)
 	return 1;
     }
@@ -2567,7 +2571,7 @@ int mutt_command_complete (char *buffer, size_t len, int pos, int numtabs)
     if (Completed[0] == 0 && User_typed[0])
       return 0;
 
-    /* Num_matched will _always_ be atleast 1 since the initial
+    /* Num_matched will _always_ be at least 1 since the initial
      * user-typed string is always stored */
     if (numtabs == 1 && Num_matched == 2)
       snprintf(Completed, sizeof(Completed),"%s", Matches[0]);
@@ -2632,7 +2636,7 @@ int mutt_var_value_complete (char *buffer, size_t len, int pos)
 static int var_to_string (int idx, char* val, size_t len)
 {
   char tmp[LONG_STRING];
-  char *vals[] = { "no", "yes", "ask-no", "ask-yes" };
+  static const char * const vals[] = { "no", "yes", "ask-no", "ask-yes" };
 
   tmp[0] = '\0';
 
@@ -2663,7 +2667,7 @@ static int var_to_string (int idx, char* val, size_t len)
   else if (DTYPE (MuttVars[idx].type) == DT_SORT)
   {
     const struct mapping_t *map;
-    char *p;
+    const char *p;
 
     switch (MuttVars[idx].type & DT_SUBTYPE_MASK)
     {
@@ -2727,16 +2731,15 @@ int mutt_query_variables (LIST *queries)
 {
   LIST *p;
   
-  char errbuff[LONG_STRING];
   char command[STRING];
   
   BUFFER err, token;
-  
-  memset (&err, 0, sizeof (err));
-  memset (&token, 0, sizeof (token));
-  
-  err.data = errbuff;
-  err.dsize = sizeof (errbuff);
+
+  mutt_buffer_init (&err);
+  mutt_buffer_init (&token);
+
+  err.dsize = STRING;
+  err.data = safe_malloc (err.dsize);
   
   for (p = queries; p; p = p->next)
   {
@@ -2745,12 +2748,16 @@ int mutt_query_variables (LIST *queries)
     {
       fprintf (stderr, "%s\n", err.data);
       FREE (&token.data);
+      FREE (&err.data);
+
       return 1;
     }
     printf ("%s\n", err.data);
   }
   
   FREE (&token.data);
+  FREE (&err.data);
+
   return 0;
 }
 
@@ -2759,16 +2766,15 @@ int mutt_dump_variables (void)
 {
   int i;
   
-  char errbuff[LONG_STRING];
   char command[STRING];
   
   BUFFER err, token;
-  
-  memset (&err, 0, sizeof (err));
-  memset (&token, 0, sizeof (token));
-  
-  err.data = errbuff;
-  err.dsize = sizeof (errbuff);
+
+  mutt_buffer_init (&err);
+  mutt_buffer_init (&token);
+
+  err.dsize = STRING;
+  err.data = safe_malloc (err.dsize);
   
   for (i = 0; MuttVars[i].option; i++)
   {
@@ -2780,16 +2786,20 @@ int mutt_dump_variables (void)
     {
       fprintf (stderr, "%s\n", err.data);
       FREE (&token.data);
+      FREE (&err.data);
+
       return 1;
     }
     printf("%s\n", err.data);
   }
   
   FREE (&token.data);
+  FREE (&err.data);
+
   return 0;
 }
 
-char *mutt_getnamebyvalue (int val, const struct mapping_t *map)
+const char *mutt_getnamebyvalue (int val, const struct mapping_t *map)
 {
   int i;
 
@@ -2812,7 +2822,6 @@ int mutt_getvaluebyname (const char *name, const struct mapping_t *map)
 #ifdef DEBUG
 static void start_debug (void)
 {
-  time_t t;
   int i;
   char buf[_POSIX_PATH_MAX];
   char buf2[_POSIX_PATH_MAX];
@@ -2826,7 +2835,6 @@ static void start_debug (void)
   }
   if ((debugfile = safe_fopen(buf, "w")) != NULL)
   {
-    t = time (0);
     setbuf (debugfile, NULL); /* don't buffer the debugging output! */
     dprint(1,(debugfile,"Mutt/%s (%s) debugging at level %d\n",
 	      MUTT_VERSION, ReleaseDate, debuglevel));
@@ -2837,22 +2845,25 @@ static void start_debug (void)
 static int mutt_execute_commands (LIST *p)
 {
   BUFFER err, token;
-  char errstr[SHORT_STRING];
 
-  memset (&err, 0, sizeof (err));
-  err.data = errstr;
-  err.dsize = sizeof (errstr);
-  memset (&token, 0, sizeof (token));
+  mutt_buffer_init (&err);
+  err.dsize = STRING;
+  err.data = safe_malloc (err.dsize);
+  mutt_buffer_init (&token);
   for (; p; p = p->next)
   {
     if (mutt_parse_rc_line (p->data, &token, &err) != 0)
     {
       fprintf (stderr, _("Error in command line: %s\n"), err.data);
       FREE (&token.data);
-      return (-1);
+      FREE (&err.data);
+
+      return -1;
     }
   }
   FREE (&token.data);
+  FREE (&err.data);
+
   return 0;
 }
 
@@ -2877,13 +2888,15 @@ void mutt_init (int skip_sys_rc, LIST *commands)
 {
   struct passwd *pw;
   struct utsname utsname;
-  char *p, buffer[STRING], error[STRING];
+  char *p, buffer[STRING];
+  char *domain = NULL;
   int i, default_rc = 0, need_pause = 0;
   BUFFER err;
 
-  memset (&err, 0, sizeof (err));
-  err.data = error;
-  err.dsize = sizeof (error);
+  mutt_buffer_init (&err);
+  err.dsize = STRING;
+  err.data = safe_malloc(err.dsize);
+  err.dptr = err.data;
 
   Groups = hash_create (1031, 0);
   ReverseAlias = hash_create (1031, 1);
@@ -2941,30 +2954,53 @@ void mutt_init (int skip_sys_rc, LIST *commands)
 #endif
 
   /* And about the host... */
-  uname (&utsname);
+
+#ifdef DOMAIN
+  domain = safe_strdup (DOMAIN);
+#endif /* DOMAIN */
+
+  /*
+   * The call to uname() shouldn't fail, but if it does, the system is horribly
+   * broken, and the system's networking configuration is in an unreliable
+   * state.  We should bail.
+   */
+  if ((uname (&utsname)) == -1)
+  {
+    mutt_endwin (NULL);
+    perror (_("unable to determine nodename via uname()"));
+    exit (1);
+  }
+
   /* some systems report the FQDN instead of just the hostname */
   if ((p = strchr (utsname.nodename, '.')))
-  {
     Hostname = mutt_substrdup (utsname.nodename, p);
-    p++;
-    strfcpy (buffer, p, sizeof (buffer)); /* save the domain for below */
-  }
   else
     Hostname = safe_strdup (utsname.nodename);
 
-#ifndef DOMAIN
-#define DOMAIN buffer
-  if (!p && getdnsdomainname (buffer, sizeof (buffer)) == -1)
-    Fqdn = safe_strdup ("@");
-  else
-#endif /* DOMAIN */
-    if (*DOMAIN != '@')
+  /* now get FQDN.  Use configured domain first, DNS next, then uname */
+  if (domain)
   {
-    Fqdn = safe_malloc (mutt_strlen (DOMAIN) + mutt_strlen (Hostname) + 2);
-    sprintf (Fqdn, "%s.%s", NONULL(Hostname), DOMAIN);	/* __SPRINTF_CHECKED__ */
+    /* we have a compile-time domain name, use that for Fqdn */
+    Fqdn = safe_malloc (mutt_strlen (domain) + mutt_strlen (Hostname) + 2);
+    sprintf (Fqdn, "%s.%s", NONULL(Hostname), domain);	/* __SPRINTF_CHECKED__ */
+  }
+  else if (!(getdnsdomainname (buffer, sizeof buffer)))
+  {
+    Fqdn = safe_malloc (mutt_strlen (buffer) + mutt_strlen (Hostname) + 2);
+    sprintf (Fqdn, "%s.%s", NONULL(Hostname), buffer);	/* __SPRINTF_CHECKED__ */
   }
   else
-    Fqdn = safe_strdup(NONULL(Hostname));
+    /*
+     * DNS failed, use the nodename.  Whether or not the nodename had a '.' in
+     * it, we can use the nodename as the FQDN.  On hosts where DNS is not
+     * being used, e.g. small network that relies on hosts files, a short host
+     * name is all that is required for SMTP to work correctly.  It could be
+     * wrong, but we've done the best we can, at this point the onus is on the
+     * user to provide the correct hostname if the nodename won't work in their
+     * network.
+     */
+    Fqdn = safe_strdup(utsname.nodename);
+
 
   if ((p = getenv ("MAIL")))
     Spoolfile = safe_strdup (p);
@@ -3006,11 +3042,11 @@ void mutt_init (int skip_sys_rc, LIST *commands)
 
     snprintf (buffer, sizeof (buffer), "Reply-To: %s", p);
 
-    memset (&buf, 0, sizeof (buf));
+    mutt_buffer_init (&buf);
     buf.data = buf.dptr = buffer;
     buf.dsize = mutt_strlen (buffer);
 
-    memset (&token, 0, sizeof (token));
+    mutt_buffer_init (&token);
     parse_my_hdr (&token, &buf, 0, &err);
     FREE (&token.data);
   }
@@ -3049,6 +3085,15 @@ void mutt_init (int skip_sys_rc, LIST *commands)
 
   mutt_init_history ();
 
+  /* RFC2368, "4. Unsafe headers"
+   * The creator of a mailto URL cannot expect the resolver of a URL to
+   * understand more than the "subject" and "body" headers. Clients that
+   * resolve mailto URLs into mail messages should be able to correctly
+   * create RFC 822-compliant mail messages using the "subject" and "body"
+   * headers.
+   */
+  add_to_list(&MailtoAllow, "body");
+  add_to_list(&MailtoAllow, "subject");
   
   
   
@@ -3146,11 +3191,13 @@ void mutt_init (int skip_sys_rc, LIST *commands)
 #if 0
   set_option (OPTWEED); /* turn weeding on by default */
 #endif
+
+  FREE (&err.data);
 }
 
 int mutt_get_hook_type (const char *name)
 {
-  struct command_t *c;
+  const struct command_t *c;
 
   for (c = Commands ; c->name ; c++)
     if (c->func == mutt_parse_hook && ascii_strcasecmp (c->name, name) == 0)

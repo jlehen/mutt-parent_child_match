@@ -11,7 +11,7 @@
 /* Define if you want classic PGP support. */
 #undef CRYPT_BACKEND_CLASSIC_PGP
 
-/* Define if you want clasic S/MIME support. */
+/* Define if you want classic S/MIME support. */
 #undef CRYPT_BACKEND_CLASSIC_SMIME
 
 /* Define if you use GPGME to support OpenPGP */
@@ -133,6 +133,34 @@
 /* Define to 1 if you have the `getuid' function. */
 #undef HAVE_GETUID
 
+/* Define to 1 if the system has the type `gnutls_certificate_credentials_t'.
+   */
+#undef HAVE_GNUTLS_CERTIFICATE_CREDENTIALS_T
+
+/* Define to 1 if the system has the type `gnutls_certificate_status_t'. */
+#undef HAVE_GNUTLS_CERTIFICATE_STATUS_T
+
+/* Define to 1 if the system has the type `gnutls_datum_t'. */
+#undef HAVE_GNUTLS_DATUM_T
+
+/* Define to 1 if the system has the type `gnutls_digest_algorithm_t'. */
+#undef HAVE_GNUTLS_DIGEST_ALGORITHM_T
+
+/* Define to 1 if you have the `gnutls_priority_set_direct' function. */
+#undef HAVE_GNUTLS_PRIORITY_SET_DIRECT
+
+/* Define to 1 if the system has the type `gnutls_session_t'. */
+#undef HAVE_GNUTLS_SESSION_T
+
+/* Define to 1 if the system has the type `gnutls_transport_ptr_t'. */
+#undef HAVE_GNUTLS_TRANSPORT_PTR_T
+
+/* Define to 1 if the system has the type `gnutls_x509_crt_t'. */
+#undef HAVE_GNUTLS_X509_CRT_T
+
+/* Define to 1 if you have the `gpgme_op_export_keys' function. */
+#undef HAVE_GPGME_OP_EXPORT_KEYS
+
 /* Define if GPGME supports PKA */
 #undef HAVE_GPGME_PKA_TRUST
 
@@ -147,6 +175,9 @@
 
 /* Define if <iconv.h> defines iconv_t. */
 #undef HAVE_ICONV_T_DEF
+
+/* Define to 1 if you have the <idna.h> header file. */
+#undef HAVE_IDNA_H
 
 /* Define to 1 if you have the `idna_to_ascii_8z' function. */
 #undef HAVE_IDNA_TO_ASCII_8Z
@@ -165,6 +196,12 @@
 
 /* Define to 1 if you have the `idna_to_unicode_utf8_from_utf8' function. */
 #undef HAVE_IDNA_TO_UNICODE_UTF8_FROM_UTF8
+
+/* Define to 1 if you have the <idn/idna.h> header file. */
+#undef HAVE_IDN_IDNA_H
+
+/* Define to 1 if you have the <idn/stringprep.h> header file. */
+#undef HAVE_IDN_STRINGPREP_H
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -217,7 +254,7 @@
 /* Define if your <locale.h> file defines LC_MESSAGES. */
 #undef HAVE_LC_MESSAGES
 
-/* Define to 1 if you have the `idn' library */
+/* Define to 1 if you have the GNU idn library */
 #undef HAVE_LIBIDN
 
 /* Define to 1 if you have the `intl' library (-lintl). */
@@ -244,7 +281,7 @@
 /* Define to 1 if you have the <locale.h> header file. */
 #undef HAVE_LOCALE_H
 
-/* Define to 1 if the system has the type `long long int'. */
+/* Define to 1 if the system has the type 'long long int'. */
 #undef HAVE_LONG_LONG_INT
 
 /* Define to 1 if you have the <malloc.h> header file. */
@@ -355,6 +392,9 @@
 /* Define to 1 if you have the `strftime' function. */
 #undef HAVE_STRFTIME
 
+/* Define to 1 if you have the <stringprep.h> header file. */
+#undef HAVE_STRINGPREP_H
+
 /* Define to 1 if you have the <strings.h> header file. */
 #undef HAVE_STRINGS_H
 
@@ -415,8 +455,14 @@
 /* Define to 1 if you have the <unix.h> header file. */
 #undef HAVE_UNIX_H
 
+/* Define to 1 if the system has the type 'unsigned long long int'. */
+#undef HAVE_UNSIGNED_LONG_LONG_INT
+
 /* Define if you have use_default_colors, as a function or macro. */
 #undef HAVE_USE_DEFAULT_COLORS
+
+/* Define to 1 if you have the `use_extended_names' function. */
+#undef HAVE_USE_EXTENDED_NAMES
 
 /* Define to 1 if you have the <villa.h> header file. */
 #undef HAVE_VILLA_H
@@ -472,6 +518,9 @@
 /* Where to find mixmaster on your system. */
 #undef MIXMASTER
 
+/* Full textual version string. */
+#undef MUTT_VERSION
+
 /* Define if you have problems with mutt not detecting new/old mailboxes over
    NFS. Some NFS implementations incorrectly cache the attributes of small
    files. */
@@ -497,12 +546,6 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
-
-/* Define to 1 if the C compiler supports function prototypes. */
-#undef PROTOTYPES
-
-/* Define as the return type of signal handlers (`int' or `void'). */
-#undef RETSIGTYPE
 
 /* Where to find sendmail on your system. */
 #undef SENDMAIL
@@ -645,6 +688,11 @@ typedef unsigned long long uint64_t;
 #endif
   
 
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
+#endif
+
 /* Number of bits in a file offset, on hosts where this is settable. */
 #undef _FILE_OFFSET_BITS
 
@@ -663,9 +711,6 @@ typedef unsigned long long uint64_t;
 
 /* Define to 1 if you need to in order for `stat' and other things to work. */
 #undef _POSIX_SOURCE
-
-/* Define like PROTOTYPES; this can be used by system headers. */
-#undef __PROTOTYPES
 
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const

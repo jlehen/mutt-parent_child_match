@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2012 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ typedef struct color_list
 static COLOR_LIST *ColorList = NULL;
 static int UserColors = 0;
 
-static struct mapping_t Colors[] =
+static const struct mapping_t Colors[] =
 {
   { "black",	COLOR_BLACK },
   { "blue",	COLOR_BLUE },
@@ -73,7 +73,7 @@ static struct mapping_t Colors[] =
 
 #endif /* HAVE_COLOR */
 
-static struct mapping_t Fields[] =
+static const struct mapping_t Fields[] =
 {
   { "hdrdefault",	MT_COLOR_HDEFAULT },
   { "quoted",		MT_COLOR_QUOTED },
@@ -93,6 +93,7 @@ static struct mapping_t Fields[] =
   { "bold",		MT_COLOR_BOLD },
   { "underline",	MT_COLOR_UNDERLINE },
   { "index",		MT_COLOR_INDEX },
+  { "prompt",		MT_COLOR_PROMPT },
   { NULL,		0 }
 };
 
@@ -159,7 +160,7 @@ void ci_start_color (void)
 #ifdef USE_SLANG_CURSES
 static char *get_color_name (char *dest, size_t destlen, int val)
 {
-  static char * missing[3] = {"brown", "lightgray", "default"};
+  static const char * const missing[3] = {"brown", "lightgray", "default"};
   int i;
 
   switch (val)
@@ -305,13 +306,14 @@ void mutt_free_color (int fg, int bg)
 #ifdef HAVE_COLOR
 
 static int
-parse_color_name (const char *s, int *col, int *attr, int brite, BUFFER *err)
+parse_color_name (const char *s, int *col, int *attr, int is_fg, BUFFER *err)
 {
   char *eptr;
+  int is_bright = 0;
 
   if (ascii_strncasecmp (s, "bright", 6) == 0)
   {
-    *attr |= brite;
+    is_bright = 1;
     s += 6;
   }
 
@@ -331,6 +333,24 @@ parse_color_name (const char *s, int *col, int *attr, int brite, BUFFER *err)
   {
     snprintf (err->data, err->dsize, _("%s: no such color"), s);
     return (-1);
+  }
+
+  if (is_bright)
+  {
+    if (is_fg)
+    {
+      *attr |= A_BOLD;
+    }
+    else if (COLORS < 16)
+    {
+      /* A_BLINK turns the background color brite on some terms */
+      *attr |= A_BLINK;
+    }
+    else
+    {
+      /* Advance the color by 8 to get the bright version */
+      *col += 8;
+    }
   }
 
   return 0;
@@ -614,7 +634,7 @@ parse_color_pair(BUFFER *buf, BUFFER *s, int *fg, int *bg, int *attr, BUFFER *er
 
   mutt_extract_token (buf, s, 0);
 
-  if (parse_color_name (buf->data, fg, attr, A_BOLD, err) != 0)
+  if (parse_color_name (buf->data, fg, attr, 1, err) != 0)
     return (-1);
 
   if (! MoreArgs (s))
@@ -625,7 +645,7 @@ parse_color_pair(BUFFER *buf, BUFFER *s, int *fg, int *bg, int *attr, BUFFER *er
   
   mutt_extract_token (buf, s, 0);
 
-  if (parse_color_name (buf->data, bg, attr, A_BLINK, err) != 0)
+  if (parse_color_name (buf->data, bg, attr, 0, err) != 0)
     return (-1);
   
   return 0;
@@ -768,13 +788,6 @@ _mutt_parse_color (BUFFER *buf, BUFFER *s, BUFFER *err,
   }
   else
     ColorDefs[object] = fgbgattr_to_color(fg, bg, attr);
-
-#ifdef HAVE_COLOR
-# ifdef HAVE_BKGDSET
-  if (object == MT_COLOR_NORMAL && !option (OPTNOCURSES) && has_colors())
-    BKGDSET (MT_COLOR_NORMAL);
-# endif
-#endif
 
   return (r);
 }

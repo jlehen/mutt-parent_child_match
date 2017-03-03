@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Chapter 5. Mutt's MIME Support</title><meta name="generator" content="DocBook XSL Stylesheets V1.75.2" /><link rel="home" href="index.html" title="The Mutt E-Mail Client" /><link rel="up" href="index.html" title="The Mutt E-Mail Client" /><link rel="prev" href="advancedusage.html" title="Chapter 4. Advanced Usage" /><link rel="next" href="optionalfeatures.html" title="Chapter 6. Optional Features" /><style xmlns="" type="text/css">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Chapter 5. Mutt's MIME Support</title><meta name="generator" content="DocBook XSL Stylesheets V1.79.1" /><link rel="home" href="index.html" title="The Mutt E-Mail Client" /><link rel="up" href="index.html" title="The Mutt E-Mail Client" /><link rel="prev" href="advancedusage.html" title="Chapter 4. Advanced Usage" /><link rel="next" href="optionalfeatures.html" title="Chapter 6. Optional Features" /><style xmlns="" type="text/css">
       body { margin-left:2%; margin-right:2%; font-family:serif; }
 .toc, .list-of-tables, .list-of-examples { font-family:sans-serif; }
 h1, h2, h3, h4, h5, h6 { font-family:sans-serif; }
@@ -27,7 +26,7 @@ div.note { margin-bottom: 5px; }
 tr { vertical-align: top; }
 .comment { color:#707070; }
 
-    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 5. Mutt's MIME Support</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="advancedusage.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="optionalfeatures.html">Next</a></td></tr></table><hr /></div><div class="chapter" title="Chapter 5. Mutt's MIME Support"><div class="titlepage"><div><div><h2 class="title"><a id="mimesupport"></a>Chapter 5. Mutt's MIME Support</h2></div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="sect1"><a href="mimesupport.html#using-mime">1. Using MIME in Mutt</a></span></dt><dd><dl><dt><span class="sect2"><a href="mimesupport.html#mime-overview">1.1. MIME Overview</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#mime-pager">1.2. Viewing MIME Messages in the Pager</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#attach-menu">1.3. The Attachment Menu</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#compose-menu">1.4. The Compose Menu</a></span></dt></dl></dd><dt><span class="sect1"><a href="mimesupport.html#mime-types">2. MIME Type Configuration with <code class="literal">mime.types</code></a></span></dt><dt><span class="sect1"><a href="mimesupport.html#mailcap">3. MIME Viewer Configuration with Mailcap</a></span></dt><dd><dl><dt><span class="sect2"><a href="mimesupport.html#mailcap-basics">3.1. The Basics of the Mailcap File</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#secure-mailcap">3.2. Secure Use of Mailcap</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#advanced-mailcap">3.3. Advanced Mailcap Usage</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#mailcap-example">3.4. Example Mailcap Files</a></span></dt></dl></dd><dt><span class="sect1"><a href="mimesupport.html#auto-view">4. MIME Autoview</a></span></dt><dt><span class="sect1"><a href="mimesupport.html#alternative-order">5. MIME Multipart/Alternative</a></span></dt><dt><span class="sect1"><a href="mimesupport.html#attachments">6. Attachment Searching and Counting</a></span></dt><dt><span class="sect1"><a href="mimesupport.html#mime-lookup">7. MIME Lookup</a></span></dt></dl></div><p>
+    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 5. Mutt's MIME Support</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="advancedusage.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="optionalfeatures.html">Next</a></td></tr></table><hr /></div><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="mimesupport"></a>Chapter 5. Mutt's MIME Support</h1></div></div></div><div class="toc"><p><strong>Table of Contents</strong></p><dl class="toc"><dt><span class="sect1"><a href="mimesupport.html#using-mime">1. Using MIME in Mutt</a></span></dt><dd><dl><dt><span class="sect2"><a href="mimesupport.html#mime-overview">1.1. MIME Overview</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#mime-pager">1.2. Viewing MIME Messages in the Pager</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#attach-menu">1.3. The Attachment Menu</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#compose-menu">1.4. The Compose Menu</a></span></dt></dl></dd><dt><span class="sect1"><a href="mimesupport.html#mime-types">2. MIME Type Configuration with <code class="literal">mime.types</code></a></span></dt><dt><span class="sect1"><a href="mimesupport.html#mailcap">3. MIME Viewer Configuration with Mailcap</a></span></dt><dd><dl><dt><span class="sect2"><a href="mimesupport.html#mailcap-basics">3.1. The Basics of the Mailcap File</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#secure-mailcap">3.2. Secure Use of Mailcap</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#advanced-mailcap">3.3. Advanced Mailcap Usage</a></span></dt><dt><span class="sect2"><a href="mimesupport.html#mailcap-example">3.4. Example Mailcap Files</a></span></dt></dl></dd><dt><span class="sect1"><a href="mimesupport.html#auto-view">4. MIME Autoview</a></span></dt><dt><span class="sect1"><a href="mimesupport.html#alternative-order">5. MIME Multipart/Alternative</a></span></dt><dt><span class="sect1"><a href="mimesupport.html#attachments">6. Attachment Searching and Counting</a></span></dt><dt><span class="sect1"><a href="mimesupport.html#mime-lookup">7. MIME Lookup</a></span></dt></dl></div><p>
 Quite a bit of effort has been made to make Mutt the premier text-mode
 MIME MUA.  Every effort has been made to provide the functionality that
 the discerning MIME user requires, and the conformance to the standards
@@ -37,7 +36,7 @@ types of configuration files which Mutt uses.  One is the
 extensions to IANA MIME types.  The other is the
 <code class="literal">mailcap</code> file, which specifies the external commands
 to use for handling specific MIME types.
-</p><div class="sect1" title="1. Using MIME in Mutt"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="using-mime"></a>1. Using MIME in Mutt</h2></div></div></div><div class="sect2" title="1.1. MIME Overview"><div class="titlepage"><div><div><h3 class="title"><a id="mime-overview"></a>1.1. MIME Overview</h3></div></div></div><p>
+</p><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="using-mime"></a>1. Using MIME in Mutt</h2></div></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="mime-overview"></a>1.1. MIME Overview</h3></div></div></div><p>
 MIME is short for <span class="quote">“<span class="quote">Multipurpose Internet Mail Extension</span>”</span>
 and describes mechanisms to internationalize and structure mail
 messages. Before the introduction of MIME, messages had a single text
@@ -74,7 +73,7 @@ flexibly configured as to how what MIME structure is displayed (and if
 it's displayed): these decisions are based on the content's MIME type.
 There are three areas/menus in dealing with MIME: the pager (while
 viewing a message), the attachment menu and the compose menu.
-</p></div><div class="sect2" title="1.2. Viewing MIME Messages in the Pager"><div class="titlepage"><div><div><h3 class="title"><a id="mime-pager"></a>1.2. Viewing MIME Messages in the Pager</h3></div></div></div><p>
+</p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="mime-pager"></a>1.2. Viewing MIME Messages in the Pager</h3></div></div></div><p>
 When you select a message from the index and view it in the pager, Mutt
 decodes as much of a message as possible to a text representation.  Mutt
 internally supports a number of MIME types, including the
@@ -97,7 +96,7 @@ is one of the already mentioned content encodings.
 If Mutt cannot deal with a MIME type, it will display a message like:
 </p><pre class="screen">
 [-- image/gif is unsupported (use 'v' to view this part) --]
-</pre></div><div class="sect2" title="1.3. The Attachment Menu"><div class="titlepage"><div><div><h3 class="title"><a id="attach-menu"></a>1.3. The Attachment Menu</h3></div></div></div><p>
+</pre></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="attach-menu"></a>1.3. The Attachment Menu</h3></div></div></div><p>
 The default binding for <code class="literal">&lt;view-attachments&gt;</code> is
 <span class="quote">“<span class="quote">v</span>”</span>, which displays the attachment menu for a message.  The
 attachment menu displays a list of the attachments in a message.  From
@@ -117,7 +116,7 @@ and the <code class="literal">&lt;reply&gt;</code> and
 </p><p>
 See table <a class="xref" href="reference.html#tab-attachment-bindings" title="Table 9.7. Default Attachment Menu Bindings">Table 9.7, “Default Attachment Menu Bindings”</a> for all available
 functions.
-</p></div><div class="sect2" title="1.4. The Compose Menu"><div class="titlepage"><div><div><h3 class="title"><a id="compose-menu"></a>1.4. The Compose Menu</h3></div></div></div><p>
+</p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="compose-menu"></a>1.4. The Compose Menu</h3></div></div></div><p>
 The compose menu is the menu you see before you send a message.  It
 allows you to edit the recipient list, the subject, and other aspects of
 your message.  It also contains a list of the attachments of your
@@ -146,7 +145,7 @@ final field is the description of the attachment, and can be changed
 with the <code class="literal">&lt;edit-description&gt;</code> command (default:
 d). See <a class="link" href="reference.html#attach-format" title="3.13. attach_format">$attach_format</a> for a full
 list of available expandos to format this display to your needs.
-</p></div></div><div class="sect1" title="2. MIME Type Configuration with mime.types"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mime-types"></a>2. MIME Type Configuration with <code class="literal">mime.types</code></h2></div></div></div><p>
+</p></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mime-types"></a>2. MIME Type Configuration with <code class="literal">mime.types</code></h2></div></div></div><p>
 To get most out of MIME, it's important that a MIME part's content type
 matches the content as closely as possible so that the recipient's
 client can automatically select the right viewer for the
@@ -164,7 +163,7 @@ personal <code class="literal">mime.types</code> file at
 </p><p>
 Each line starts with the full MIME type, followed by a space and
 space-separated list of file extensions. For example you could use:
-</p><div class="example"><a id="ex-mime-types"></a><p class="title"><b>Example 5.1. <code class="literal">mime.types</code></b></p><div class="example-contents"><pre class="screen">
+</p><div class="example"><a id="ex-mime-types"></a><p class="title"><strong>Example 5.1. <code class="literal">mime.types</code></strong></p><div class="example-contents"><pre class="screen">
 application/postscript          ps eps
 application/pgp                 pgp
 audio/x-aiff                    aif aifc aiff
@@ -186,9 +185,9 @@ major types. Mutt recognizes all of these if the appropriate entry is
 found in the <code class="literal">mime.types</code> file. Non-recognized mime
 types should only be used if the recipient of the message is likely to
 be expecting such attachments.
-</p><div class="table"><a id="supported-mime-types"></a><p class="title"><b>Table 5.1. Supported MIME types</b></p><div class="table-contents"><table summary="Supported MIME types" border="1"><colgroup><col /><col /><col /></colgroup><thead><tr><th>MIME major type</th><th>Standard</th><th>Description</th></tr></thead><tbody><tr><td><code class="literal">application</code></td><td>yes</td><td>General application data</td></tr><tr><td><code class="literal">audio</code></td><td>yes</td><td>Audio data</td></tr><tr><td><code class="literal">image</code></td><td>yes</td><td>Image data</td></tr><tr><td><code class="literal">message</code></td><td>yes</td><td>Mail messages, message status information</td></tr><tr><td><code class="literal">model</code></td><td>yes</td><td>VRML and other modeling data</td></tr><tr><td><code class="literal">multipart</code></td><td>yes</td><td>Container for other MIME parts</td></tr><tr><td><code class="literal">text</code></td><td>yes</td><td>Text data</td></tr><tr><td><code class="literal">video</code></td><td>yes</td><td>Video data</td></tr><tr><td><code class="literal">chemical</code></td><td>no</td><td>Mostly molecular data</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p><div class="table"><a id="supported-mime-types"></a><p class="title"><strong>Table 5.1. Supported MIME types</strong></p><div class="table-contents"><table class="table" summary="Supported MIME types" border="1"><colgroup><col /><col /><col /></colgroup><thead><tr><th>MIME major type</th><th>Standard</th><th>Description</th></tr></thead><tbody><tr><td><code class="literal">application</code></td><td>yes</td><td>General application data</td></tr><tr><td><code class="literal">audio</code></td><td>yes</td><td>Audio data</td></tr><tr><td><code class="literal">image</code></td><td>yes</td><td>Image data</td></tr><tr><td><code class="literal">message</code></td><td>yes</td><td>Mail messages, message status information</td></tr><tr><td><code class="literal">model</code></td><td>yes</td><td>VRML and other modeling data</td></tr><tr><td><code class="literal">multipart</code></td><td>yes</td><td>Container for other MIME parts</td></tr><tr><td><code class="literal">text</code></td><td>yes</td><td>Text data</td></tr><tr><td><code class="literal">video</code></td><td>yes</td><td>Video data</td></tr><tr><td><code class="literal">chemical</code></td><td>no</td><td>Mostly molecular data</td></tr></tbody></table></div></div><br class="table-break" /><p>
 MIME types are not arbitrary, they need to be assigned by <a class="ulink" href="http://www.iana.org/assignments/media-types/" target="_top">IANA</a>.
-</p></div><div class="sect1" title="3. MIME Viewer Configuration with Mailcap"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mailcap"></a>3. MIME Viewer Configuration with Mailcap</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mailcap"></a>3. MIME Viewer Configuration with Mailcap</h2></div></div></div><p>
 Mutt supports RFC 1524 MIME Configuration, in particular the Unix
 specific format specified in Appendix A of RFC 1524.  This file format
 is commonly referred to as the <span class="quote">“<span class="quote">mailcap</span>”</span> format.  Many MIME
@@ -214,7 +213,7 @@ mutt -nF /dev/null -Q mailcap_path
 In particular, the metamail distribution will install a mailcap file,
 usually as <code class="literal">/usr/local/etc/mailcap</code>, which contains
 some baseline entries.
-</p><div class="sect2" title="3.1. The Basics of the Mailcap File"><div class="titlepage"><div><div><h3 class="title"><a id="mailcap-basics"></a>3.1. The Basics of the Mailcap File</h3></div></div></div><p>
+</p><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="mailcap-basics"></a>3.1. The Basics of the Mailcap File</h3></div></div></div><p>
 A mailcap file consists of a series of lines which are comments, blank,
 or definitions.
 </p><p>
@@ -267,7 +266,7 @@ text/html; lynx %s
 </pre><p>
 In this case, lynx does not support viewing a file from standard input,
 so you must use the <code class="literal">%s</code> syntax.
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 <span class="emphasis"><em>Some older versions of lynx contain a bug where they will
 check the mailcap file for a viewer for <code class="literal">text/html</code>.
 They will find the line which calls lynx, and run it.  This causes lynx
@@ -284,11 +283,11 @@ and a pager on all other text formats, then you would use the following:
 </p><pre class="screen">
 text/html; lynx %s
 text/*; more
-</pre></div><div class="sect2" title="3.2. Secure Use of Mailcap"><div class="titlepage"><div><div><h3 class="title"><a id="secure-mailcap"></a>3.2. Secure Use of Mailcap</h3></div></div></div><p>
+</pre></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="secure-mailcap"></a>3.2. Secure Use of Mailcap</h3></div></div></div><p>
 The interpretation of shell meta-characters embedded in MIME parameters
 can lead to security problems in general.  Mutt tries to quote
 parameters in expansion of <code class="literal">%s</code> syntaxes properly, and
-avoids risky characters by substituting them, see the <a class="link" href="reference.html#mailcap-sanitize" title="3.121. mailcap_sanitize">$mailcap_sanitize</a> variable.
+avoids risky characters by substituting them, see the <a class="link" href="reference.html#mailcap-sanitize" title="3.125. mailcap_sanitize">$mailcap_sanitize</a> variable.
 </p><p>
 Although Mutt's procedures to invoke programs with mailcap seem to be
 safe, there are other applications parsing mailcap, maybe taking less
@@ -310,11 +309,11 @@ is safe, since it is not itself subject to any further expansion):
 </p><pre class="screen">
 text/test-mailcap-bug; cat %s; copiousoutput; test=charset=%{charset} \
         &amp;&amp; test "`echo $charset | tr '[A-Z]' '[a-z]'`" != iso-8859-1
-</pre></div><div class="sect2" title="3.3. Advanced Mailcap Usage"><div class="titlepage"><div><div><h3 class="title"><a id="advanced-mailcap"></a>3.3. Advanced Mailcap Usage</h3></div></div></div><div class="sect3" title="3.3.1. Optional Fields"><div class="titlepage"><div><div><h4 class="title"><a id="optional-mailcap-fields"></a>3.3.1. Optional Fields</h4></div></div></div><p>
+</pre></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="advanced-mailcap"></a>3.3. Advanced Mailcap Usage</h3></div></div></div><div class="sect3"><div class="titlepage"><div><div><h4 class="title"><a id="optional-mailcap-fields"></a>3.3.1. Optional Fields</h4></div></div></div><p>
 In addition to the required content-type and view command fields, you
 can add semi-colon <span class="quote">“<span class="quote">;</span>”</span> separated fields to set flags and
 other options.  Mutt recognizes the following optional fields:
-</p><div class="variablelist"><dl><dt><span class="term">copiousoutput</span></dt><dd><p>
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">copiousoutput</span></dt><dd><p>
 This flag tells Mutt that the command passes possibly large amounts of
 text on standard output.  This causes Mutt to invoke a pager (either
 the internal pager or the external pager defined by the pager variable)
@@ -334,9 +333,9 @@ entries with this flag will be considered a handler for a MIME type
 — all other entries will be ignored.
 </p></dd><dt><span class="term">needsterminal</span></dt><dd><p>
 Mutt uses this flag when viewing attachments with <a class="link" href="mimesupport.html#auto-view" title="4. MIME Autoview"><span class="command"><strong>auto_view</strong></span></a>, in order to
-decide whether it should honor the setting of the <a class="link" href="reference.html#wait-key" title="3.305. wait_key">$wait_key</a> variable or not.  When an attachment
+decide whether it should honor the setting of the <a class="link" href="reference.html#wait-key" title="3.324. wait_key">$wait_key</a> variable or not.  When an attachment
 is viewed using an interactive program, and the corresponding mailcap
-entry has a <span class="emphasis"><em>needsterminal</em></span> flag, Mutt will use <a class="link" href="reference.html#wait-key" title="3.305. wait_key">$wait_key</a> and the exit status of the program
+entry has a <span class="emphasis"><em>needsterminal</em></span> flag, Mutt will use <a class="link" href="reference.html#wait-key" title="3.324. wait_key">$wait_key</a> and the exit status of the program
 to decide if it will ask you to press a key after the external program
 has exited.  In all other situations it will not prompt you for a key.
 </p></dd><dt><span class="term">compose=&lt;command&gt;</span></dt><dd><p>
@@ -354,7 +353,7 @@ Mutt supports this from the attachment and compose menus.
 </p></dd><dt><span class="term">edit=&lt;command&gt;</span></dt><dd><p>
 This flag specifies the command to use to edit a specific MIME type.
 Mutt supports this from the compose menu, and also uses it to compose
-new attachments.  Mutt will default to the defined <a class="link" href="reference.html#editor" title="3.58. editor">$editor</a> for text attachments.
+new attachments.  Mutt will default to the defined <a class="link" href="reference.html#editor" title="3.60. editor">$editor</a> for text attachments.
 </p></dd><dt><span class="term">nametemplate=&lt;template&gt;</span></dt><dd><p>
 This field specifies the format for the file denoted by
 <code class="literal">%s</code> in the command fields.  Certain programs will
@@ -384,7 +383,7 @@ it isn't.  If <code class="literal">RunningX</code> returns 0, then Mutt will ru
 firefox to display the <code class="literal">text/html</code> object.  If RunningX
 doesn't return 0, then Mutt will go on to the next entry and use lynx to
 display the <code class="literal">text/html</code> object.
-</p></dd></dl></div></div><div class="sect3" title="3.3.2. Search Order"><div class="titlepage"><div><div><h4 class="title"><a id="mailcap-search-order"></a>3.3.2. Search Order</h4></div></div></div><p>
+</p></dd></dl></div></div><div class="sect3"><div class="titlepage"><div><div><h4 class="title"><a id="mailcap-search-order"></a>3.3.2. Search Order</h4></div></div></div><p>
 When searching for an entry in the mailcap file, Mutt will search for
 the most useful entry for its purpose.  For instance, if you are
 attempting to print an <code class="literal">image/gif</code>, and you have the
@@ -428,13 +427,13 @@ treats all entries equally. Therefore, if not specified last, all
 following entries without this tag would never be considered for
 <code class="literal">&lt;view-attach&gt;</code> because the
 <code class="literal">copiousoutput</code> before them matched already.
-</p></div><div class="sect3" title="3.3.3. Command Expansion"><div class="titlepage"><div><div><h4 class="title"><a id="mailcap-command-expansion"></a>3.3.3. Command Expansion</h4></div></div></div><p>
+</p></div><div class="sect3"><div class="titlepage"><div><div><h4 class="title"><a id="mailcap-command-expansion"></a>3.3.3. Command Expansion</h4></div></div></div><p>
 The various commands defined in the mailcap files are passed to the
 <code class="literal">/bin/sh</code> shell using the <code class="literal">system(3)</code>
 function.  Before the command is passed to <code class="literal">/bin/sh
 -c</code>, it is parsed to expand various special parameters with
 information from Mutt.  The keywords Mutt expands are:
-</p><div class="variablelist"><dl><dt><span class="term">%s</span></dt><dd><p>
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">%s</span></dt><dd><p>
 As seen in the basic mailcap section, this variable is expanded to a
 filename specified by the calling program.  This file contains the body
 of the message to view/print/edit or where the composing program should
@@ -464,7 +463,7 @@ Mutt does not currently support the <code class="literal">%F</code> and
 <code class="literal">%n</code> keywords specified in RFC 1524.  The main purpose
 of these parameters is for multipart messages, which is handled
 internally by Mutt.
-</p></div></div><div class="sect2" title="3.4. Example Mailcap Files"><div class="titlepage"><div><div><h3 class="title"><a id="mailcap-example"></a>3.4. Example Mailcap Files</h3></div></div></div><p>
+</p></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="mailcap-example"></a>3.4. Example Mailcap Files</h3></div></div></div><p>
 This mailcap file is fairly simple and standard:
 </p><pre class="screen">
 <span class="comment"># I'm always running X :)</span>
@@ -511,7 +510,7 @@ pbmtoascii -1x2 ) 2&gt;&amp;1 ; copiousoutput
 
 <span class="comment"># Send excel spreadsheets to my NT box</span>
 application/ms-excel; open.pl %s
-</pre></div></div><div class="sect1" title="4. MIME Autoview"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="auto-view"></a>4. MIME Autoview</h2></div></div></div><p>
+</pre></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="auto-view"></a>4. MIME Autoview</h2></div></div></div><p>
 Usage:
 </p><div class="cmdsynopsis"><p><code class="command">auto_view</code>   
 <em class="replaceable"><code>mimetype</code></em>
@@ -555,7 +554,7 @@ from the <span class="command"><strong>auto_view</strong></span> list.  This can
 autoview messages based on size, etc.
 <span class="quote">“<span class="quote"><span class="command"><strong>unauto_view</strong></span> *</span>”</span> will remove all previous
 entries.
-</p></div><div class="sect1" title="5. MIME Multipart/Alternative"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="alternative-order"></a>5. MIME Multipart/Alternative</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="alternative-order"></a>5. MIME Multipart/Alternative</h2></div></div></div><p>
 The <code class="literal">multipart/alternative</code> container type only has
 child MIME parts which represent the same content in an alternative
 way. This is often used to send HTML messages which contain an
@@ -580,7 +579,7 @@ As a last attempt, Mutt will look for any type it knows how to handle.
 </p></li></ol></div><p>
 To remove a MIME type from the <span class="command"><strong>alternative_order</strong></span>
 list, use the <span class="command"><strong>unalternative_order</strong></span> command.
-</p></div><div class="sect1" title="6. Attachment Searching and Counting"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="attachments"></a>6. Attachment Searching and Counting</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="attachments"></a>6. Attachment Searching and Counting</h2></div></div></div><p>
 If you ever lose track of attachments in your mailboxes, Mutt's
 attachment-counting and -searching support might be for you.  You can
 make your message index display the number of qualifying attachments in
@@ -640,7 +639,7 @@ actually evaluating a message.
 </p><p>
 Some examples might help to illustrate.  The examples that are not
 commented out define the default configuration of the lists.
-</p><div class="example"><a id="ex-attach-count"></a><p class="title"><b>Example 5.2. Attachment counting</b></p><div class="example-contents"><pre class="screen">
+</p><div class="example"><a id="ex-attach-count"></a><p class="title"><strong>Example 5.2. Attachment counting</strong></p><div class="example-contents"><pre class="screen">
 <span class="comment">
 # Removing a pattern from a list removes that pattern literally. It
 # does not remove any type matching the pattern.
@@ -695,13 +694,13 @@ attachments   -I message/external-body
 Entering the command <span class="quote">“<span class="quote"><span class="command"><strong>attachments</strong></span> ?</span>”</span> as
 a command will list your current settings in Muttrc format, so that it
 can be pasted elsewhere.
-</p></div><div class="sect1" title="7. MIME Lookup"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mime-lookup"></a>7. MIME Lookup</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mime-lookup"></a>7. MIME Lookup</h2></div></div></div><p>
 Usage:
-</p><div class="cmdsynopsis"><p><code class="command">mime-lookup</code>   
+</p><div class="cmdsynopsis"><p><code class="command">mime_lookup</code>   
 <em class="replaceable"><code>mimetype</code></em>
   [
 <em class="replaceable"><code>mimetype</code></em>
-...]<br /><code class="command">unmime-lookup</code>  { 
+...]<br /><code class="command">unmime_lookup</code>  { 
 <em class="replaceable"><code>*</code></em>
   |   
 <em class="replaceable"><code>mimetype</code></em>

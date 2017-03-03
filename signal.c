@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2012 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ static struct sigaction SysOldQuit;
 static int IsEndwin = 0;
 
 /* Attempt to catch "ordinary" signals and shut down gracefully. */
-static RETSIGTYPE exit_handler (int sig)
+static void exit_handler (int sig)
 {
   curs_set (1);
   endwin (); /* just to be safe */
@@ -55,12 +55,12 @@ static RETSIGTYPE exit_handler (int sig)
   exit (0);
 }
 
-static RETSIGTYPE chld_handler (int sig)
+static void chld_handler (int sig)
 {
   /* empty */
 }
 
-static RETSIGTYPE sighandler (int sig)
+static void sighandler (int sig)
 {
   int save_errno = errno;
 
@@ -128,7 +128,7 @@ void mutt_signal_init (void)
 
   /* we want SIGALRM to abort the current syscall, so we do this before
    * setting the SA_RESTART flag below.  currently this is only used to
-   * timeout on a connect() call in a reasonable amout of time.
+   * timeout on a connect() call in a reasonable amount of time.
    */
   sigaction (SIGALRM, &act, NULL);
 

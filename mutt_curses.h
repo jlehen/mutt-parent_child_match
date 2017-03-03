@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2012 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 2004 g10 Code GmbH
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -72,12 +72,6 @@
 #define curs_set(x)
 #endif
 
-#if !defined(USE_SLANG_CURSES) && defined(HAVE_BKGDSET)
-#define BKGDSET(x) bkgdset (ColorDefs[x] | ' ')
-#else
-#define BKGDSET(x)
-#endif
-
 #if (defined(USE_SLANG_CURSES) || defined(HAVE_CURS_SET))
 void mutt_curs_set (int);
 #else
@@ -99,7 +93,10 @@ void mutt_endwin (const char *);
 void mutt_flushinp (void);
 void mutt_refresh (void);
 void mutt_resize_screen (void);
-void mutt_ungetch (int, int);
+void mutt_unget_event (int, int);
+void mutt_unget_string (char *);
+void mutt_push_macro_event (int, int);
+void mutt_flush_macro_to_endcond (void);
 void mutt_need_hard_redraw (void);
 
 /* ----------------------------------------------------------------------------
@@ -126,6 +123,7 @@ enum
   MT_COLOR_BOLD,
   MT_COLOR_UNDERLINE,
   MT_COLOR_INDEX,
+  MT_COLOR_PROMPT,
   MT_COLOR_MAX
 };
 
@@ -183,8 +181,20 @@ extern COLOR_LINE *ColorIndexList;
 void ci_init_color (void);
 void ci_start_color (void);
 
+/* If the system has bkgdset() use it rather than attrset() so that the clr*()
+ * functions will properly set the background attributes all the way to the
+ * right column.
+ */
+#if defined(HAVE_BKGDSET)
+#define SETCOLOR(X) bkgdset(ColorDefs[X] | ' ')
+#define ATTRSET(X) bkgdset(X | ' ')
+#else
 #define SETCOLOR(X) attrset(ColorDefs[X])
-#define ADDCOLOR(X) attron(ColorDefs[X])
+#define ATTRSET attrset
+#endif
+
+/* reset the color to the normal terminal color as defined by 'color normal ...' */
+#define NORMAL_COLOR SETCOLOR(MT_COLOR_NORMAL)
 
 #define MAYBE_REDRAW(x) if (option (OPTNEEDREDRAW)) { unset_option (OPTNEEDREDRAW); x = REDRAW_FULL; }
 

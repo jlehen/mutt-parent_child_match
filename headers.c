@@ -1,5 +1,5 @@
 /* 
- * Copyright (C) 1996-2009 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2009,2012 Michael R. Elkins <me@mutt.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ void mutt_edit_headers (const char *editor,
 {
   char path[_POSIX_PATH_MAX];	/* tempfile used to edit headers + body */
   char buffer[LONG_STRING];
-  char *p;
+  const char *p;
   FILE *ifp, *ofp;
   int i, keep;
   ENVELOPE *n;
@@ -114,8 +114,8 @@ void mutt_edit_headers (const char *editor,
      $edit_headers set, we remove References: as they're likely invalid;
      we can simply compare strings as we don't generate References for
      multiple Message-Ids in IRT anyways */
-  if (!n->in_reply_to || (msg->env->in_reply_to &&
-			  mutt_strcmp (n->in_reply_to->data,
+  if (msg->env->in_reply_to &&
+      (!n->in_reply_to || mutt_strcmp (n->in_reply_to->data,
 				       msg->env->in_reply_to->data) != 0))
     mutt_free_list (&msg->env->references);
 
@@ -141,8 +141,7 @@ void mutt_edit_headers (const char *editor,
 
     if (fcc && ascii_strncasecmp ("fcc:", cur->data, 4) == 0)
     {
-      p = cur->data + 4;
-      SKIPWS (p);
+      p = skip_email_wsp(cur->data + 4);
       if (*p)
       {
 	strfcpy (fcc, p, fcclen);
@@ -154,10 +153,9 @@ void mutt_edit_headers (const char *editor,
     {
       BODY *body;
       BODY *parts;
-      int l = 0;
+      size_t l = 0;
 
-      p = cur->data + 7;
-      SKIPWS (p);
+      p = skip_email_wsp(cur->data + 7);
       if (*p)
       {
 	for ( ; *p && *p != ' ' && *p != '\t'; p++)
@@ -171,9 +169,7 @@ void mutt_edit_headers (const char *editor,
 	  if (l < sizeof (path) - 1)
 	    path[l++] = *p;
 	}
-	if (*p)
-	  *p++ = 0;
-	SKIPWS (p);
+	p = skip_email_wsp(p);
 	path[l] = 0;
 
 	mutt_expand_path (path, sizeof (path));

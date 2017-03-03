@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 1996-8 Michael R. Elkins <me@mutt.org>
- * Copyright (C) 1996-9 Brandon Long <blong@fiction.net>
- * Copyright (C) 1999-2009 Brendan Cully <brendan@kublai.com>
+ * Copyright (C) 1996-1998,2010,2012 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-1999 Brandon Long <blong@fiction.net>
+ * Copyright (C) 1999-2009,2011 Brendan Cully <brendan@kublai.com>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@
 
 #include "mutt.h"
 #include "imap_private.h"
-#include "message.h"
 #include "mx.h"
 #include "buffy.h"
 
@@ -52,8 +51,9 @@ static void cmd_parse_fetch (IMAP_DATA* idata, char* s);
 static void cmd_parse_myrights (IMAP_DATA* idata, const char* s);
 static void cmd_parse_search (IMAP_DATA* idata, const char* s);
 static void cmd_parse_status (IMAP_DATA* idata, char* s);
+static void cmd_parse_enabled (IMAP_DATA* idata, const char* s);
 
-static char *Capabilities[] = {
+static const char * const Capabilities[] = {
   "IMAP4",
   "IMAP4rev1",
   "STATUS",
@@ -66,6 +66,7 @@ static char *Capabilities[] = {
   "LOGINDISABLED",
   "IDLE",
   "SASL-IR",
+  "ENABLE",
 
   NULL
 };
@@ -250,7 +251,7 @@ int imap_exec (IMAP_DATA* idata, const char* cmdstr, int flags)
 
   if (rc != IMAP_CMD_OK)
   {
-    if (flags & IMAP_CMD_FAIL_OK && idata->status != IMAP_FATAL)
+    if ((flags & IMAP_CMD_FAIL_OK) && idata->status != IMAP_FATAL)
       return -2;
 
     dprint (1, (debugfile, "imap_exec: command failed: %s\n", idata->buf));
@@ -295,7 +296,7 @@ void imap_cmd_finish (IMAP_DATA* idata)
       dprint (2, (debugfile, "imap_cmd_finish: Expunging mailbox\n"));
       imap_expunge_mailbox (idata);
       /* Detect whether we've gotten unexpected EXPUNGE messages */
-      if (idata->reopen & IMAP_EXPUNGE_PENDING &&
+      if ((idata->reopen & IMAP_EXPUNGE_PENDING) &&
 	  !(idata->reopen & IMAP_EXPUNGE_EXPECTED))
 	idata->check_status = IMAP_EXPUNGE_PENDING;
       idata->reopen &= ~(IMAP_EXPUNGE_PENDING | IMAP_NEWMAIL_PENDING |
@@ -523,6 +524,8 @@ static int cmd_handle_untagged (IMAP_DATA* idata)
     cmd_parse_search (idata, s);
   else if (ascii_strncasecmp ("STATUS", s, 6) == 0)
     cmd_parse_status (idata, s);
+  else if (ascii_strncasecmp ("ENABLED", s, 7) == 0)
+    cmd_parse_enabled (idata, s);
   else if (ascii_strncasecmp ("BYE", s, 3) == 0)
   {
     dprint (2, (debugfile, "Handling BYE\n"));
@@ -729,7 +732,7 @@ static void cmd_parse_list (IMAP_DATA* idata, char* s)
   }
   else
   {
-    imap_unmunge_mbox_name (s);
+    imap_unmunge_mbox_name (idata, s);
     list->name = s;
   }
 
@@ -762,7 +765,8 @@ static void cmd_parse_lsub (IMAP_DATA* idata, char* s)
   idata->cmddata = &list;
   cmd_parse_list (idata, s);
   idata->cmddata = NULL;
-  if (!list.name)
+  /* noselect is for a gmail quirk (#3445) */
+  if (!list.name || list.noselect)
     return;
 
   dprint (3, (debugfile, "Subscribing to %s\n", list.name));
@@ -777,7 +781,8 @@ static void cmd_parse_lsub (IMAP_DATA* idata, char* s)
     url.user = NULL;
   url_ciss_tostring (&url, buf + 11, sizeof (buf) - 10, 0);
   safe_strcat (buf, sizeof (buf), "\"");
-  memset (&token, 0, sizeof (token));
+  mutt_buffer_init (&token);
+  mutt_buffer_init (&err);
   err.data = errstr;
   err.dsize = sizeof (errstr);
   if (mutt_parse_rc_line (buf, &token, &err))
@@ -916,7 +921,7 @@ static void cmd_parse_status (IMAP_DATA* idata, char* s)
   {
     s = imap_next_word (mailbox);
     *(s - 1) = '\0';
-    imap_unmunge_mbox_name (mailbox);
+    imap_unmunge_mbox_name (idata, mailbox);
   }
 
   status = imap_mboxcache_get (idata, mailbox, 1);
@@ -1019,5 +1024,18 @@ static void cmd_parse_status (IMAP_DATA* idata, char* s)
     }
 
     FREE (&mx.mbox);
+  }
+}
+
+/* cmd_parse_enabled: record what the server has enabled */
+static void cmd_parse_enabled (IMAP_DATA* idata, const char* s)
+{
+  dprint (2, (debugfile, "Handling ENABLED\n"));
+
+  while ((s = imap_next_word ((char*)s)) && *s != '\0')
+  {
+    if (ascii_strncasecmp(s, "UTF8=ACCEPT", 11) == 0 ||
+        ascii_strncasecmp(s, "UTF8=ONLY", 9) == 0)
+      idata->unicode = 1;
   }
 }

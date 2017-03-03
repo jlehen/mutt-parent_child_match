@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2010,2013 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 2004 g10 Code GmbH
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -66,8 +66,6 @@
 # define MB_LEN_MAX 16
 #endif
 
-#define MUTT_VERSION (VERSION)
-
 /* nifty trick I stole from ELM 2.5alpha. */
 #ifdef MAIN_C
 #define WHERE 
@@ -99,9 +97,6 @@
 #define M_TOKEN_PATTERN		(1<<4)	/* !)|~ are terms (for patterns) */
 #define M_TOKEN_COMMENT		(1<<5)	/* don't reap comments */
 #define M_TOKEN_SEMICOLON	(1<<6)	/* don't treat ; as special */
-
-/* flags for km_dokey() */
-#define M_KM_UNBUFFERED 1 /* don't read from the key buffer */
 
 typedef struct
 {
@@ -300,6 +295,12 @@ enum
 #define SENDMAILX	(1<<6)
 #define SENDKEY		(1<<7)
 #define SENDRESEND	(1<<8)
+#define SENDPOSTPONEDFCC	(1<<9) /* used by mutt_get_postponed() to signal that the x-mutt-fcc header field was present */
+#define SENDNOFREEHEADER	(1<<10)   /* Used by the -E flag */
+#define SENDDRAFTFILE		(1<<11)   /* Used by the -H flag */
+
+/* flags for mutt_compose_menu() */
+#define M_COMPOSE_NOFREEHEADER (1<<0)
 
 /* flags to _mutt_select_file() */
 #define M_SEL_BUFFY	(1<<0)
@@ -376,6 +377,8 @@ enum
 # endif /* USE_SSL_GNUTLS */
   OPTSSLV3,
   OPTTLSV1,
+  OPTTLSV1_1,
+  OPTTLSV1_2,
   OPTSSLFORCETLS,
   OPTSSLVERIFYDATES,
   OPTSSLVERIFYHOST,
@@ -386,6 +389,7 @@ enum
   OPTMAILCAPSANITIZE,
   OPTMAILCHECKRECENT,
   OPTMAILDIRTRASH,
+  OPTMAILDIRCHECKCUR,
   OPTMARKERS,
   OPTMARKOLD,
   OPTMENUSCROLL,	/* scroll menu instead of implicit next-page */
@@ -405,12 +409,17 @@ enum
   OPTPOPAUTHTRYALL,
   OPTPOPLAST,
 #endif
+  OPTPOSTPONEENCRYPT,
   OPTPRINTDECODE,
   OPTPRINTSPLIT,
   OPTPROMPTAFTER,
   OPTREADONLY,
+  OPTREFLOWSPACEQUOTES,
+  OPTREFLOWTEXT,
   OPTREPLYSELF,
   OPTRESOLVE,
+  OPTRESUMEDRAFTFILES,
+  OPTRESUMEEDITEDDRAFTFILES,
   OPTREVALIAS,
   OPTREVNAME,
   OPTREVREAL,
@@ -430,13 +439,15 @@ enum
   OPTTHOROUGHSRC,
   OPTTHREADRECEIVED,
   OPTTILDE,
+  OPTTSENABLED,
   OPTUNCOLLAPSEJUMP,
   OPTUSE8BITMIME,
   OPTUSEDOMAIN,
   OPTUSEFROM,
   OPTUSEGPGAGENT,
 #ifdef HAVE_LIBIDN
-  OPTUSEIDN,
+  OPTIDNDECODE,
+  OPTIDNENCODE,
 #endif
 #ifdef HAVE_GETADDRINFO
   OPTUSEIPV6,
@@ -457,6 +468,8 @@ enum
   OPTCRYPTAUTOENCRYPT,
   OPTCRYPTAUTOPGP,
   OPTCRYPTAUTOSMIME,
+  OPTCRYPTCONFIRMHOOK,
+  OPTCRYPTOPPORTUNISTICENCRYPT,
   OPTCRYPTREPLYENCRYPT,
   OPTCRYPTREPLYSIGN,
   OPTCRYPTREPLYSIGNENCRYPTED,
@@ -480,7 +493,7 @@ enum
 
   /* pseudo options */
 
-  OPTAUXSORT,		/* (pseudo) using auxillary sort function */
+  OPTAUXSORT,		/* (pseudo) using auxiliary sort function */
   OPTFORCEREFRESH,	/* (pseudo) refresh even during macros */
   OPTLOCALES,		/* (pseudo) set if user has valid locale definition */
   OPTNOCURSES,		/* (pseudo) when sending in batch mode */
@@ -506,7 +519,7 @@ enum
   OPTREDRAWTREE,	/* (pseudo) redraw the thread tree */
   OPTPGPCHECKTRUST,	/* (pseudo) used by pgp_select_key () */
   OPTDONTHANDLEPGPKEYS,	/* (pseudo) used to extract PGP keys */
-  OPTUNBUFFEREDINPUT,   /* (pseudo) don't use key buffer */
+  OPTIGNOREMACROEVENTS, /* (pseudo) don't process macro/push/exec events while set */
 
   OPTMAX
 };
@@ -700,8 +713,8 @@ typedef struct mutt_thread THREAD;
 
 typedef struct header
 {
-  unsigned int security : 11;  /* bit 0-6: flags, bit 7,8: application.
-				 see: crypt.h pgplib.h, smime.h */
+  unsigned int security : 12;  /* bit 0-8: flags, bit 9,10: application.
+				 see: mutt_crypt.h pgplib.h, smime.h */
 
   unsigned int mime : 1;    		/* has a MIME-Version header? */
   unsigned int flagged : 1; 		/* marked important? */
@@ -888,7 +901,7 @@ typedef struct _context
   unsigned int locked : 1;	/* is the mailbox locked? */
   unsigned int changed : 1;	/* mailbox has been modified */
   unsigned int readonly : 1;    /* don't allow changes to the mailbox */
-  unsigned int dontwrite : 1;   /* dont write the mailbox on close */
+  unsigned int dontwrite : 1;   /* don't write the mailbox on close */
   unsigned int append : 1;	/* mailbox is opened in append mode */
   unsigned int quiet : 1;	/* inhibit status messages? */
   unsigned int collapsed : 1;   /* are all threads collapsed? */

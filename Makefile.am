@@ -1,5 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 ## Use aclocal -I m4; automake --foreign
+include $(top_srcdir)/flymake.am
 
 AUTOMAKE_OPTIONS = 1.6 foreign
 EXTRA_PROGRAMS = mutt_dotlock pgpring pgpewrap mutt_md5
@@ -11,15 +12,15 @@ endif
 
 SUBDIRS = m4 po intl doc contrib $(IMAP_SUBDIR)
 
-bin_SCRIPTS = muttbug flea @SMIMEAUX_TARGET@
+bin_SCRIPTS = muttbug flea $(SMIMEAUX_TARGET)
 
 if BUILD_HCACHE
 HCVERSION = hcversion.h
 endif
 
-BUILT_SOURCES = keymap_defs.h patchlist.c reldate.h $(HCVERSION)
+BUILT_SOURCES = keymap_defs.h patchlist.c reldate.h conststrings.c $(HCVERSION)
 
-bin_PROGRAMS = mutt @DOTLOCK_TARGET@ @PGPAUX_TARGET@
+bin_PROGRAMS = mutt $(DOTLOCK_TARGET) $(PGPAUX_TARGET)
 mutt_SOURCES = \
 	addrbook.c alias.c attach.c base64.c browser.c buffy.c color.c \
 	crypt.c cryptglue.c \
@@ -37,10 +38,10 @@ mutt_SOURCES = \
 
 nodist_mutt_SOURCES = $(BUILT_SOURCES)
 
-mutt_LDADD = @MUTT_LIB_OBJECTS@ @LIBOBJS@ $(LIBIMAP) $(MUTTLIBS) \
+mutt_LDADD = $(MUTT_LIB_OBJECTS) $(LIBOBJS) $(LIBIMAP) $(MUTTLIBS) \
 	$(INTLLIBS) $(LIBICONV)  $(GPGME_LIBS)
 
-mutt_DEPENDENCIES = @MUTT_LIB_OBJECTS@ @LIBOBJS@ $(LIBIMAPDEPS) \
+mutt_DEPENDENCIES = $(MUTT_LIB_OBJECTS) $(LIBOBJS) $(LIBIMAPDEPS) \
 	$(INTLDEPS)
 
 DEFS=-DPKGDATADIR=\"$(pkgdatadir)\" -DSYSCONFDIR=\"$(sysconfdir)\" \
@@ -48,8 +49,6 @@ DEFS=-DPKGDATADIR=\"$(pkgdatadir)\" -DSYSCONFDIR=\"$(sysconfdir)\" \
 	-DHAVE_CONFIG_H=1
 
 AM_CPPFLAGS=-I. -I$(top_srcdir) $(IMAP_INCLUDES) $(GPGME_CFLAGS) -Iintl
-
-CPPFLAGS=@CPPFLAGS@
 
 EXTRA_mutt_SOURCES = account.c bcache.c crypt-gpgme.c crypt-mod-pgp-classic.c \
 	crypt-mod-pgp-gpgme.c crypt-mod-smime-classic.c \
@@ -73,34 +72,51 @@ EXTRA_DIST = COPYRIGHT GPL OPS OPS.PGP OPS.CRYPT OPS.SMIME TODO UPDATING \
 	README.SSL smime.h group.h \
 	muttbug pgppacket.h depcomp ascii.h BEWARE PATCHES patchlist.sh \
 	ChangeLog mkchangelog.sh mutt_idna.h \
-	snprintf.c regex.c crypt-gpgme.h hcachever.sh.in
+	snprintf.c regex.c crypt-gpgme.h hcachever.sh.in sys_socket.h \
+	txt2c.c txt2c.sh version.sh check_sec.sh
 
 EXTRA_SCRIPTS = smime_keys
 
 mutt_dotlock_SOURCES = mutt_dotlock.c
-mutt_dotlock_LDADD = @LIBOBJS@
-mutt_dotlock_DEPENDENCIES = @LIBOBJS@
+mutt_dotlock_LDADD = $(LIBOBJS)
+mutt_dotlock_DEPENDENCIES = $(LIBOBJS)
 
 pgpring_SOURCES = pgppubring.c pgplib.c lib.c extlib.c sha1.c md5.c pgppacket.c ascii.c
-pgpring_LDADD = @LIBOBJS@ $(INTLLIBS) 
-pgpring_DEPENDENCIES = @LIBOBJS@ $(INTLDEPS)
+pgpring_LDADD = $(LIBOBJS) $(INTLLIBS)
+pgpring_DEPENDENCIES = $(LIBOBJS) $(INTLDEPS)
 
 mutt_md5_SOURCES = md5.c
 mutt_md5_CFLAGS = -DMD5UTIL
 mutt_md5_LDADD =
 
-noinst_PROGRAMS = $(MUTT_MD5)
+txt2c_SOURCES = txt2c.c
+txt2c_LDADD =
+
+noinst_PROGRAMS = $(MUTT_MD5) txt2c
 
 mutt_dotlock.c: dotlock.c
 	cp $(srcdir)/dotlock.c mutt_dotlock.c
 
+conststrings.c: txt2c config.status
+	( \
+		$(CC) -v || \
+		$(CC) --version || \
+		$(CC) -V || \
+		echo "unknown compiler"; \
+	) 2>&1 | ${srcdir}/txt2c.sh cc_version >conststrings_c
+	echo "$(CFLAGS)" | ${srcdir}/txt2c.sh cc_cflags >>conststrings_c
+	grep ac_cs_config= config.status | \
+	cut -d= -f2- | \
+	sed -e 's/^"//' -e 's/"$$//' | ${srcdir}/txt2c.sh configure_options >>conststrings_c
+	mv -f conststrings_c conststrings.c
+
 CLEANFILES = mutt_dotlock.c keymap_alldefs.h $(BUILT_SOURCES)
 
-DISTCLEANFILES= flea smime_keys
+DISTCLEANFILES= flea smime_keys txt2c po/$(PACKAGE).pot
 
 ACLOCAL_AMFLAGS = -I m4
 
-LDADD = @LIBOBJS@ @INTLLIBS@
+LDADD = $(LIBOBJS) $(INTLLIBS)
 
 flea:	muttbug.sh
 	cp muttbug.sh flea
@@ -124,8 +140,13 @@ reldate.h: $(srcdir)/ChangeLog
 	cmp -s reldate.h.tmp reldate.h || cp reldate.h.tmp reldate.h; \
 	rm reldate.h.tmp
 
+# The '#undef ENABLE_NLS' is to work around an automake ordering issue:
+# BUILT_SOURCES are processed before SUBDIRS.
+# If configured with --with-included-gettext this means that intl will
+# not have generated libintl.h yet, and mutt.h -> lib.h will generate
+# an error.
 hcversion.h: $(srcdir)/mutt.h $(srcdir)/rfc822.h hcachever.sh $(MUTT_MD5)
-	( echo '#include "config.h"'; echo '#include "mutt.h"'; ) \
+	( echo '#include "config.h"'; echo '#undef ENABLE_NLS'; echo '#include "mutt.h"'; ) \
 	| $(CPP) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) - | sh ./hcachever.sh hcversion.h
 
 patchlist.c: $(srcdir)/PATCHES $(srcdir)/patchlist.sh
@@ -136,14 +157,14 @@ install-exec-hook:
 		rm -f $(DESTDIR)$(bindir)/mutt.dotlock ;		\
 		ln -sf $(DESTDIR)$(bindir)/mutt_dotlock $(DESTDIR)$(bindir)/mutt.dotlock ; \
 	fi
-	if test -f $(DESTDIR)$(bindir)/mutt_dotlock && test x@DOTLOCK_GROUP@ != x ; then \
-		chgrp @DOTLOCK_GROUP@ $(DESTDIR)$(bindir)/mutt_dotlock && \
-		chmod @DOTLOCK_PERMISSION@ $(DESTDIR)$(bindir)/mutt_dotlock || \
-		{ echo "Can't fix mutt_dotlock's permissions!" >&2 ; exit 1 ; } \
+	if test -f $(DESTDIR)$(bindir)/mutt_dotlock && test x$(DOTLOCK_GROUP) != x ; then \
+		chgrp $(DOTLOCK_GROUP) $(DESTDIR)$(bindir)/mutt_dotlock && \
+		chmod $(DOTLOCK_PERMISSION) $(DESTDIR)$(bindir)/mutt_dotlock || \
+		{ echo "Can't fix mutt_dotlock's permissions!  This is required to lock mailboxes in the mail spool directory." >&2 ; exit 1 ; } \
 	fi
 
 install-data-local:
-	$(srcdir)/mkinstalldirs $(DESTDIR)$(sysconfdir)
+	$(MKDIR_P) $(DESTDIR)$(sysconfdir)
 	$(INSTALL) -m 644 $(srcdir)/mime.types $(DESTDIR)$(sysconfdir)/mime.types.dist
 	-if [ ! -f $(DESTDIR)$(sysconfdir)/mime.types ]; then \
 		$(INSTALL) -m 644 $(srcdir)/mime.types $(DESTDIR)$(sysconfdir); \

@@ -78,7 +78,7 @@
 #include <sys/types.h>
 #endif
 
-/* For platform which support the ISO C amendement 1 functionality we
+/* For platform which support the ISO C amendment 1 functionality we
    support user defined character classes.  */
 #ifdef HAVE_WCHAR_H
 # include <wchar.h>
@@ -1719,7 +1719,7 @@ typedef struct
 
 #if defined _LIBC || (defined HAVE_WCTYPE_H && defined HAVE_WCHAR_H)
 /* The GNU C library provides support for user-defined character classes
-   and the functions from ISO C amendement 1.  */
+   and the functions from ISO C amendment 1.  */
 # ifdef CHARCLASS_NAME_MAX
 #  define CHAR_CLASS_MAX_LENGTH CHARCLASS_NAME_MAX
 # else
@@ -2217,10 +2217,11 @@ regex_compile (pattern, size, syntax, bufp)
                        the leading `:' and `[' (but set bits for them).  */
                     if (c == ':' && *p == ']')
                       {
-#if defined _LIBC || (defined HAVE_WCTYPE_H && defined HAVE_WCHAR_H)
+#if defined _LIBC || (defined HAVE_WC_FUNCS && defined HAVE_WCTYPE_H && defined HAVE_WCHAR_H)
                         boolean is_lower = STREQ (str, "lower");
                         boolean is_upper = STREQ (str, "upper");
 			wctype_t wt;
+			wchar_t twt;
                         int ch;
 
 			wt = wctype (str);
@@ -2235,7 +2236,7 @@ regex_compile (pattern, size, syntax, bufp)
 
                         for (ch = 0; ch < 1 << BYTEWIDTH; ++ch)
 			  {
-			    if (iswctype (btowc (ch), wt))
+			    if (mbtowc (&twt, (char *)&ch, 1) >= 0 && iswctype (twt, wt))
 			      SET_LIST_BIT (ch);
 
 			    if (translate && (is_upper || is_lower)

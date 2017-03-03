@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2000-2002 Vsevolod Volkov <vvv@mutt.org.ua>
- * Copyright (C) 2006-7 Rocco Rutte <pdmef@gmx.net>
+ * Copyright (C) 2006-2007,2009 Rocco Rutte <pdmef@gmx.net>
  * 
  *     This program is free software; you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 #ifdef USE_HCACHE
 #define HC_FNAME	"mutt"		/* filename for hcache as POP lacks paths */
@@ -55,7 +56,7 @@ static int fetch_message (char *line, void *file)
  * Read header
  * returns:
  *  0 on success
- * -1 - conection lost,
+ * -1 - connection lost,
  * -2 - invalid command or execution error,
  * -3 - error writing to tempfile
  */
@@ -141,8 +142,16 @@ static int fetch_uidl (char *line, void *data)
   int i, index;
   CONTEXT *ctx = (CONTEXT *)data;
   POP_DATA *pop_data = (POP_DATA *)ctx->data;
+  char *endp;
 
-  sscanf (line, "%d %s", &index, line);
+  errno = 0;
+  index = strtol(line, &endp, 10);
+  if (errno)
+      return -1;
+  while (*endp == ' ')
+      endp++;
+  memmove(line, endp, strlen(endp) + 1);
+
   for (i = 0; i < ctx->msgcount; i++)
     if (!mutt_strcmp (line, ctx->hdrs[i]->data))
       break;
@@ -220,7 +229,7 @@ static header_cache_t *pop_hcache_open (POP_DATA *pop_data, const char *path)
  * Read headers
  * returns:
  *  0 on success
- * -1 - conection lost,
+ * -1 - connection lost,
  * -2 - invalid command or execution error,
  * -3 - error writing to tempfile
  */
@@ -324,7 +333,7 @@ static int pop_fetch_headers (CONTEXT *ctx)
 #if USE_HCACHE
       else
       {
-	mutt_hcache_store (hc, ctx->hdrs[i]->data, ctx->hdrs[i], 0, strlen);
+	mutt_hcache_store (hc, ctx->hdrs[i]->data, ctx->hdrs[i], 0, strlen, M_GENERATE_UIDVALIDITY);
       }
 
       FREE(&data);
@@ -618,8 +627,15 @@ int pop_fetch_message (MESSAGE* msg, CONTEXT* ctx, int msgno)
   }
   rewind (msg->fp);
   uidl = h->data;
+
+  /* we replace envelop, key in subj_hash has to be updated as well */
+  if (ctx->subj_hash && h->env->real_subj)
+    hash_delete (ctx->subj_hash, h->env->real_subj, h, NULL);
   mutt_free_envelope (&h->env);
   h->env = mutt_read_rfc822_header (msg->fp, h, 0, 0);
+  if (ctx->subj_hash && h->env->real_subj)
+    hash_insert (ctx->subj_hash, h->env->real_subj, h, 1);
+
   h->data = uidl;
   h->lines = 0;
   fgets (buf, sizeof (buf), msg->fp);
@@ -686,7 +702,7 @@ int pop_sync_mailbox (CONTEXT *ctx, int *index_hint)
 #if USE_HCACHE
       if (ctx->hdrs[i]->changed)
       {
-	mutt_hcache_store (hc, ctx->hdrs[i]->data, ctx->hdrs[i], 0, strlen);
+	mutt_hcache_store (hc, ctx->hdrs[i]->data, ctx->hdrs[i], 0, strlen, M_GENERATE_UIDVALIDITY);
       }
 #endif
 

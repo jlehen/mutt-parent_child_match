@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Chapter 4. Advanced Usage</title><meta name="generator" content="DocBook XSL Stylesheets V1.75.2" /><link rel="home" href="index.html" title="The Mutt E-Mail Client" /><link rel="up" href="index.html" title="The Mutt E-Mail Client" /><link rel="prev" href="configuration.html" title="Chapter 3. Configuration" /><link rel="next" href="mimesupport.html" title="Chapter 5. Mutt's MIME Support" /><style xmlns="" type="text/css">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Chapter 4. Advanced Usage</title><meta name="generator" content="DocBook XSL Stylesheets V1.79.1" /><link rel="home" href="index.html" title="The Mutt E-Mail Client" /><link rel="up" href="index.html" title="The Mutt E-Mail Client" /><link rel="prev" href="configuration.html" title="Chapter 3. Configuration" /><link rel="next" href="mimesupport.html" title="Chapter 5. Mutt's MIME Support" /><style xmlns="" type="text/css">
       body { margin-left:2%; margin-right:2%; font-family:serif; }
 .toc, .list-of-tables, .list-of-examples { font-family:sans-serif; }
 h1, h2, h3, h4, h5, h6 { font-family:sans-serif; }
@@ -27,7 +26,7 @@ div.note { margin-bottom: 5px; }
 tr { vertical-align: top; }
 .comment { color:#707070; }
 
-    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 4. Advanced Usage</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="configuration.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="mimesupport.html">Next</a></td></tr></table><hr /></div><div class="chapter" title="Chapter 4. Advanced Usage"><div class="titlepage"><div><div><h2 class="title"><a id="advancedusage"></a>Chapter 4. Advanced Usage</h2></div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="sect1"><a href="advancedusage.html#charset-handling">1. Character Set Handling</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#regexp">2. Regular Expressions</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#patterns">3. Patterns: Searching, Limiting and Tagging</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#patterns-modifier">3.1. Pattern Modifier</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#simple-searches">3.2. Simple Searches</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#complex-patterns">3.3. Nesting and Boolean Operators</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#date-patterns">3.4. Searching by Date</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#tags">4. Using Tags</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#hooks">5. Using Hooks</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#pattern-hook">5.1. Message Matching in Hooks</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#query">6. External Address Queries</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#mailbox-formats">7. Mailbox Formats</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#shortcuts">8. Mailbox Shortcuts</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#using-lists">9. Handling Mailing Lists</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#new-mail">10. New Mail Detection</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#new-mail-formats">10.1. How New Mail Detection Works</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#new-mail-polling">10.2. Polling For New Mail</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#editing-threads">11. Editing Threads</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#link-threads">11.1. Linking Threads</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#break-threads">11.2. Breaking Threads</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#dsn">12. Delivery Status Notification (DSN) Support</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#urlview">13. Start a WWW Browser on URLs</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#misc-topics">14. Miscellany</a></span></dt></dl></div><div class="sect1" title="1. Character Set Handling"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="charset-handling"></a>1. Character Set Handling</h2></div></div></div><p>
+    </style></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 4. Advanced Usage</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="configuration.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="mimesupport.html">Next</a></td></tr></table><hr /></div><div class="chapter"><div class="titlepage"><div><div><h1 class="title"><a id="advancedusage"></a>Chapter 4. Advanced Usage</h1></div></div></div><div class="toc"><p><strong>Table of Contents</strong></p><dl class="toc"><dt><span class="sect1"><a href="advancedusage.html#charset-handling">1. Character Set Handling</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#regexp">2. Regular Expressions</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#patterns">3. Patterns: Searching, Limiting and Tagging</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#patterns-modifier">3.1. Pattern Modifier</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#simple-searches">3.2. Simple Searches</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#complex-patterns">3.3. Nesting and Boolean Operators</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#date-patterns">3.4. Searching by Date</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#tags">4. Using Tags</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#hooks">5. Using Hooks</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#pattern-hook">5.1. Message Matching in Hooks</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#mailbox-hook">5.2. Mailbox Matching in Hooks</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#query">6. External Address Queries</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#mailbox-formats">7. Mailbox Formats</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#shortcuts">8. Mailbox Shortcuts</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#using-lists">9. Handling Mailing Lists</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#new-mail">10. New Mail Detection</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#new-mail-formats">10.1. How New Mail Detection Works</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#new-mail-polling">10.2. Polling For New Mail</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#editing-threads">11. Editing Threads</a></span></dt><dd><dl><dt><span class="sect2"><a href="advancedusage.html#link-threads">11.1. Linking Threads</a></span></dt><dt><span class="sect2"><a href="advancedusage.html#break-threads">11.2. Breaking Threads</a></span></dt></dl></dd><dt><span class="sect1"><a href="advancedusage.html#dsn">12. Delivery Status Notification (DSN) Support</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#urlview">13. Start a WWW Browser on URLs</a></span></dt><dt><span class="sect1"><a href="advancedusage.html#misc-topics">14. Miscellany</a></span></dt></dl></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="charset-handling"></a>1. Character Set Handling</h2></div></div></div><p>
 A <span class="quote">“<span class="quote">character set</span>”</span> is basically a mapping between bytes and
 glyphs and implies a certain character encoding scheme. For example, for
 the ISO 8859 family of character sets, an encoding of 8bit per character
@@ -88,7 +87,7 @@ A list of officially assigned and known character sets can be found at
 <a class="ulink" href="http://www.iana.org/assignments/character-sets" target="_top">IANA</a>,
 a list of locally supported locales can be obtained by running
 <code class="literal">locale -a</code>.
-</p></div><div class="sect1" title="2. Regular Expressions"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="regexp"></a>2. Regular Expressions</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="regexp"></a>2. Regular Expressions</h2></div></div></div><p>
 All string patterns in Mutt including those in more complex <a class="link" href="advancedusage.html#patterns" title="3. Patterns: Searching, Limiting and Tagging">patterns</a> must be specified using regular
 expressions (regexp) in the <span class="quote">“<span class="quote">POSIX extended</span>”</span> syntax (which
 is more or less the syntax used by egrep and GNU awk).  For your
@@ -96,14 +95,14 @@ convenience, we have included below a brief description of this syntax.
 </p><p>
 The search is case sensitive if the pattern contains at least one upper
 case letter, and case insensitive otherwise.
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 <span class="quote">“<span class="quote">\</span>”</span> must be quoted if used for a regular expression in an
 initialization command: <span class="quote">“<span class="quote">\\</span>”</span>.
 </p></div><p>
 A regular expression is a pattern that describes a set of strings.
 Regular expressions are constructed analogously to arithmetic
 expressions, by using various operators to combine smaller expressions.
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 The regular expression can be enclosed/delimited by either " or ' which
 is useful if the regular expression includes a white-space character.
 See <a class="xref" href="configuration.html#muttrc-syntax" title="2. Syntax of Initialization Files">Syntax of Initialization Files</a> for more information on " and '
@@ -137,10 +136,10 @@ consist of <span class="quote">“<span class="quote">[:</span>”</span>, a key
 <span class="quote">“<span class="quote">:]</span>”</span>.  The following classes are defined by the POSIX
 standard in
 <a class="xref" href="advancedusage.html#posix-regex-char-classes" title="Table 4.1. POSIX regular expression character classes">Table 4.1, “POSIX regular expression character classes”</a>
-</p><div class="table"><a id="posix-regex-char-classes"></a><p class="title"><b>Table 4.1. POSIX regular expression character classes</b></p><div class="table-contents"><table summary="POSIX regular expression character classes" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Character class</th><th>Description</th></tr></thead><tbody><tr><td>[:alnum:]</td><td>Alphanumeric characters</td></tr><tr><td>[:alpha:]</td><td>Alphabetic characters</td></tr><tr><td>[:blank:]</td><td>Space or tab characters</td></tr><tr><td>[:cntrl:]</td><td>Control characters</td></tr><tr><td>[:digit:]</td><td>Numeric characters</td></tr><tr><td>[:graph:]</td><td>Characters that are both printable and visible. (A space is printable, but not visible, while an <span class="quote">“<span class="quote">a</span>”</span> is both)</td></tr><tr><td>[:lower:]</td><td>Lower-case alphabetic characters</td></tr><tr><td>[:print:]</td><td>Printable characters (characters that are not control characters)</td></tr><tr><td>[:punct:]</td><td>Punctuation characters (characters that are not letter, digits, control characters, or space characters)</td></tr><tr><td>[:space:]</td><td>Space characters (such as space, tab and formfeed, to name a few)</td></tr><tr><td>[:upper:]</td><td>Upper-case alphabetic characters</td></tr><tr><td>[:xdigit:]</td><td>Characters that are hexadecimal digits</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p><div class="table"><a id="posix-regex-char-classes"></a><p class="title"><strong>Table 4.1. POSIX regular expression character classes</strong></p><div class="table-contents"><table class="table" summary="POSIX regular expression character classes" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Character class</th><th>Description</th></tr></thead><tbody><tr><td>[:alnum:]</td><td>Alphanumeric characters</td></tr><tr><td>[:alpha:]</td><td>Alphabetic characters</td></tr><tr><td>[:blank:]</td><td>Space or tab characters</td></tr><tr><td>[:cntrl:]</td><td>Control characters</td></tr><tr><td>[:digit:]</td><td>Numeric characters</td></tr><tr><td>[:graph:]</td><td>Characters that are both printable and visible. (A space is printable, but not visible, while an <span class="quote">“<span class="quote">a</span>”</span> is both)</td></tr><tr><td>[:lower:]</td><td>Lower-case alphabetic characters</td></tr><tr><td>[:print:]</td><td>Printable characters (characters that are not control characters)</td></tr><tr><td>[:punct:]</td><td>Punctuation characters (characters that are not letter, digits, control characters, or space characters)</td></tr><tr><td>[:space:]</td><td>Space characters (such as space, tab and formfeed, to name a few)</td></tr><tr><td>[:upper:]</td><td>Upper-case alphabetic characters</td></tr><tr><td>[:xdigit:]</td><td>Characters that are hexadecimal digits</td></tr></tbody></table></div></div><br class="table-break" /><p>
 A character class is only valid in a regular expression inside the
 brackets of a character list.
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 Note that the brackets in these class names are part of the symbolic
 names, and must be included in addition to the brackets delimiting the
 bracket list. For example, <span class="emphasis"><em>[[:digit:]]</em></span> is
@@ -151,7 +150,7 @@ apply to non-ASCII character sets, which can have single symbols (called
 collating elements) that are represented with more than one character,
 as well as several characters that are equivalent for collating or
 sorting purposes:
-</p><div class="variablelist"><dl><dt><span class="term">Collating Symbols</span></dt><dd><p>
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">Collating Symbols</span></dt><dd><p>
 A collating symbol is a multi-character collating element enclosed in
 <span class="quote">“<span class="quote">[.</span>”</span> and <span class="quote">“<span class="quote">.]</span>”</span>.  For example, if
 <span class="quote">“<span class="quote">ch</span>”</span> is a collating element, then
@@ -171,7 +170,7 @@ with acute (<span class="quote">“<span class="quote">é</span>”</span>) and 
 </p></dd></dl></div><p>
 A regular expression matching a single character may be followed by one
 of several repetition operators described in <a class="xref" href="advancedusage.html#regex-repeat" title="Table 4.2. Regular expression repetition operators">Table 4.2, “Regular expression repetition operators”</a>.
-</p><div class="table"><a id="regex-repeat"></a><p class="title"><b>Table 4.2. Regular expression repetition operators</b></p><div class="table-contents"><table summary="Regular expression repetition operators" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Operator</th><th>Description</th></tr></thead><tbody><tr><td>?</td><td>The preceding item is optional and matched at most once</td></tr><tr><td>*</td><td>The preceding item will be matched zero or more times</td></tr><tr><td>+</td><td>The preceding item will be matched one or more times</td></tr><tr><td>{n}</td><td>The preceding item is matched exactly <span class="emphasis"><em>n</em></span> times</td></tr><tr><td>{n,}</td><td>The preceding item is matched <span class="emphasis"><em>n</em></span> or more times</td></tr><tr><td>{,m}</td><td>The preceding item is matched at most <span class="emphasis"><em>m</em></span> times</td></tr><tr><td>{n,m}</td><td>The preceding item is matched at least <span class="emphasis"><em>n</em></span> times, but no more than <span class="emphasis"><em>m</em></span> times</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p><div class="table"><a id="regex-repeat"></a><p class="title"><strong>Table 4.2. Regular expression repetition operators</strong></p><div class="table-contents"><table class="table" summary="Regular expression repetition operators" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Operator</th><th>Description</th></tr></thead><tbody><tr><td>?</td><td>The preceding item is optional and matched at most once</td></tr><tr><td>*</td><td>The preceding item will be matched zero or more times</td></tr><tr><td>+</td><td>The preceding item will be matched one or more times</td></tr><tr><td>{n}</td><td>The preceding item is matched exactly <span class="emphasis"><em>n</em></span> times</td></tr><tr><td>{n,}</td><td>The preceding item is matched <span class="emphasis"><em>n</em></span> or more times</td></tr><tr><td>{,m}</td><td>The preceding item is matched at most <span class="emphasis"><em>m</em></span> times</td></tr><tr><td>{n,m}</td><td>The preceding item is matched at least <span class="emphasis"><em>n</em></span> times, but no more than <span class="emphasis"><em>m</em></span> times</td></tr></tbody></table></div></div><br class="table-break" /><p>
 Two regular expressions may be concatenated; the resulting regular
 expression matches any string formed by concatenating two substrings
 that respectively match the concatenated subexpressions.
@@ -183,19 +182,19 @@ matching either subexpression.
 Repetition takes precedence over concatenation, which in turn takes
 precedence over alternation.  A whole subexpression may be enclosed in
 parentheses to override these precedence rules.
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 If you compile Mutt with the included regular expression engine, the
 following operators may also be used in regular expressions as described
 in <a class="xref" href="advancedusage.html#regex-gnu-ext" title="Table 4.3. GNU regular expression extensions">Table 4.3, “GNU regular expression extensions”</a>.
-</p></div><div class="table"><a id="regex-gnu-ext"></a><p class="title"><b>Table 4.3. GNU regular expression extensions</b></p><div class="table-contents"><table summary="GNU regular expression extensions" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Expression</th><th>Description</th></tr></thead><tbody><tr><td>\\y</td><td>Matches the empty string at either the beginning or the end of a word</td></tr><tr><td>\\B</td><td>Matches the empty string within a word</td></tr><tr><td>\\&lt;</td><td>Matches the empty string at the beginning of a word</td></tr><tr><td>\\&gt;</td><td>Matches the empty string at the end of a word</td></tr><tr><td>\\w</td><td>Matches any word-constituent character (letter, digit, or underscore)</td></tr><tr><td>\\W</td><td>Matches any character that is not word-constituent</td></tr><tr><td>\\`</td><td>Matches the empty string at the beginning of a buffer (string)</td></tr><tr><td>\\'</td><td>Matches the empty string at the end of a buffer</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p></div><div class="table"><a id="regex-gnu-ext"></a><p class="title"><strong>Table 4.3. GNU regular expression extensions</strong></p><div class="table-contents"><table class="table" summary="GNU regular expression extensions" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Expression</th><th>Description</th></tr></thead><tbody><tr><td>\\y</td><td>Matches the empty string at either the beginning or the end of a word</td></tr><tr><td>\\B</td><td>Matches the empty string within a word</td></tr><tr><td>\\&lt;</td><td>Matches the empty string at the beginning of a word</td></tr><tr><td>\\&gt;</td><td>Matches the empty string at the end of a word</td></tr><tr><td>\\w</td><td>Matches any word-constituent character (letter, digit, or underscore)</td></tr><tr><td>\\W</td><td>Matches any character that is not word-constituent</td></tr><tr><td>\\`</td><td>Matches the empty string at the beginning of a buffer (string)</td></tr><tr><td>\\'</td><td>Matches the empty string at the end of a buffer</td></tr></tbody></table></div></div><br class="table-break" /><p>
 Please note however that these operators are not defined by POSIX, so
 they may or may not be available in stock libraries on various systems.
-</p></div><div class="sect1" title="3. Patterns: Searching, Limiting and Tagging"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="patterns"></a>3. Patterns: Searching, Limiting and Tagging</h2></div></div></div><div class="sect2" title="3.1. Pattern Modifier"><div class="titlepage"><div><div><h3 class="title"><a id="patterns-modifier"></a>3.1. Pattern Modifier</h3></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="patterns"></a>3. Patterns: Searching, Limiting and Tagging</h2></div></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="patterns-modifier"></a>3.1. Pattern Modifier</h3></div></div></div><p>
 Many of Mutt's commands allow you to specify a pattern to match
 (<code class="literal">limit</code>, <code class="literal">tag-pattern</code>,
 <code class="literal">delete-pattern</code>, etc.). <a class="xref" href="advancedusage.html#tab-patterns" title="Table 4.4. Pattern modifiers">Table 4.4, “Pattern modifiers”</a>
 shows several ways to select messages.
-</p><div class="table"><a id="tab-patterns"></a><p class="title"><b>Table 4.4. Pattern modifiers</b></p><div class="table-contents"><table summary="Pattern modifiers" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Pattern modifier</th><th>Description</th></tr></thead><tbody><tr><td>~A</td><td>all messages</td></tr><tr><td>~b <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the message body</td></tr><tr><td>=b <span class="emphasis"><em>STRING</em></span></td><td>messages which contain <span class="emphasis"><em>STRING</em></span> in the message body. If IMAP is enabled, searches for <span class="emphasis"><em>STRING</em></span> on the server, rather than downloading each message and searching it locally.</td></tr><tr><td>~B <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the whole message</td></tr><tr><td>~c <span class="emphasis"><em>EXPR</em></span></td><td>messages carbon-copied to <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%c <span class="emphasis"><em>GROUP</em></span></td><td>messages carbon-copied to any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~C <span class="emphasis"><em>EXPR</em></span></td><td>messages either to: or cc: <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%C <span class="emphasis"><em>GROUP</em></span></td><td>messages either to: or cc: to any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~d [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with <span class="quote">“<span class="quote">date-sent</span>”</span> in a Date range</td></tr><tr><td>~D</td><td>deleted messages</td></tr><tr><td>~e <span class="emphasis"><em>EXPR</em></span></td><td>messages which contains <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">Sender</span>”</span> field</td></tr><tr><td>%e <span class="emphasis"><em>GROUP</em></span></td><td>messages which contain a member of <span class="emphasis"><em>GROUP</em></span> in the <span class="quote">“<span class="quote">Sender</span>”</span> field</td></tr><tr><td>~E</td><td>expired messages</td></tr><tr><td>~F</td><td>flagged messages</td></tr><tr><td>~f <span class="emphasis"><em>EXPR</em></span></td><td>messages originating from <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%f <span class="emphasis"><em>GROUP</em></span></td><td>messages originating from any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~g</td><td>cryptographically signed messages</td></tr><tr><td>~G</td><td>cryptographically encrypted messages</td></tr><tr><td>~h <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the message header</td></tr><tr><td>~H <span class="emphasis"><em>EXPR</em></span></td><td>messages with a spam attribute matching <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>~i <span class="emphasis"><em>EXPR</em></span></td><td>messages which match <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">Message-ID</span>”</span> field</td></tr><tr><td>~k</td><td>messages which contain PGP key material</td></tr><tr><td>~L <span class="emphasis"><em>EXPR</em></span></td><td>messages either originated or received by <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%L <span class="emphasis"><em>GROUP</em></span></td><td>message either originated or received by any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~l</td><td>messages addressed to a known mailing list</td></tr><tr><td>~m [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages in the range <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> *)</td></tr><tr><td>~n [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with a score in the range <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> *)</td></tr><tr><td>~N</td><td>new messages</td></tr><tr><td>~O</td><td>old messages</td></tr><tr><td>~p</td><td>messages addressed to you (consults <span class="command"><strong>alternates</strong></span>)</td></tr><tr><td>~P</td><td>messages from you (consults <span class="command"><strong>alternates</strong></span>)</td></tr><tr><td>~Q</td><td>messages which have been replied to</td></tr><tr><td>~r [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with <span class="quote">“<span class="quote">date-received</span>”</span> in a Date range</td></tr><tr><td>~R</td><td>read messages</td></tr><tr><td>~s <span class="emphasis"><em>EXPR</em></span></td><td>messages having <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">Subject</span>”</span> field.</td></tr><tr><td>~S</td><td>superseded messages</td></tr><tr><td>~t <span class="emphasis"><em>EXPR</em></span></td><td>messages addressed to <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>~T</td><td>tagged messages</td></tr><tr><td>~u</td><td>messages addressed to a subscribed mailing list</td></tr><tr><td>~U</td><td>unread messages</td></tr><tr><td>~v</td><td>messages part of a collapsed thread.</td></tr><tr><td>~V</td><td>cryptographically verified messages</td></tr><tr><td>~x <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">References</span>”</span> or <span class="quote">“<span class="quote">In-Reply-To</span>”</span> field</td></tr><tr><td>~X [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> attachments *)</td></tr><tr><td>~y <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">X-Label</span>”</span> field</td></tr><tr><td>~z [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with a size in the range <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> *) **)</td></tr><tr><td>~=</td><td>duplicated messages (see <a class="link" href="reference.html#duplicate-threads" title="3.56. duplicate_threads">$duplicate_threads</a>)</td></tr><tr><td>~$</td><td>unreferenced messages (requires threaded view)</td></tr><tr><td>~(<span class="emphasis"><em>PATTERN</em></span>)</td><td>messages in threads
+</p><div class="table"><a id="tab-patterns"></a><p class="title"><strong>Table 4.4. Pattern modifiers</strong></p><div class="table-contents"><table class="table" summary="Pattern modifiers" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Pattern modifier</th><th>Description</th></tr></thead><tbody><tr><td>~A</td><td>all messages</td></tr><tr><td>~b <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the message body</td></tr><tr><td>=b <span class="emphasis"><em>STRING</em></span></td><td>messages which contain <span class="emphasis"><em>STRING</em></span> in the message body. If IMAP is enabled, searches for <span class="emphasis"><em>STRING</em></span> on the server, rather than downloading each message and searching it locally.</td></tr><tr><td>~B <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the whole message</td></tr><tr><td>=B <span class="emphasis"><em>STRING</em></span></td><td>messages which contain <span class="emphasis"><em>STRING</em></span> in the whole message. If IMAP is enabled, searches for <span class="emphasis"><em>STRING</em></span> on the server, rather than downloading each message and searching it locally.</td></tr><tr><td>~c <span class="emphasis"><em>EXPR</em></span></td><td>messages carbon-copied to <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%c <span class="emphasis"><em>GROUP</em></span></td><td>messages carbon-copied to any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~C <span class="emphasis"><em>EXPR</em></span></td><td>messages either to: or cc: <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%C <span class="emphasis"><em>GROUP</em></span></td><td>messages either to: or cc: to any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~d [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with <span class="quote">“<span class="quote">date-sent</span>”</span> in a Date range</td></tr><tr><td>~D</td><td>deleted messages</td></tr><tr><td>~e <span class="emphasis"><em>EXPR</em></span></td><td>messages which contains <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">Sender</span>”</span> field</td></tr><tr><td>%e <span class="emphasis"><em>GROUP</em></span></td><td>messages which contain a member of <span class="emphasis"><em>GROUP</em></span> in the <span class="quote">“<span class="quote">Sender</span>”</span> field</td></tr><tr><td>~E</td><td>expired messages</td></tr><tr><td>~F</td><td>flagged messages</td></tr><tr><td>~f <span class="emphasis"><em>EXPR</em></span></td><td>messages originating from <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%f <span class="emphasis"><em>GROUP</em></span></td><td>messages originating from any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~g</td><td>cryptographically signed messages</td></tr><tr><td>~G</td><td>cryptographically encrypted messages</td></tr><tr><td>~h <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the message header</td></tr><tr><td>=h <span class="emphasis"><em>STRING</em></span></td><td>messages which contain <span class="emphasis"><em>STRING</em></span> in the message header. If IMAP is enabled, searches for <span class="emphasis"><em>STRING</em></span> on the server, rather than downloading each message and searching it locally; <span class="emphasis"><em>STRING</em></span> must be of the form <span class="quote">“<span class="quote">header: substring</span>”</span> (see below).</td></tr><tr><td>~H <span class="emphasis"><em>EXPR</em></span></td><td>messages with a spam attribute matching <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>~i <span class="emphasis"><em>EXPR</em></span></td><td>messages which match <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">Message-ID</span>”</span> field</td></tr><tr><td>~k</td><td>messages which contain PGP key material</td></tr><tr><td>~L <span class="emphasis"><em>EXPR</em></span></td><td>messages either originated or received by <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>%L <span class="emphasis"><em>GROUP</em></span></td><td>message either originated or received by any member of <span class="emphasis"><em>GROUP</em></span></td></tr><tr><td>~l</td><td>messages addressed to a known mailing list</td></tr><tr><td>~m [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages in the range <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> *)</td></tr><tr><td>~n [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with a score in the range <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> *)</td></tr><tr><td>~N</td><td>new messages</td></tr><tr><td>~O</td><td>old messages</td></tr><tr><td>~p</td><td>messages addressed to you (consults <span class="command"><strong>alternates</strong></span>)</td></tr><tr><td>~P</td><td>messages from you (consults <span class="command"><strong>alternates</strong></span>)</td></tr><tr><td>~Q</td><td>messages which have been replied to</td></tr><tr><td>~r [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with <span class="quote">“<span class="quote">date-received</span>”</span> in a Date range</td></tr><tr><td>~R</td><td>read messages</td></tr><tr><td>~s <span class="emphasis"><em>EXPR</em></span></td><td>messages having <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">Subject</span>”</span> field.</td></tr><tr><td>~S</td><td>superseded messages</td></tr><tr><td>~t <span class="emphasis"><em>EXPR</em></span></td><td>messages addressed to <span class="emphasis"><em>EXPR</em></span></td></tr><tr><td>~T</td><td>tagged messages</td></tr><tr><td>~u</td><td>messages addressed to a subscribed mailing list</td></tr><tr><td>~U</td><td>unread messages</td></tr><tr><td>~v</td><td>messages part of a collapsed thread.</td></tr><tr><td>~V</td><td>cryptographically verified messages</td></tr><tr><td>~x <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">References</span>”</span> or <span class="quote">“<span class="quote">In-Reply-To</span>”</span> field</td></tr><tr><td>~X [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> attachments *)</td></tr><tr><td>~y <span class="emphasis"><em>EXPR</em></span></td><td>messages which contain <span class="emphasis"><em>EXPR</em></span> in the <span class="quote">“<span class="quote">X-Label</span>”</span> field</td></tr><tr><td>~z [<span class="emphasis"><em>MIN</em></span>]-[<span class="emphasis"><em>MAX</em></span>]</td><td>messages with a size in the range <span class="emphasis"><em>MIN</em></span> to <span class="emphasis"><em>MAX</em></span> *) **)</td></tr><tr><td>~=</td><td>duplicated messages (see <a class="link" href="reference.html#duplicate-threads" title="3.58. duplicate_threads">$duplicate_threads</a>)</td></tr><tr><td>~$</td><td>unreferenced messages (requires threaded view)</td></tr><tr><td>~(<span class="emphasis"><em>PATTERN</em></span>)</td><td>messages in threads
 containing messages matching <span class="emphasis"><em>PATTERN</em></span>, e.g. all
 threads containing messages from you: ~(~P)</td></tr></tbody></table></div></div><br class="table-break" /><p>
 Where <span class="emphasis"><em>EXPR</em></span> is a <a class="link" href="advancedusage.html#regexp" title="2. Regular Expressions">regular expression</a>, and <span class="emphasis"><em>GROUP</em></span> is an
@@ -232,9 +231,9 @@ there is at least one match in the whole list. If you want to make sure
 that all elements of that list match, you need to prefix your pattern
 with <span class="quote">“<span class="quote">^</span>”</span>.  This example matches all mails which only has
 recipients from Germany.
-</p><div class="example"><a id="ex-recips"></a><p class="title"><b>Example 4.1. Matching all addresses in address lists</b></p><div class="example-contents"><pre class="screen">
+</p><div class="example"><a id="ex-recips"></a><p class="title"><strong>Example 4.1. Matching all addresses in address lists</strong></p><div class="example-contents"><pre class="screen">
 ^~C \.de$
-</pre></div></div><br class="example-break" /></div><div class="sect2" title="3.2. Simple Searches"><div class="titlepage"><div><div><h3 class="title"><a id="simple-searches"></a>3.2. Simple Searches</h3></div></div></div><p>
+</pre></div></div><br class="example-break" /></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="simple-searches"></a>3.2. Simple Searches</h3></div></div></div><p>
 Mutt supports two versions of so called <span class="quote">“<span class="quote">simple
 searches</span>”</span>. These are issued if the query entered for searching,
 limiting and similar operations does not seem to contain a valid pattern
@@ -249,15 +248,15 @@ If that is the case, Mutt will use the shown pattern modifier instead.
 If a keyword would conflict with your search keyword, you need to turn
 it into a regular expression to avoid matching the keyword table. For
 example, if you want to find all messages matching <span class="quote">“<span class="quote">flag</span>”</span>
-(using <a class="link" href="reference.html#simple-search" title="3.237. simple_search">$simple_search</a>)
+(using <a class="link" href="reference.html#simple-search" title="3.250. simple_search">$simple_search</a>)
 but don't want to match flagged messages, simply search for
 <span class="quote">“<span class="quote"><code class="literal">[f]lag</code></span>”</span>.
-</p><div class="table"><a id="tab-simplesearch-keywords"></a><p class="title"><b>Table 4.5. Simple search keywords</b></p><div class="table-contents"><table summary="Simple search keywords" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Keyword</th><th>Pattern modifier</th></tr></thead><tbody><tr><td>all</td><td>~A</td></tr><tr><td>.</td><td>~A</td></tr><tr><td>^</td><td>~A</td></tr><tr><td>del</td><td>~D</td></tr><tr><td>flag</td><td>~F</td></tr><tr><td>new</td><td>~N</td></tr><tr><td>old</td><td>~O</td></tr><tr><td>repl</td><td>~Q</td></tr><tr><td>read</td><td>~R</td></tr><tr><td>tag</td><td>~T</td></tr><tr><td>unread</td><td>~U</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p><div class="table"><a id="tab-simplesearch-keywords"></a><p class="title"><strong>Table 4.5. Simple search keywords</strong></p><div class="table-contents"><table class="table" summary="Simple search keywords" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Keyword</th><th>Pattern modifier</th></tr></thead><tbody><tr><td>all</td><td>~A</td></tr><tr><td>.</td><td>~A</td></tr><tr><td>^</td><td>~A</td></tr><tr><td>del</td><td>~D</td></tr><tr><td>flag</td><td>~F</td></tr><tr><td>new</td><td>~N</td></tr><tr><td>old</td><td>~O</td></tr><tr><td>repl</td><td>~Q</td></tr><tr><td>read</td><td>~R</td></tr><tr><td>tag</td><td>~T</td></tr><tr><td>unread</td><td>~U</td></tr></tbody></table></div></div><br class="table-break" /><p>
 The second type of simple search is to build a complex search pattern
-using <a class="link" href="reference.html#simple-search" title="3.237. simple_search">$simple_search</a> as a
+using <a class="link" href="reference.html#simple-search" title="3.250. simple_search">$simple_search</a> as a
 template. Mutt will insert your query properly quoted and search for the
 composed complex query.
-</p></div><div class="sect2" title="3.3. Nesting and Boolean Operators"><div class="titlepage"><div><div><h3 class="title"><a id="complex-patterns"></a>3.3. Nesting and Boolean Operators</h3></div></div></div><p>
+</p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="complex-patterns"></a>3.3. Nesting and Boolean Operators</h3></div></div></div><p>
 Logical AND is performed by specifying more than one criterion.  For
 example:
 </p><pre class="screen">
@@ -269,7 +268,7 @@ list of recipients <span class="emphasis"><em>and</em></span> that have the word
 </p><p>
 Mutt also recognizes the following operators to create more complex
 search patterns:
-</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>
+</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
 ! — logical NOT operator
 </p></li><li class="listitem"><p>
 | — logical OR operator
@@ -280,7 +279,7 @@ Here is an example illustrating a complex search pattern.  This pattern
 will select all messages which do not contain <span class="quote">“<span class="quote">mutt</span>”</span> in the
 <span class="quote">“<span class="quote">To</span>”</span> or <span class="quote">“<span class="quote">Cc</span>”</span> field and which are from
 <span class="quote">“<span class="quote">elkins</span>”</span>.
-</p><div class="example"><a id="ex-pattern-bool"></a><p class="title"><b>Example 4.2. Using boolean operators in patterns</b></p><div class="example-contents"><pre class="screen">
+</p><div class="example"><a id="ex-pattern-bool"></a><p class="title"><strong>Example 4.2. Using boolean operators in patterns</strong></p><div class="example-contents"><pre class="screen">
 !(~t mutt|~c mutt) ~f elkins
 </pre></div></div><br class="example-break" /><p>
 Here is an example using white space in the regular expression (note the
@@ -290,7 +289,7 @@ must be from either <span class="quote">“<span class="quote">Jim +Somebody</sp
 +SomeoneElse</span>”</span>:
 </p><pre class="screen">
 '~s "^Junk +From +Me$" ~f ("Jim +Somebody"|"Ed +SomeoneElse")'
-</pre><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</pre><div class="note"><h3 class="title">Note</h3><p>
 If a regular expression contains parenthesis, or a vertical bar ("|"),
 you <span class="emphasis"><em>must</em></span> enclose the expression in double or single
 quotes since those characters are also used to separate different parts
@@ -299,10 +298,10 @@ of Mutt's pattern language.  For example: <code class="literal">~f
 parenthesis wouldn't end.  This would be separated to two OR'd patterns:
 <span class="emphasis"><em>~f me@(mutt\.org</em></span> and
 <span class="emphasis"><em>cs\.hmc\.edu)</em></span>. They are never what you want.
-</p></div></div><div class="sect2" title="3.4. Searching by Date"><div class="titlepage"><div><div><h3 class="title"><a id="date-patterns"></a>3.4. Searching by Date</h3></div></div></div><p>
+</p></div></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="date-patterns"></a>3.4. Searching by Date</h3></div></div></div><p>
 Mutt supports two types of dates, <span class="emphasis"><em>absolute</em></span> and
 <span class="emphasis"><em>relative</em></span>.
-</p><div class="sect3" title="3.4.1. Absolute Dates"><div class="titlepage"><div><div><h4 class="title"><a id="date-absolute"></a>3.4.1. Absolute Dates</h4></div></div></div><p>
+</p><div class="sect3"><div class="titlepage"><div><div><h4 class="title"><a id="date-absolute"></a>3.4.1. Absolute Dates</h4></div></div></div><p>
 Dates <span class="emphasis"><em>must</em></span> be in DD/MM/YY format (month and year
 are optional, defaulting to the current month and year).  An example of
 a valid range of dates is:
@@ -321,15 +320,15 @@ You can add error margins to absolute dates.  An error margin is a sign
 (+ or -), followed by a digit, followed by one of the units in <a class="xref" href="advancedusage.html#tab-date-units" title="Table 4.6. Date units">Table 4.6, “Date units”</a>. As a special case, you can replace the sign
 by a <span class="quote">“<span class="quote">*</span>”</span> character, which is equivalent to giving identical
 plus and minus error margins.
-</p><div class="table"><a id="tab-date-units"></a><p class="title"><b>Table 4.6. Date units</b></p><div class="table-contents"><table summary="Date units" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Unit</th><th>Description</th></tr></thead><tbody><tr><td>y</td><td>Years</td></tr><tr><td>m</td><td>Months</td></tr><tr><td>w</td><td>Weeks</td></tr><tr><td>d</td><td>Days</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p><div class="table"><a id="tab-date-units"></a><p class="title"><strong>Table 4.6. Date units</strong></p><div class="table-contents"><table class="table" summary="Date units" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Unit</th><th>Description</th></tr></thead><tbody><tr><td>y</td><td>Years</td></tr><tr><td>m</td><td>Months</td></tr><tr><td>w</td><td>Weeks</td></tr><tr><td>d</td><td>Days</td></tr></tbody></table></div></div><br class="table-break" /><p>
 Example: To select any messages two weeks around January 15, 2001, you'd
 use the following pattern:
 </p><pre class="screen">
 Limit to messages matching: ~d 15/1/2001*2w
-</pre></div><div class="sect3" title="3.4.2. Relative Dates"><div class="titlepage"><div><div><h4 class="title"><a id="dates-relative"></a>3.4.2. Relative Dates</h4></div></div></div><p>
+</pre></div><div class="sect3"><div class="titlepage"><div><div><h4 class="title"><a id="dates-relative"></a>3.4.2. Relative Dates</h4></div></div></div><p>
 This type of date is relative to the current date, and may be specified
 as:
-</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>
+</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
 &gt;<span class="emphasis"><em>offset</em></span> for messages older than
 <span class="emphasis"><em>offset</em></span> units
 </p></li><li class="listitem"><p>
@@ -345,13 +344,13 @@ of the units from <a class="xref" href="advancedusage.html#tab-date-units" title
 Example: to select messages less than 1 month old, you would use
 </p><pre class="screen">
 Limit to messages matching: ~d &lt;1m
-</pre><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</pre><div class="note"><h3 class="title">Note</h3><p>
 All dates used when searching are relative to the
 <span class="emphasis"><em>local</em></span> time zone, so unless you change the setting
-of your <a class="link" href="reference.html#index-format" title="3.114. index_format">$index_format</a> to include a
+of your <a class="link" href="reference.html#index-format" title="3.118. index_format">$index_format</a> to include a
 <code class="literal">%[...]</code> format, these are <span class="emphasis"><em>not</em></span> the
 dates shown in the main index.
-</p></div></div></div></div><div class="sect1" title="4. Using Tags"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="tags"></a>4. Using Tags</h2></div></div></div><p>
+</p></div></div></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="tags"></a>4. Using Tags</h2></div></div></div><p>
 Sometimes it is desirable to perform an operation on a group of messages
 all at once rather than one at a time.  An example might be to save
 messages to a mailing list to a separate folder, or to delete all
@@ -376,7 +375,7 @@ tagged messages, Mutt will <span class="quote">“<span class="quote">eat</span>
 abort it's execution.  Mutt will stop <span class="quote">“<span class="quote">eating</span>”</span> the macro
 when it encounters the <code class="literal">&lt;end-cond&gt;</code> operator;
 after this operator the rest of the macro will be executed as normal.
-</p></div><div class="sect1" title="5. Using Hooks"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="hooks"></a>5. Using Hooks</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="hooks"></a>5. Using Hooks</h2></div></div></div><p>
 A <span class="emphasis"><em>hook</em></span> is a concept found in many other programs
 which allows you to execute arbitrary commands before performing some
 operation.  For example, you may wish to tailor your configuration based
@@ -384,7 +383,7 @@ upon which mailbox you are reading, or to whom you are sending mail.  In
 the Mutt world, a <span class="emphasis"><em>hook</em></span> consists of a <a class="link" href="advancedusage.html#regexp" title="2. Regular Expressions">regular expression</a> or <a class="link" href="advancedusage.html#patterns" title="3. Patterns: Searching, Limiting and Tagging">pattern</a> along with a configuration
 option/command.  See:
 
-</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>
+</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
 <a class="link" href="optionalfeatures.html#account-hook" title="6. Managing Multiple Accounts"><span class="command"><strong>account-hook</strong></span></a>
 </p></li><li class="listitem"><p>
 <a class="link" href="configuration.html#charset-hook" title="6. Defining Aliases for Character Sets"><span class="command"><strong>charset-hook</strong></span></a>
@@ -413,19 +412,19 @@ option/command.  See:
 </p></li></ul></div><p>
 
 for specific details on each type of <span class="emphasis"><em>hook</em></span> available.
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 If a hook changes configuration settings, these changes remain effective
 until the end of the current Mutt session. As this is generally not
 desired, a <span class="quote">“<span class="quote">default</span>”</span> hook needs to be added before all
 other hooks of that type to restore configuration defaults.
-</p></div><div class="example"><a id="ex-default-hook"></a><p class="title"><b>Example 4.3. Specifying a <span class="quote">“<span class="quote">default</span>”</span> hook</b></p><div class="example-contents"><pre class="screen">
+</p></div><div class="example"><a id="ex-default-hook"></a><p class="title"><strong>Example 4.3. Specifying a <span class="quote">“<span class="quote">default</span>”</span> hook</strong></p><div class="example-contents"><pre class="screen">
 send-hook . 'unmy_hdr From:'
 send-hook ~C'^b@b\.b$' my_hdr from: c@c.c
 </pre></div></div><br class="example-break" /><p>
-In <a class="xref" href="advancedusage.html#ex-default-hook" title="Example 4.3. Specifying a “default” hook">Example 4.3, “Specifying a <span class="quote">“<span class="quote">default</span>”</span> hook”</a>, by default the value of <a class="link" href="reference.html#from" title="3.75. from">$from</a> and <a class="link" href="reference.html#realname" title="3.210. realname">$realname</a> is not overridden. When sending
+In <a class="xref" href="advancedusage.html#ex-default-hook" title="Example 4.3. Specifying a “default” hook">Example 4.3, “Specifying a <span class="quote">“<span class="quote">default</span>”</span> hook”</a>, by default the value of <a class="link" href="reference.html#from" title="3.77. from">$from</a> and <a class="link" href="reference.html#realname" title="3.218. realname">$realname</a> is not overridden. When sending
 messages either To: or Cc: to <code class="literal">&lt;b@b.b&gt;</code>, the
 From: header is changed to <code class="literal">&lt;c@c.c&gt;</code>.
-</p><div class="sect2" title="5.1. Message Matching in Hooks"><div class="titlepage"><div><div><h3 class="title"><a id="pattern-hook"></a>5.1. Message Matching in Hooks</h3></div></div></div><p>
+</p><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="pattern-hook"></a>5.1. Message Matching in Hooks</h3></div></div></div><p>
 Hooks that act upon messages (<span class="command"><strong>message-hook</strong></span>,
 <span class="command"><strong>reply-hook</strong></span>, <span class="command"><strong>send-hook</strong></span>,
 <span class="command"><strong>send2-hook</strong></span>, <span class="command"><strong>save-hook</strong></span>,
@@ -455,13 +454,43 @@ However, it is not required that you write the pattern to match using
 the full searching language.  You can still specify a simple
 <span class="emphasis"><em>regular expression</em></span> like the other hooks, in which
 case Mutt will translate your pattern into the full language, using the
-translation specified by the <a class="link" href="reference.html#default-hook" title="3.48. default_hook">$default_hook</a> variable.  The pattern is
-translated at the time the hook is declared, so the value of <a class="link" href="reference.html#default-hook" title="3.48. default_hook">$default_hook</a> that is in effect at that
+translation specified by the <a class="link" href="reference.html#default-hook" title="3.50. default_hook">$default_hook</a> variable.  The pattern is
+translated at the time the hook is declared, so the value of <a class="link" href="reference.html#default-hook" title="3.50. default_hook">$default_hook</a> that is in effect at that
 time will be used.
-</p></div></div><div class="sect1" title="6. External Address Queries"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="query"></a>6. External Address Queries</h2></div></div></div><p>
+</p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="mailbox-hook"></a>5.2. Mailbox Matching in Hooks</h3></div></div></div><p>
+Hooks that match against mailboxes (<span class="command"><strong>folder-hook</strong></span>,
+<span class="command"><strong>mbox-hook</strong></span>) apply both <a class="link" href="advancedusage.html#regexp" title="2. Regular Expressions">regular
+expression</a> syntax as well as <a class="link" href="advancedusage.html#shortcuts" title="8. Mailbox Shortcuts">mailbox
+shortcut</a> expansion on the regexp parameter.  There is some
+overlap between these, so special attention should be paid to the first
+character of the regexp.
+</p><pre class="screen">
+# Here, ^ will expand to "the current mailbox" not "beginning of string":
+folder-hook ^/home/user/Mail/bar "set sort=threads"
+
+# If you want ^ to be interpreted as "beginning of string", one workaround
+# is to enclose the regexp in parenthesis:
+folder-hook (^/home/user/Mail/bar) "set sort=threads"
+
+# This will expand to the default save folder for the alias "imap.example.com", which
+# is probably not what you want:
+folder-hook @imap.example.com "set sort=threads"
+
+# A workaround is to use parenthesis or a backslash:
+folder-hook (@imap.example.com) "set sort=threads"
+folder-hook '\@imap.example.com' "set sort=threads"
+</pre><p>
+Keep in mind that mailbox shortcut expansion on the regexp parameter
+takes place when the hook is initially parsed, not when the hook is
+matching against a mailbox.  When Mutt starts up and is reading the
+.muttrc, some mailbox shortcuts may not be usable.  For example, the
+"current mailbox" shortcut, ^, will expand to an empty string because no
+mailbox has been opened yet.  Mutt will issue an error for this case or
+if the mailbox shortcut results in an empty regexp.
+</p></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="query"></a>6. External Address Queries</h2></div></div></div><p>
 Mutt supports connecting to external directory databases such as LDAP,
 ph/qi, bbdb, or NIS through a wrapper script which connects to Mutt
-using a simple interface.  Using the <a class="link" href="reference.html#query-command" title="3.204. query_command">$query_command</a> variable, you specify the
+using a simple interface.  Using the <a class="link" href="reference.html#query-command" title="3.212. query_command">$query_command</a> variable, you specify the
 wrapper command to use.  For example:
 </p><pre class="screen">
 set query_command = "mutt_ldap_query.pl %s"
@@ -497,11 +526,11 @@ to the last space or comma.  If there is a single response for that
 query, Mutt will expand the address in place.  If there are multiple
 responses, Mutt will activate the query menu.  At the query menu, you
 can select one or more addresses to be added to the prompt.
-</p></div><div class="sect1" title="7. Mailbox Formats"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mailbox-formats"></a>7. Mailbox Formats</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="mailbox-formats"></a>7. Mailbox Formats</h2></div></div></div><p>
 Mutt supports reading and writing of four different local mailbox
 formats: mbox, MMDF, MH and Maildir.  The mailbox type is auto detected,
 so there is no need to use a flag for different mailbox types.  When
-creating new mailboxes, Mutt uses the default specified with the <a class="link" href="reference.html#mbox-type" title="3.128. mbox_type">$mbox_type</a> variable. A short description of
+creating new mailboxes, Mutt uses the default specified with the <a class="link" href="reference.html#mbox-type" title="3.133. mbox_type">$mbox_type</a> variable. A short description of
 the formats follows.
 </p><p>
 <span class="emphasis"><em>mbox</em></span>.  This is a widely used mailbox format for
@@ -550,17 +579,17 @@ too is not very disk-space efficient depending on the environment. Since
 no additional files are used for metadata (which is embedded in the
 message filenames) and Maildir is locking-free, it's easy to sync across
 different machines using file-level synchronization tools.
-</p></div><div class="sect1" title="8. Mailbox Shortcuts"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="shortcuts"></a>8. Mailbox Shortcuts</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="shortcuts"></a>8. Mailbox Shortcuts</h2></div></div></div><p>
 There are a number of built in shortcuts which refer to specific
 mailboxes.  These shortcuts can be used anywhere you are prompted for a
 file or mailbox path or in path-related configuration variables. Note
 that these only work at the beginning of a string.
-</p><div class="table"><a id="tab-mailbox-shortcuts"></a><p class="title"><b>Table 4.7. Mailbox shortcuts</b></p><div class="table-contents"><table summary="Mailbox shortcuts" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Shortcut</th><th>Refers to...</th></tr></thead><tbody><tr><td><code class="literal">!</code></td><td>your <a class="link" href="reference.html#spoolfile" title="3.270. spoolfile">$spoolfile</a> (incoming) mailbox</td></tr><tr><td><code class="literal">&gt;</code></td><td>your <a class="link" href="reference.html#mbox" title="3.127. mbox">$mbox</a> file</td></tr><tr><td><code class="literal">&lt;</code></td><td>your <a class="link" href="reference.html#record" title="3.212. record">$record</a> file</td></tr><tr><td><code class="literal">^</code></td><td>the current mailbox</td></tr><tr><td><code class="literal">-</code> or <code class="literal">!!</code></td><td>the file you've last visited</td></tr><tr><td><code class="literal">~</code></td><td>your home directory</td></tr><tr><td><code class="literal">=</code> or <code class="literal">+</code></td><td>your <a class="link" href="reference.html#folder" title="3.66. folder">$folder</a> directory</td></tr><tr><td><span class="emphasis"><em>@alias</em></span></td><td>to the <a class="link" href="configuration.html#save-hook" title="16. Specify Default Save Mailbox">default save folder</a> as determined by the address of the alias</td></tr></tbody></table></div></div><br class="table-break" /><p>
+</p><div class="table"><a id="tab-mailbox-shortcuts"></a><p class="title"><strong>Table 4.7. Mailbox shortcuts</strong></p><div class="table-contents"><table class="table" summary="Mailbox shortcuts" border="1"><colgroup><col /><col /></colgroup><thead><tr><th>Shortcut</th><th>Refers to...</th></tr></thead><tbody><tr><td><code class="literal">!</code></td><td>your <a class="link" href="reference.html#spoolfile" title="3.284. spoolfile">$spoolfile</a> (incoming) mailbox</td></tr><tr><td><code class="literal">&gt;</code></td><td>your <a class="link" href="reference.html#mbox" title="3.132. mbox">$mbox</a> file</td></tr><tr><td><code class="literal">&lt;</code></td><td>your <a class="link" href="reference.html#record" title="3.220. record">$record</a> file</td></tr><tr><td><code class="literal">^</code></td><td>the current mailbox</td></tr><tr><td><code class="literal">-</code> or <code class="literal">!!</code></td><td>the file you've last visited</td></tr><tr><td><code class="literal">~</code></td><td>your home directory</td></tr><tr><td><code class="literal">=</code> or <code class="literal">+</code></td><td>your <a class="link" href="reference.html#folder" title="3.68. folder">$folder</a> directory</td></tr><tr><td><span class="emphasis"><em>@alias</em></span></td><td>to the <a class="link" href="configuration.html#save-hook" title="16. Specify Default Save Mailbox">default save folder</a> as determined by the address of the alias</td></tr></tbody></table></div></div><br class="table-break" /><p>
 For example, to store a copy of outgoing messages in the folder they
 were composed in, a <a class="link" href="configuration.html#folder-hook" title="7. Setting Variables Based Upon Mailbox"><span class="command"><strong>folder-hook</strong></span></a> can be used
-to set <a class="link" href="reference.html#record" title="3.212. record">$record</a>:
+to set <a class="link" href="reference.html#record" title="3.220. record">$record</a>:
 </p><pre class="screen">
-folder-hook . 'set record=^'</pre></div><div class="sect1" title="9. Handling Mailing Lists"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="using-lists"></a>9. Handling Mailing Lists</h2></div></div></div><p>
+folder-hook . 'set record=^'</pre></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="using-lists"></a>9. Handling Mailing Lists</h2></div></div></div><p>
 Mutt has a few configuration options that make dealing with large
 amounts of mail easier.  The first thing you must do is to let Mutt know
 what addresses you consider to be mailing lists (technically this does
@@ -574,7 +603,7 @@ Now that Mutt knows what your mailing lists are, it can do several
 things, the first of which is the ability to show the name of a list
 through which you received a message (i.e., of a subscribed list) in the
 <span class="emphasis"><em>index</em></span> menu display.  This is useful to distinguish
-between personal and list mail in the same mailbox.  In the <a class="link" href="reference.html#index-format" title="3.114. index_format">$index_format</a> variable, the expando
+between personal and list mail in the same mailbox.  In the <a class="link" href="reference.html#index-format" title="3.118. index_format">$index_format</a> variable, the expando
 <span class="quote">“<span class="quote">%L</span>”</span> will print the string <span class="quote">“<span class="quote">To &lt;list&gt;</span>”</span>
 when <span class="quote">“<span class="quote">list</span>”</span> appears in the <span class="quote">“<span class="quote">To</span>”</span> field, and
 <span class="quote">“<span class="quote">Cc &lt;list&gt;</span>”</span> when it appears in the <span class="quote">“<span class="quote">Cc</span>”</span>
@@ -592,7 +621,7 @@ specified by <code class="literal">Mail-Followup-To</code>, see below).
 </p><p>
 Mutt also supports the <code class="literal">Mail-Followup-To</code> header.  When
 you send a message to a list of recipients which includes one or several
-subscribed mailing lists, and if the <a class="link" href="reference.html#followup-to" title="3.68. followup_to">$followup_to</a> option is set, Mutt will
+subscribed mailing lists, and if the <a class="link" href="reference.html#followup-to" title="3.70. followup_to">$followup_to</a> option is set, Mutt will
 generate a Mail-Followup-To header which contains all the recipients to
 whom you send this message, but not your address. This indicates that
 group-replies or list-replies (also known as <span class="quote">“<span class="quote">followups</span>”</span>)
@@ -602,12 +631,12 @@ one of the mailing lists you are subscribed to.
 </p><p>
 Conversely, when group-replying or list-replying to a message which has
 a <code class="literal">Mail-Followup-To</code> header, Mutt will respect this
-header if the <a class="link" href="reference.html#honor-followup-to" title="3.92. honor_followup_to">$honor_followup_to</a> configuration
+header if the <a class="link" href="reference.html#honor-followup-to" title="3.94. honor_followup_to">$honor_followup_to</a> configuration
 variable is set.  Using <a class="link" href="gettingstarted.html#list-reply">list-reply</a>
 will in this case also make sure that the reply goes to the mailing
 list, even if it's not specified in the list of recipients in the
 <code class="literal">Mail-Followup-To</code>.
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 When header editing is enabled, you can create a
 <code class="literal">Mail-Followup-To</code> header manually.  Mutt will only
 auto-generate this header if it doesn't exist when you send the message.
@@ -617,7 +646,7 @@ The other method some mailing list admins use is to generate a
 address rather than the author of the message.  This can create problems
 when trying to reply directly to the author in private, since most mail
 clients will automatically reply to the address given in the
-<span class="quote">“<span class="quote">Reply-To</span>”</span> field.  Mutt uses the <a class="link" href="reference.html#reply-to" title="3.215. reply_to">$reply_to</a> variable to help decide which
+<span class="quote">“<span class="quote">Reply-To</span>”</span> field.  Mutt uses the <a class="link" href="reference.html#reply-to" title="3.226. reply_to">$reply_to</a> variable to help decide which
 address to use.  If set to <span class="emphasis"><em>ask-yes</em></span> or
 <span class="emphasis"><em>ask-no</em></span>, you will be prompted as to whether or not
 you would like to use the address given in the <span class="quote">“<span class="quote">Reply-To</span>”</span>
@@ -627,7 +656,7 @@ field.  When set to <span class="emphasis"><em>yes</em></span>, the
 </p><p>
 The <span class="quote">“<span class="quote">X-Label:</span>”</span> header field can be used to further identify
 mailing lists or list subject matter (or just to annotate messages
-individually).  The <a class="link" href="reference.html#index-format" title="3.114. index_format">$index_format</a>
+individually).  The <a class="link" href="reference.html#index-format" title="3.118. index_format">$index_format</a>
 variable's <span class="quote">“<span class="quote">%y</span>”</span> and <span class="quote">“<span class="quote">%Y</span>”</span> expandos can be used
 to expand <span class="quote">“<span class="quote">X-Label:</span>”</span> fields in the index, and Mutt's
 pattern-matcher can match regular expressions to <span class="quote">“<span class="quote">X-Label:</span>”</span>
@@ -635,7 +664,7 @@ fields with the <span class="quote">“<span class="quote">~y</span>”</span> s
 not a standard message header field, but it can easily be inserted by
 procmail and other mail filtering agents.
 </p><p>
-Lastly, Mutt has the ability to <a class="link" href="reference.html#sort" title="3.264. sort">sort</a> the
+Lastly, Mutt has the ability to <a class="link" href="reference.html#sort" title="3.278. sort">sort</a> the
 mailbox into <a class="link" href="gettingstarted.html#threads" title="5.3. Threaded Mode">threads</a>.  A thread is a
 group of messages which all relate to the same subject.  This is usually
 organized into a tree-like structure where a message and all of its
@@ -643,10 +672,10 @@ replies are represented graphically.  If you've ever used a threaded
 news client, this is the same concept.  It makes dealing with large
 volume mailing lists easier because you can easily delete uninteresting
 threads and quickly find topics of value.
-</p></div><div class="sect1" title="10. New Mail Detection"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="new-mail"></a>10. New Mail Detection</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="new-mail"></a>10. New Mail Detection</h2></div></div></div><p>
 Mutt supports setups with multiple folders, allowing all of them to be
 monitored for new mail (see <a class="xref" href="configuration.html#mailboxes" title="14. Monitoring Incoming Mail">Section 14, “Monitoring Incoming Mail”</a> for details).
-</p><div class="sect2" title="10.1. How New Mail Detection Works"><div class="titlepage"><div><div><h3 class="title"><a id="new-mail-formats"></a>10.1. How New Mail Detection Works</h3></div></div></div><p>
+</p><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="new-mail-formats"></a>10.1. How New Mail Detection Works</h3></div></div></div><p>
 For Mbox and Mmdf folders, new mail is detected by comparing access
 and/or modification times of files: Mutt assumes a folder has new mail
 if it wasn't accessed after it was last modified. Utilities like
@@ -657,7 +686,7 @@ possible causes of Mutt not detecting new mail in these folders are
 backup tools (updating access times) or filesystems mounted without
 access time update support (for Linux systems, see the
 <code class="literal">relatime</code> option).
-</p><div class="note" title="Note"><h3 class="title">Note</h3><p>
+</p><div class="note"><h3 class="title">Note</h3><p>
 Contrary to older Mutt releases, it now maintains the new mail status of
 a folder by properly resetting the access time if the folder contains at
 least one message which is neither read, nor deleted, nor marked as old.
@@ -669,21 +698,21 @@ mail detection instead which won't work for size-neutral changes.
 </p><p>
 New mail for Maildir is assumed if there is one message in the
 <code class="literal">new/</code> subdirectory which is not marked deleted (see
-<a class="link" href="reference.html#maildir-trash" title="3.123. maildir_trash">$maildir_trash</a>). For MH folders, a
+<a class="link" href="reference.html#maildir-trash" title="3.127. maildir_trash">$maildir_trash</a>). For MH folders, a
 mailbox is considered having new mail if there's at least one message in
-the <span class="quote">“<span class="quote">unseen</span>”</span> sequence as specified by <a class="link" href="reference.html#mh-seq-unseen" title="3.140. mh_seq_unseen">$mh_seq_unseen</a>.
+the <span class="quote">“<span class="quote">unseen</span>”</span> sequence as specified by <a class="link" href="reference.html#mh-seq-unseen" title="3.145. mh_seq_unseen">$mh_seq_unseen</a>.
 </p><p>
 Mutt does not poll POP3 folders for new mail, it only periodically
 checks the currently opened folder (if it's a POP3 folder).
 </p><p>
 For IMAP, by default Mutt uses recent message counts provided by the
-server to detect new mail. If the <a class="link" href="reference.html#imap-idle" title="3.100. imap_idle">$imap_idle</a> option is set, it'll use the IMAP
+server to detect new mail. If the <a class="link" href="reference.html#imap-idle" title="3.104. imap_idle">$imap_idle</a> option is set, it'll use the IMAP
 IDLE extension if advertised by the server.
-</p></div><div class="sect2" title="10.2. Polling For New Mail"><div class="titlepage"><div><div><h3 class="title"><a id="new-mail-polling"></a>10.2. Polling For New Mail</h3></div></div></div><p>
-When in the index menu and being idle (also see <a class="link" href="reference.html#timeout" title="3.292. timeout">$timeout</a>), Mutt periodically checks for new
+</p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="new-mail-polling"></a>10.2. Polling For New Mail</h3></div></div></div><p>
+When in the index menu and being idle (also see <a class="link" href="reference.html#timeout" title="3.309. timeout">$timeout</a>), Mutt periodically checks for new
 mail in all folders which have been configured via the
 <span class="command"><strong>mailboxes</strong></span> command. The interval depends on the folder
-type: for local/IMAP folders it consults <a class="link" href="reference.html#mail-check" title="3.118. mail_check">$mail_check</a> and <a class="link" href="reference.html#pop-checkinterval" title="3.188. pop_checkinterval">$pop_checkinterval</a> for POP folders.
+type: for local/IMAP folders it consults <a class="link" href="reference.html#mail-check" title="3.122. mail_check">$mail_check</a> and <a class="link" href="reference.html#pop-checkinterval" title="3.194. pop_checkinterval">$pop_checkinterval</a> for POP folders.
 </p><p>
 Outside the index menu the directory browser supports checking for new
 mail using the <code class="literal">&lt;check-new&gt;</code> function which is
@@ -698,7 +727,7 @@ For the pager, index and directory browser menus, Mutt contains the
 mail in the command line at the bottom of the screen.
 </p><p>
 For the index, by default Mutt displays the number of mailboxes with new
-mail in the status bar, please refer to the <a class="link" href="reference.html#status-format" title="3.283. status_format">$status_format</a> variable for details.
+mail in the status bar, please refer to the <a class="link" href="reference.html#status-format" title="3.300. status_format">$status_format</a> variable for details.
 </p><p>
 When changing folders, Mutt fills the prompt with the first folder from
 the mailboxes list containing new mail (if any), pressing
@@ -706,12 +735,12 @@ the mailboxes list containing new mail (if any), pressing
 mail.  The (by default unbound) function
 <code class="literal">&lt;next-unread-mailbox&gt;</code> in the index can be used
 to immediately open the next folder with unread mail (if any).
-</p></div></div><div class="sect1" title="11. Editing Threads"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="editing-threads"></a>11. Editing Threads</h2></div></div></div><p>
+</p></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="editing-threads"></a>11. Editing Threads</h2></div></div></div><p>
 Mutt has the ability to dynamically restructure threads that are broken
 either by misconfigured software or bad behavior from some
 correspondents. This allows to clean your mailboxes from these
 annoyances which make it hard to follow a discussion.
-</p><div class="sect2" title="11.1. Linking Threads"><div class="titlepage"><div><div><h3 class="title"><a id="link-threads"></a>11.1. Linking Threads</h3></div></div></div><p>
+</p><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="link-threads"></a>11.1. Linking Threads</h3></div></div></div><p>
 Some mailers tend to <span class="quote">“<span class="quote">forget</span>”</span> to correctly set the
 <span class="quote">“<span class="quote">In-Reply-To:</span>”</span> and <span class="quote">“<span class="quote">References:</span>”</span> headers when
 replying to a message. This results in broken discussions because Mutt
@@ -723,34 +752,34 @@ default). The reply will then be connected to this parent message.
 You can also connect multiple children at once, tagging them and using
 the <code class="literal">&lt;tag-prefix&gt;</code> command (<span class="quote">“<span class="quote">;</span>”</span>) or
 the <a class="link" href="reference.html#auto-tag" title="3.17. auto_tag">$auto_tag</a> option.
-</p></div><div class="sect2" title="11.2. Breaking Threads"><div class="titlepage"><div><div><h3 class="title"><a id="break-threads"></a>11.2. Breaking Threads</h3></div></div></div><p>
+</p></div><div class="sect2"><div class="titlepage"><div><div><h3 class="title"><a id="break-threads"></a>11.2. Breaking Threads</h3></div></div></div><p>
 On mailing lists, some people are in the bad habit of starting a new
 discussion by hitting <span class="quote">“<span class="quote">reply</span>”</span> to any message from the list
 and changing the subject to a totally unrelated one.  You can fix such
 threads by using the <code class="literal">&lt;break-thread&gt;</code> function
 (bound by default to #), which will turn the subthread starting from the
 current message into a whole different thread.
-</p></div></div><div class="sect1" title="12. Delivery Status Notification (DSN) Support"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="dsn"></a>12. Delivery Status Notification (DSN) Support</h2></div></div></div><p>
+</p></div></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="dsn"></a>12. Delivery Status Notification (DSN) Support</h2></div></div></div><p>
 RFC1894 defines a set of MIME content types for relaying information
 about the status of electronic mail messages.  These can be thought of
 as <span class="quote">“<span class="quote">return receipts.</span>”</span>
 </p><p>
-To support DSN, there are two variables. <a class="link" href="reference.html#dsn-notify" title="3.54. dsn_notify">$dsn_notify</a> is used to request receipts for
+To support DSN, there are two variables. <a class="link" href="reference.html#dsn-notify" title="3.56. dsn_notify">$dsn_notify</a> is used to request receipts for
 different results (such as failed message, message delivered, etc.).
-<a class="link" href="reference.html#dsn-return" title="3.55. dsn_return">$dsn_return</a> requests how much of your
+<a class="link" href="reference.html#dsn-return" title="3.57. dsn_return">$dsn_return</a> requests how much of your
 message should be returned with the receipt (headers or full message).
 </p><p>
-When using <a class="link" href="reference.html#sendmail" title="3.231. sendmail">$sendmail</a> for mail delivery,
+When using <a class="link" href="reference.html#sendmail" title="3.244. sendmail">$sendmail</a> for mail delivery,
 you need to use either Berkeley sendmail 8.8.x (or greater) a MTA
 supporting DSN command line options compatible to Sendmail: The -N and
 -R options can be used by the mail client to make requests as to what
 type of status messages should be returned. Please consider your MTA
 documentation whether DSN is supported.
 </p><p>
-For SMTP delivery using <a class="link" href="reference.html#smtp-url" title="3.263. smtp_url">$smtp_url</a>, it
+For SMTP delivery using <a class="link" href="reference.html#smtp-url" title="3.277. smtp_url">$smtp_url</a>, it
 depends on the capabilities announced by the server whether Mutt will
 attempt to request DSN or not.
-</p></div><div class="sect1" title="13. Start a WWW Browser on URLs"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="urlview"></a>13. Start a WWW Browser on URLs</h2></div></div></div><p>
+</p></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="urlview"></a>13. Start a WWW Browser on URLs</h2></div></div></div><p>
 If a message contains URLs, it is efficient to get a menu with all the
 URLs and start a WWW browser on one of them.  This functionality is
 provided by the external urlview program which can be retrieved at
@@ -759,9 +788,9 @@ and the configuration commands:
 </p><pre class="screen">
 macro index \cb |urlview\n
 macro pager \cb |urlview\n
-</pre></div><div class="sect1" title="14. Miscellany"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="misc-topics"></a>14. Miscellany</h2></div></div></div><p>
+</pre></div><div class="sect1"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="misc-topics"></a>14. Miscellany</h2></div></div></div><p>
 This section documents various features that fit nowhere else.
-</p><div class="variablelist"><dl><dt><span class="term">
+</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 Address normalization
 </span></dt><dd><p>
 Mutt normalizes all e-mail addresses to the simplest form possible. If
@@ -779,7 +808,7 @@ specified in the <code class="literal">$MAIL</code> environment variable if
 present. Otherwise, the value of <code class="literal">$MAILDIR</code> is taken
 into account. If that isn't present either, Mutt takes the user's
 mailbox in the mailspool as determined at compile-time (which may also
-reside in the home directory). The <a class="link" href="reference.html#spoolfile" title="3.270. spoolfile">$spoolfile</a> setting overrides this
+reside in the home directory). The <a class="link" href="reference.html#spoolfile" title="3.284. spoolfile">$spoolfile</a> setting overrides this
 selection. Highest priority has the mailbox given with the
 <code class="literal">-f</code> command line option.
 </p></dd></dl></div></div></div><div class="navfooter"><hr /><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="configuration.html">Prev</a> </td><td width="20%" align="center"> </td><td width="40%" align="right"> <a accesskey="n" href="mimesupport.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 3. Configuration </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 5. Mutt's MIME Support</td></tr></table></div></body></html>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2002 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2002,2010,2013 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 1999-2003 Thomas Roessler <roessler@does-not-exist.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -1058,6 +1058,13 @@ void mx_update_tables(CONTEXT *ctx, int committing)
 	hash_delete (ctx->subj_hash, ctx->hdrs[i]->env->real_subj, ctx->hdrs[i], NULL);
       if (ctx->id_hash && ctx->hdrs[i]->env->message_id)
 	hash_delete (ctx->id_hash, ctx->hdrs[i]->env->message_id, ctx->hdrs[i], NULL);
+      /* The path mx_check_mailbox() -> imap_check_mailbox() ->
+       *          imap_expunge_mailbox() -> mx_update_tables()
+       * can occur before a call to mx_sync_mailbox(), resulting in
+       * last_tag being stale if it's not reset here.
+       */
+      if (ctx->last_tag == ctx->hdrs[i])
+        ctx->last_tag = NULL;
       mutt_free_header (&ctx->hdrs[i]);
     }
   }
@@ -1213,7 +1220,7 @@ static int imap_open_new_message (MESSAGE *msg, CONTEXT *dest, HEADER *hdr)
 #endif
 
 /* args:
- *	dest	destintation mailbox
+ *	dest	destination mailbox
  *	hdr	message being copied (required for maildir support, because
  *		the filename depends on the message flags)
  */
@@ -1255,6 +1262,7 @@ MESSAGE *mx_open_new_message (CONTEXT *dest, HEADER *hdr, int flags)
     msg->flags.flagged = hdr->flagged;
     msg->flags.replied = hdr->replied;
     msg->flags.read    = hdr->read;
+    msg->flags.draft   = (flags & M_SET_DRAFT) ? 1 : 0;
     msg->received = hdr->received;
   }
 

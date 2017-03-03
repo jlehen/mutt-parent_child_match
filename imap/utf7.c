@@ -24,7 +24,7 @@
 #include "charset.h"
 #include "imap_private.h"
 
-static int Index_64[128] = {
+static const int Index_64[128] = {
     -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,62, 63,-1,-1,-1,
@@ -35,7 +35,7 @@ static int Index_64[128] = {
     41,42,43,44, 45,46,47,48, 49,50,51,-1, -1,-1,-1,-1
 };
 
-static char B64Chars[64] = {
+static const char B64Chars[64] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
   'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd',
   'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
@@ -252,30 +252,40 @@ static char *utf8_to_utf7 (const char *u8, size_t u8len, char **u7,
   return 0;
 }
 
-void imap_utf7_encode (char **s)
+void imap_utf_encode (IMAP_DATA *idata, char **s)
 {
   if (Charset)
   {
     char *t = safe_strdup (*s);
-    if (!mutt_convert_string (&t, Charset, "utf-8", 0))
+    if (t && !mutt_convert_string (&t, Charset, "utf-8", 0))
     {
-      char *u7 = utf8_to_utf7 (t, strlen (t), NULL, 0);
       FREE (s);		/* __FREE_CHECKED__ */
-      *s = u7;
+      if (idata->unicode)
+        *s = safe_strdup (t);
+      else
+        *s = utf8_to_utf7 (t, strlen (t), NULL, 0);
     }
     FREE (&t);
   }
 }
 
-void imap_utf7_decode (char **s)
+void imap_utf_decode (IMAP_DATA *idata, char **s)
 {
+  char *t;
+
   if (Charset)
   {
-    char *t = utf7_to_utf8 (*s, strlen (*s), 0, 0);
+    if (idata->unicode)
+      t = safe_strdup (*s);
+    else
+      t = utf7_to_utf8 (*s, strlen (*s), 0, 0);
+
     if (t && !mutt_convert_string (&t, "utf-8", Charset, 0))
     {
       FREE (s);		/* __FREE_CHECKED__ */
       *s = t;
     }
+    else
+      FREE (&t);
   }
 }

@@ -534,7 +534,7 @@ int mutt_filter_unprintable (char **s)
   char *p = *s;
   mbstate_t mbstate1, mbstate2;
 
-  if (!(b = mutt_buffer_init (b)))
+  if (!(b = mutt_buffer_new ()))
     return -1;
   memset (&mbstate1, 0, sizeof (mbstate1));
   memset (&mbstate2, 0, sizeof (mbstate2));
@@ -547,6 +547,14 @@ int mutt_filter_unprintable (char **s)
       wc = replacement_char();
     }
     if (!IsWPrint (wc))
+      wc = '?';
+    /* HACK:
+     * Work around a gnu screen bug. See ticket #3827.
+     * Filter out the RIGHT-TO-LEFT and LEFT-TO-RIGHT bidi marks because
+     * they result in screen corruption.
+     */
+    else if (Charset_is_utf8 &&
+             ((wc == (wchar_t)0x200f) || (wc == (wchar_t)0x200e)))
       wc = '?';
     k2 = wcrtomb (scratch, wc, &mbstate2);
     scratch[k2] = '\0';

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1996-2000 Michael R. Elkins <me@mutt.org>
+ * Copyright (C) 1996-2000,2010 Michael R. Elkins <me@mutt.org>
  * Copyright (C) 2000-2002 Edmund Grimley Evans <edmundo@rano.org>
  * 
  *     This program is free software; you can redistribute it and/or modify
@@ -234,7 +234,7 @@ static size_t b_encoder (char *s, ICONV_CONST char *d, size_t dlen,
 static size_t q_encoder (char *s, ICONV_CONST char *d, size_t dlen,
 			 const char *tocode)
 {
-  char hex[] = "0123456789ABCDEF";
+  static const char hex[] = "0123456789ABCDEF";
   char *s0 = s;
 
   memcpy (s, "=?", 2), s += 2;
@@ -438,7 +438,7 @@ static int rfc2047_encode (ICONV_CONST char *d, size_t dlen, int col,
       if (!t0) t0 = t;
       t1 = t;
     }
-    else if (specials && strchr (specials, *t))
+    else if (specials && *t && strchr (specials, *t))
     {
       if (!s0) s0 = t;
       s1 = t;
@@ -614,6 +614,8 @@ void rfc2047_encode_adrlist (ADDRESS *addr, const char *tag)
   {
     if (ptr->personal)
       _rfc2047_encode_string (&ptr->personal, 1, col);
+    else if (ptr->group && ptr->mailbox)
+      _rfc2047_encode_string (&ptr->mailbox, 1, col);
 #ifdef EXACT_ADDRESS
     if (ptr->val)
       _rfc2047_encode_string (&ptr->val, 1, col);
@@ -738,7 +740,7 @@ static const char *find_encoded_word (const char *s, const char **x)
 	 0x20 < *q && *q < 0x7f && !strchr ("()<>@,;:\"/[]?.=", *q);
 	 q++)
       ;
-    if (q[0] != '?' || !strchr ("BbQq", q[1]) || q[2] != '?')
+    if (q[0] != '?' || q[1] == '\0' || !strchr ("BbQq", q[1]) || q[2] != '?')
       continue;
     /* non-strict check since many MUAs will not encode spaces and question marks */
     for (q = q + 3; 0x20 <= *q && *q < 0x7f && (*q != '?' || q[1] != '='); q++)
@@ -910,6 +912,8 @@ void rfc2047_decode_adrlist (ADDRESS *a)
     if (a->personal && ((strstr (a->personal, "=?") != NULL) || 
 			(AssumedCharset && *AssumedCharset)))
       rfc2047_decode (&a->personal);
+    else if (a->group && a->mailbox && (strstr (a->mailbox, "=?") != NULL))
+      rfc2047_decode (&a->mailbox);
 #ifdef EXACT_ADDRESS
     if (a->val && strstr (a->val, "=?") != NULL)
       rfc2047_decode (&a->val);
